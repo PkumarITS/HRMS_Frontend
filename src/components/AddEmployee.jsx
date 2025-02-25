@@ -1,24 +1,19 @@
-import React, { useState } from "react";
-import ReactSelect from "react-select";
-// import countryList from "country-list";
+import React, { useState, useEffect } from "react";
 import { getNames } from "country-list";
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import { Autocomplete, Container, TextField, MenuItem, Button, Stepper, Step, StepLabel, Box, Typography, Select, InputLabel, FormControl, IconButton, Table, TableBody, TableCell, TableHead, TableRow, Snackbar, Alert } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 
-import { Autocomplete, Container, TextField, MenuItem, Button, Stepper, Step, StepLabel, Box, Typography, Select, InputLabel, FormControl ,IconButton, Table, TableBody, TableCell, TableHead, TableRow} from "@mui/material";
-
-const steps = ["Personal", "Identification", "Work", "Contact", "Report"];
+const steps = ["Personal", "Identification", "Work", "Contact", "Documents","Report"];
 
 const Employee = () => {
-  // Generate country options from country-list library
   const countryOptions = getNames().map((country) => ({
     label: country,
     value: country,
   }));
 
-
-  const [notes, setNotes] = useState([]);
-  const [isNoteFormVisible, setIsNoteFormVisible] = useState(false);
+  const navigate = useNavigate();
 
 
   const timeZones = [
@@ -39,11 +34,13 @@ const Employee = () => {
     "HST - Hawaii Standard Time (UTC-10)",
   ];
 
-  
+  const [notes, setNotes] = useState([]);
+  const [isNoteFormVisible, setIsNoteFormVisible] = useState(false);
   const [search, setSearch] = useState("");
   const [filteredOptions, setFilteredOptions] = useState(countryOptions);
   const [activeStep, setActiveStep] = useState(0);
   const [formData, setFormData] = useState({
+    // Personal Details
     employeeNumber: "",
     firstName: "",
     middleName: "",
@@ -58,6 +55,9 @@ const Employee = () => {
     personalTaxId: "",
     socialInsurance: "",
     idProof: "",
+    documentName: "",
+    documentNumber: "",
+    documentFile: null,
     // Work Details
     employmentStatus: "",
     department: "",
@@ -67,14 +67,15 @@ const Employee = () => {
     terminationDate: "",
     workstationId: "",
     timeZone: "",
-    
+    shiftStartTime: "",
+    shiftEndTime: "",
     // Contact Details
     residentialAddress: "",
     permanentAddress: "",
     city: "",
     state: "",
     country: "",
-    postalCode:"",
+    postalCode: "",
     workEmail: "",
     personalEmail: "",
     mobileNumber: "",
@@ -86,6 +87,15 @@ const Employee = () => {
     relationshipToSecondaryEmergencyContact: "",
     familyDoctorName: "",
     familyDoctorContactNumber: "",
+    // Documents
+    passportPhoto: null,
+    adharCard: null,
+    panCard: null,
+    degreeCertificate: null,
+    appointmentLetter: null,
+    relievingLetter: null,
+    experienceLetter: null,
+    previousCompanyPaySlip: null,
     // Report Details
     manager: "",
     indirectManager: "",
@@ -95,68 +105,80 @@ const Employee = () => {
     note: "",
   });
 
+  const [errors, setErrors] = useState({});
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
 
   const handleNext = () => {
-    setActiveStep((prevStep) => prevStep + 1);
+    const requiredFields = getRequiredFieldsForStep(activeStep);
+    const newErrors = validateFields(requiredFields);
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      setSnackbarMessage("Please fill all required fields correctly.");
+      setSnackbarOpen(true);
+    } else {
+      setActiveStep((prevStep) => prevStep + 1);
+      setErrors({});
+    }
   };
 
   const handleBack = () => {
     setActiveStep((prevStep) => prevStep - 1);
   };
 
-  // const handleChange = (event) => {
-  //   setFormData({ ...formData, [event.target.name]: event.target.value });
-  // };
-
-
-
-
-
-
-
-
-  // Handle dropdown selection
-  // const handleChange = (event, selectedOption) => {
-  //   setFormData({
-  //     ...formData,
-  //     [event.target.name]: event.target.value,
-  //     nationality: selectedOption ? selectedOption.value : event.target.value, // Ensuring nationality gets updated
-  //   });
-  // };
-  // const handleChange = (selectedOption, action) => {
-  //   setFormData({
-  //     ...formData,
-  //     [action.name]: selectedOption ? selectedOption.value : "",
-  //   });
-  // };
-
-  // const handleChange = (event) => {
-  //   const { name, value } = event.target;
-  //   setFormData({
-  //     ...formData,
-  //     [name]: value,
-  //   });
-  // };
-
-  // const handleChange = (event) => {
-  //   const { name, value } = event.target;
-  //   setFormData({
-      
-  //     ...formData,
-  //     [name]: value,
-  //     nationality: event.target.value,
-      
-  //   });
-  // };
-
   const handleChange = (event) => {
     const { name, value } = event.target;
     setFormData((prevData) => ({
       ...prevData,
-      [name]: value, // Update only the field that triggered the event
+      [name]: value,
     }));
+    // Clear error for the field being edited
+    if (errors[name]) {
+      setErrors((prevErrors) => ({
+        ...prevErrors,
+        [name]: "",
+      }));
+    }
   };
-  
+
+  const handleFileChange = (event) => {
+    const { name, files } = event.target;
+    const file = files[0];
+
+    // Validate file size and format
+    const allowedFormats = ["image/jpeg", "image/png", "application/pdf"];
+    const maxSize = 200 * 1024; // 100KB
+
+    if (!allowedFormats.includes(file.type)) {
+      setErrors((prevErrors) => ({
+        ...prevErrors,
+        [name]: "File format must be JPEG, PNG, or PDF.",
+      }));
+      return;
+    }
+
+    if (file.size > maxSize) {
+      setErrors((prevErrors) => ({
+        ...prevErrors,
+        [name]: "File size must be less than 100KB.",
+      }));
+      return;
+    }
+   
+    setFormData((prevData) => ({
+      ...prevData,
+      [name]: file,
+    }));
+
+    // Clear error if validation passes
+    if (errors[name]) {
+      setErrors((prevErrors) => ({
+        ...prevErrors,
+        [name]: "",
+      }));
+    }
+  };
+
   const handleSearchChange = (event) => {
     const query = event.target.value;
     setSearch(query);
@@ -166,7 +188,6 @@ const Employee = () => {
     setFilteredOptions(filtered);
   };
 
-
   const handleAddNote = () => {
     if (formData.note) {
       setNotes((prev) => [...prev, formData.note]);
@@ -174,7 +195,6 @@ const Employee = () => {
       setIsNoteFormVisible(false);
     }
   };
-
 
   const handleDeleteNote = (index) => {
     const updatedNotes = notes.filter((_, i) => i !== index);
@@ -187,101 +207,162 @@ const Employee = () => {
     handleDeleteNote(index);
   };
 
+  const validateFields = (fields) => {
+    const newErrors = {};
+    fields.forEach((field) => {
+      const value = formData[field];
+      if (!value) {
+        newErrors[field] = "This field is required.";
+      } else if (field === "mobileNumber" && !/^\d{10}$/.test(value)) {
+        newErrors[field] = "Mobile number must be 10 digits.";
+      } else if (field === "workEmail" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+        newErrors[field] = "Invalid email address.";
+      } else if (field === "postalCode" && !/^\d{6}$/.test(value)) {
+        newErrors[field] = "Postal code must be 6 digits.";
+      } else if (field === "documentNumber" && formData.idProof === "Aadhar Card" && !/^\d{12}$/.test(value)) {
+        newErrors[field] = "Aadhar Card number must be 12 digits.";
+      } else if (field === "documentNumber" && formData.idProof === "Pan Card" && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(value)) {
+        newErrors[field] = "PAN Card number must be in the format: AAAAA9999A.";
+      } else if (field === "documentNumber" && formData.idProof === "Driving Licence" && !/^[A-Za-z0-9]{16}$/.test(value)) {
+        newErrors[field] = "Driving Licence number must be 16 alphanumeric characters.";
+      } else if (field === "documentNumber" && formData.idProof === "Passport" && !/^[A-Za-z]{1}\d{7}$/.test(value)) {
+        newErrors[field] = "Passport number must be 1 letter followed by 7 digits.";
+      } else if (field === "personalTaxId" && !/^\d{10}$/.test(value)) {
+        newErrors[field] = "Personal Tax ID must be 10 digits.";
+      }
+    });
+    return newErrors;
+  };
+
+   const getRequiredFieldsForStep = (step) => {
+    switch (step) {
+      case 0:
+        return ["employeeNumber", "firstName", "lastName", "dateOfBirth", "gender", "maritalStatus", "nationality"];
+      case 1:
+        return ["immigrationStatus", "idProof", "documentNumber"];
+      case 2:
+        return ["employmentStatus", "department", "jobTitle", "doj", "timeZone", "shiftStartTime", "shiftEndTime"];
+      case 3:
+        return ["residentialAddress", "city", "state", "country", "postalCode", "workEmail", "mobileNumber", "primaryEmergencyContactName", "primaryEmergencyContactNumber", "relationshipToPrimaryEmergencyContact"];
+      case 4:
+        return ["passportPhoto", "adharCard", "panCard", "degreeCertificate"];
+      case 5:
+        return ["manager"];
+      default:
+        return [];
+    }
+  };
+
+  // const handleSubmit = async () => {
+  //   const requiredFields = getRequiredFieldsForStep(activeStep);
+  //   const newErrors = validateFields(requiredFields);
+  //   if (Object.keys(newErrors).length > 0) {
+  //     setErrors(newErrors);
+  //     setSnackbarMessage("Please fill all required fields correctly.");
+  //     setSnackbarOpen(true);
+  //   } else {
+  //     try {
+  //       const response = await fetch('http://192.168.1.43:8080/api/employees', {
+  //         method: 'POST',
+  //         headers: {
+  //           'Content-Type': 'application/json',
+            
+  //         },
+  //         mode: 'cors' , // Ensure CORS is enabled
+  //         body: JSON.stringify(formData),
+  //       });
+  //       if (!response.ok) {
+  //         throw new Error('Network response was not ok');
+  //       }
+  //       const data = await response.json();
+  //       setSnackbarMessage("Form submitted successfully!");
+  //       setSnackbarOpen(true);
+  //     } catch (error) {
+  //       setSnackbarMessage("Failed to submit form.");
+  //       setSnackbarOpen(true);
+  //     }
+  //   }
+  // };
+
+
+
+  const handleSubmit = async () => {
+    navigate("/dashboard/employee_details", { state: { employeeData: formData } });
+
+    const data = new FormData();
+    data.append("employee", new Blob([JSON.stringify(formData)], { type: "application/json" }));
+    if (formData.documentFile) {
+      data.append("file", formData.documentFile);
+    }
+   
+    try {
+      const response = await fetch("http://localhost:8080/api/employees/add", {
+        method: "POST",
+        body: data,
+        mode: "cors", // Ensures CORS is handled
+        credentials: "include", // Required if backend uses authentication
+      });
+   
+      if (response.ok) {
+        const result = await response.json();
+        alert("Employee added successfully! ID: " + result.id);
+      } else {
+        alert("Error adding employee.");
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      alert("An error occurred while submitting the form.");
+    }
+  };
+
+
+  const handleSnackbarClose = () => {
+    setSnackbarOpen(false);
+  };
+
   return (
-
-
-
     <Container maxWidth="md" sx={{ mt: 3, p: 6, borderRadius: 1, boxShadow: 2, bgcolor: "white", maxWidth: "500", height: "auto" }}>
-      <Typography variant="h5" fontWeight="bold" gutterBottom>
+      <Typography variant="h5" fontWeight="bold" gutterBottom textAlign="center" pb={3}>
         Employee
       </Typography>
 
-      {/* Stepper */}
       <Stepper activeStep={activeStep} alternativeLabel>
         {steps.map((label, index) => (
           <Step key={index}>
             <StepLabel onClick={() => setActiveStep(index)}>{label}</StepLabel>
           </Step>
-
         ))}
       </Stepper>
 
-
       <Box sx={{ mt: 2 }}>
-        {/* Step 1: Personal Information */}
         {activeStep === 0 && (
           <>
-            <TextField fullWidth margin="normal" label="Employee Number" name="employeeNumber" value={formData.employeeNumber} onChange={handleChange} required />
-            <TextField fullWidth margin="normal" label="First Name" name="firstName" value={formData.firstName} onChange={handleChange} required />
+            <TextField fullWidth margin="normal" label="Employee Number" name="employeeNumber" value={formData.employeeNumber} onChange={handleChange} required error={!!errors.employeeNumber} helperText={errors.employeeNumber} />
+            <TextField fullWidth margin="normal" label="First Name" name="firstName" value={formData.firstName} onChange={handleChange} required error={!!errors.firstName} helperText={errors.firstName} />
             <TextField fullWidth margin="normal" label="Middle Name" name="middleName" value={formData.middleName} onChange={handleChange} />
-            <TextField fullWidth margin="normal" label="Last Name" name="lastName" value={formData.lastName} onChange={handleChange} required />
-
-
-
-            <TextField fullWidth margin="normal" type="date" label="Date Of Birth" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} required InputLabelProps={{ shrink: true }} />
-
+            <TextField fullWidth margin="normal" label="Last Name" name="lastName" value={formData.lastName} onChange={handleChange} required error={!!errors.lastName} helperText={errors.lastName} />
+            <TextField fullWidth margin="normal" type="date" label="Date Of Birth" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} required InputLabelProps={{ shrink: true }} error={!!errors.dateOfBirth} helperText={errors.dateOfBirth} />
             <FormControl fullWidth margin="normal">
               <InputLabel>Gender</InputLabel>
-              <Select name="gender" value={formData.gender} onChange={handleChange} label="Gender" required>
+              <Select name="gender" value={formData.gender} onChange={handleChange} label="Gender" required error={!!errors.gender}>
                 <MenuItem value="Male">Male</MenuItem>
                 <MenuItem value="Female">Female</MenuItem>
                 <MenuItem value="Other">Other</MenuItem>
               </Select>
             </FormControl>
-
             <FormControl fullWidth margin="normal">
               <InputLabel>Marital Status</InputLabel>
-              <Select name="maritalStatus" value={formData.maritalStatus} onChange={handleChange} label="Marital Status" required>
+              <Select name="maritalStatus" value={formData.maritalStatus} onChange={handleChange} label="Marital Status" required error={!!errors.maritalStatus}>
                 <MenuItem value="Unmarried">Unmarried</MenuItem>
                 <MenuItem value="Married">Married</MenuItem>
               </Select>
             </FormControl>
-            {/* <FormControl fullWidth margin="normal">
-      <InputLabel>Nationality</InputLabel>
-      <Select
-        name="nationality"
-        value={formData.nationality || ""}
-        onChange={handleChange}
-        label="Nationality"
-      >
-        {countryOptions.map((option) => (
-          <MenuItem key={option.value} value={option.value}>
-            {option.label}
-          </MenuItem>
-        ))}
-      </Select>
-    </FormControl> */}
-
-
-
             <FormControl fullWidth margin="normal">
               <InputLabel>Nationality</InputLabel>
-              <Select
-                name="nationality"
-                value={formData.nationality || ""}
-                onChange={handleChange}
-                label="Nationality"
-                required
-                MenuProps={{
-                  PaperProps: {
-                    sx: {
-                      maxHeight: 300, // Optional: Control the dropdown height
-                    },
-                  },
-                }}
-              >
-                {/* TextField for search functionality */}
+              <Select name="nationality" value={formData.nationality || ""} onChange={handleChange} label="Nationality" required error={!!errors.nationality}>
                 <MenuItem disabled>
-                  <TextField
-                    value={search}
-                    onChange={handleSearchChange}
-                    label="Search"
-                    fullWidth
-                    variant="standard"
-                  />
+                  <TextField value={search} onChange={handleSearchChange} label="Search" fullWidth variant="standard" />
                 </MenuItem>
-
-                {/* Render filtered options */}
                 {filteredOptions.map((option) => (
                   <MenuItem key={option.value} value={option.value}>
                     {option.label}
@@ -301,140 +382,137 @@ const Employee = () => {
         )}
 
         {/* Step 2: Identification Information */}
+        {activeStep === 1 && (
+          <>
+            <FormControl fullWidth margin="normal">
+              <InputLabel>Immigration Status</InputLabel>
+              <Select
+                name="immigrationStatus"
+                value={formData.immigrationStatus}
+                onChange={handleChange}
+                label="Immigration Status"
+              >
+                <MenuItem value="Citizen">Citizen</MenuItem>
+                <MenuItem value="Permanent Resident">Permanent Resident</MenuItem>
+              </Select>
+            </FormControl>
 
-       
-{activeStep === 1 && (
-  <>
-    <FormControl fullWidth margin="normal">
-      <InputLabel>Immigration Status</InputLabel>
-      <Select
-        name="immigrationStatus"
-        value={formData.immigrationStatus}
-        onChange={handleChange}
-        label="Immigration Status"
-      >
-        <MenuItem value="Citizen">Citizen</MenuItem>
-        <MenuItem value="Permanent Resident">Permanent Resident</MenuItem>
-      </Select>
-    </FormControl>
+            <TextField
+              fullWidth
+              margin="normal"
+              label="Personal Tax ID"
+              name="personalTaxId"
+              value={formData.personalTaxId}
+              onChange={handleChange}
+            />
+            <TextField
+              fullWidth
+              margin="normal"
+              label="Social Insurance"
+              name="socialInsurance"
+              value={formData.socialInsurance}
+              onChange={handleChange}
+            />
 
-    <TextField
-      fullWidth
-      margin="normal"
-      label="Personal Tax ID"
-      name="personalTaxId"
-      value={formData.personalTaxId}
-      onChange={handleChange}
-    />
-    <TextField
-      fullWidth
-      margin="normal"
-      label="Social Insurance"
-      name="socialInsurance"
-      value={formData.socialInsurance}
-      onChange={handleChange}
-    />
+            <FormControl fullWidth margin="normal">
+              <InputLabel>ID Proof</InputLabel>
+              <Select
+                name="idProof"
+                value={formData.idProof}
+                onChange={handleChange}
+                label="ID Proof"
+                required
+              >
+                <MenuItem value="Aadhar Card">Aadhar Card</MenuItem>
+                <MenuItem value="Pan Card">Pan Card</MenuItem>
+                <MenuItem value="Driving Licence">Driving Licence</MenuItem>
+                <MenuItem value="Passport">Passport</MenuItem>
+                <MenuItem value="Other">Other</MenuItem>
+              </Select>
+            </FormControl>
 
-    <FormControl fullWidth margin="normal">
-      <InputLabel>ID Proof</InputLabel>
-      <Select
-        name="idProof"
-        value={formData.idProof}
-        onChange={handleChange}
-        label="ID Proof"
-        required
-      >
-        <MenuItem value="Aadhar Card">Aadhar Card</MenuItem>
-        <MenuItem value="Pan Card">Pan Card</MenuItem>
-        <MenuItem value="Driving Licence">Driving Licence</MenuItem>
-        <MenuItem value="Passport">Passport</MenuItem>
-        <MenuItem value="Other">Other</MenuItem>
-      </Select>
-    </FormControl>
+            {/* Show Document Number only after selecting an ID Proof */}
+            {formData.idProof && formData.idProof !== "Other" && (
+              <>
+                <TextField
+                  fullWidth
+                  margin="normal"
+                  label={`Enter ${formData.idProof} Number`}
+                  name="documentNumber"
+                  value={formData.documentNumber}
+                  onChange={handleChange}
+                  required
+                  inputProps={{
+                    maxLength:
+                      formData.idProof === "Aadhar Card" ? 12 :
+                      formData.idProof === "Pan Card" ? 10 :
+                      formData.idProof === "Driving Licence" ? 16 :
+                      formData.idProof === "Passport" ? 8 : 20, // Default max length
+                  }}
+                  helperText={
+                    formData.idProof === "Aadhar Card"
+                      ? "Aadhar Number must be 12 digits"
+                      : formData.idProof === "Pan Card"
+                      ? "PAN Number must be 10 characters"
+                      : formData.idProof === "Driving Licence"
+                      ? "Driving Licence Number must be 16 characters"
+                      : formData.idProof === "Passport"
+                      ? "Passport Number must be 8 characters"
+                      : ""
+                  }
+                />
+              </>
+            )}
 
-    {/* Show Document Number only after selecting an ID Proof */}
-    {formData.idProof && formData.idProof !== "Other" && (
-      <>
-        <TextField
-          fullWidth
-          margin="normal"
-          label={`Enter ${formData.idProof} Number`}
-          name="documentNumber"
-          value={formData.documentNumber}
-          onChange={handleChange}
-          required
-          inputProps={{
-            maxLength:
-              formData.idProof === "Aadhar Card" ? 12 :
-              formData.idProof === "Pan Card" ? 10 :
-              formData.idProof === "Driving Licence" ? 16 :
-              formData.idProof === "Passport" ? 8 : 20, // Default max length
-          }}
-          helperText={
-            formData.idProof === "Aadhar Card"
-              ? "Aadhar Number must be 12 digits"
-              : formData.idProof === "Pan Card"
-              ? "PAN Number must be 10 characters"
-              : formData.idProof === "Driving Licence"
-              ? "Driving Licence Number must be 16 characters"
-              : formData.idProof === "Passport"
-              ? "Passport Number must be 8 characters"
-              : ""
-          }
-        />
-      </>
-    )}
+            {/* If "Other" is selected, show Document Name and Document Number */}
+            {formData.idProof === "Other" && (
+              <>
+                <TextField
+                  fullWidth
+                  margin="normal"
+                  label="Document Name"
+                  name="documentName"
+                  value={formData.documentName}
+                  onChange={handleChange}
+                  required
+                />
+                <TextField
+                  fullWidth
+                  margin="normal"
+                  label="Document Number"
+                  name="documentNumber"
+                  value={formData.documentNumber}
+                  onChange={handleChange}
+                  required
+                />
+              </>
+            )}
 
-    {/* If "Other" is selected, show Document Name and Document Number */}
-    {formData.idProof === "Other" && (
-      <>
-        <TextField
-          fullWidth
-          margin="normal"
-          label="Document Name"
-          name="documentName"
-          value={formData.documentName}
-          onChange={handleChange}
-          required
-        />
-        <TextField
-          fullWidth
-          margin="normal"
-          label="Document Number"
-          name="documentNumber"
-          value={formData.documentNumber}
-          onChange={handleChange}
-          required
-        />
-      </>
-    )}
+            {/* File Upload Section */}
+            {formData.idProof && (
+              <>
+                <input
+                  type="file"
+                  accept=".jpg,.jpeg,.png,.pdf"
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      const allowedTypes = ["image/jpeg", "image/png", "application/pdf"];
+                      if (allowedTypes.includes(file.type)) {
+                        setFormData({ ...formData, documentFile: file });
+                      } else {
+                        alert("Invalid file format. Only JPG, PNG, and PDF are allowed.");
+                        e.target.value = ""; // Reset file input
+                      }
+                    }
+                  }}
+                />
+              </>
+            )}
+          </>
+        )}
 
-    {/* File Upload Section */}
-    {formData.idProof && (
-      <>
-        <input
-          type="file"
-          accept=".jpg,.jpeg,.png,.pdf"
-          onChange={(e) => {
-            const file = e.target.files[0];
-            if (file) {
-              const allowedTypes = ["image/jpeg", "image/png", "application/pdf"];
-              if (allowedTypes.includes(file.type)) {
-                setFormData({ ...formData, documentFile: file });
-              } else {
-                alert("Invalid file format. Only JPG, PNG, and PDF are allowed.");
-                e.target.value = ""; // Reset file input
-              }
-            }
-          }}
-        />
-      </>
-    )}
-  </>
-)}
-
-
-        {/* Placeholder for future steps */}
+        {/* Step 3: Work Information */}
         {activeStep === 2 && (
           <>
             <FormControl fullWidth margin="normal">
@@ -460,8 +538,6 @@ const Employee = () => {
             <TextField fullWidth margin="normal" label="Date Of Joining" name="doj" type="date" value={formData.doj} onChange={handleChange} InputLabelProps={{ shrink: true }} />
             <TextField fullWidth margin="normal" label="Termination Date" name="terminationDate" type="date" value={formData.terminationDate} onChange={handleChange} InputLabelProps={{ shrink: true }} />
             <TextField fullWidth margin="normal" label="Workstation ID" name="workstationId" value={formData.workstationId} onChange={handleChange} />
-            {/* <TextField fullWidth margin="normal" label="Time Zone" name="timeZone" value={formData.timeZone} onChange={handleChange} required /> */}
-
             <Autocomplete
               fullWidth
               options={timeZones}
@@ -473,6 +549,8 @@ const Employee = () => {
                 setFormData({ ...formData, timeZone: newValue })
               }
             />
+            <TextField fullWidth margin="normal" label="Shift Start Time" name="shiftStartTime" type="time" value={formData.shiftStartTime} onChange={handleChange} InputLabelProps={{ shrink: true }} />
+            <TextField fullWidth margin="normal" label="Shift End Time" name="shiftEndTime" type="time" value={formData.shiftEndTime} onChange={handleChange} InputLabelProps={{ shrink: true }} />
           </>
         )}
 
@@ -513,16 +591,7 @@ const Employee = () => {
               value={formData.state}
               onChange={handleChange} required
             />
-            {/* <TextField
-              fullWidth
-              margin="normal"
-              label="Country"
-              name="country"
-              value={formData.country}
-              onChange={handleChange} required
-            /> */}
-
-               <FormControl fullWidth margin="normal">
+            <FormControl fullWidth margin="normal">
               <InputLabel>Country</InputLabel>
               <Select
                 name="country"
@@ -658,8 +727,100 @@ const Employee = () => {
           </>
         )}
 
-    {/* Step 5: Report Information */}
+        {/* Step 5: Documents */}
         {activeStep === 4 && (
+          <>
+            <Typography variant="h6" gutterBottom>
+              Upload Required Documents
+            </Typography>
+            <Box sx={{ mt: 2 }}> 
+              <TextField
+                fullWidth
+                margin="normal"
+                type="file"
+                label="Passport Photo"
+                name="passportPhoto"
+                onChange={handleFileChange}
+                InputLabelProps={{ shrink: true }}
+                error={!!errors.passportPhoto}
+                helperText={errors.passportPhoto}
+              />
+              <TextField
+                fullWidth
+                margin="normal"
+                type="file"
+                label="Aadhar Card"
+                name="adharCard"
+                onChange={handleFileChange}
+                InputLabelProps={{ shrink: true }}
+                error={!!errors.adharCard}
+                helperText={errors.adharCard}
+              />
+              <TextField
+                fullWidth
+                margin="normal"
+                type="file"
+                label="PAN Card"
+                name="panCard"
+                onChange={handleFileChange}
+                InputLabelProps={{ shrink: true }}
+                error={!!errors.panCard}
+                helperText={errors.panCard}
+              />
+              <TextField
+                fullWidth
+                margin="normal"
+                type="file"
+                label="Degree Certificate"
+                name="degreeCertificate"
+                onChange={handleFileChange}
+                InputLabelProps={{ shrink: true }}
+                error={!!errors.degreeCertificate}
+                helperText={errors.degreeCertificate}
+              />
+              <TextField
+                fullWidth
+                margin="normal"
+                type="file"
+                label="Appointment Letter"
+                name="appointmentLetter"
+                onChange={handleFileChange}
+                InputLabelProps={{ shrink: true }}
+              />
+              <TextField
+                fullWidth
+                margin="normal"
+                type="file"
+                label="Relieving Letter"
+                name="relievingLetter"
+                onChange={handleFileChange}
+                InputLabelProps={{ shrink: true }}
+              />
+              <TextField
+                fullWidth
+                margin="normal"
+                type="file"
+                label="Experience Letter"
+                name="experienceLetter"
+                onChange={handleFileChange}
+                InputLabelProps={{ shrink: true }}
+              />
+              <TextField
+                fullWidth
+                margin="normal"
+                type="file"
+                label="Previous Company Pay Slip"
+                name="previousCompanyPaySlip"
+                onChange={handleFileChange}
+                InputLabelProps={{ shrink: true }}
+              />
+            </Box>
+          </>
+        )}
+
+
+        {/* Step 6: Report Information */}
+        {activeStep === 5 && (
            <Box sx={{ padding: 3 }}>
            <FormControl fullWidth margin="normal">
              <InputLabel>Manager</InputLabel>
@@ -790,7 +951,6 @@ const Employee = () => {
         )}
 
 
-        {/* Buttons */}
         <Box sx={{ mt: 3, display: "flex", justifyContent: "space-between" }}>
           {activeStep > 0 && (
             <Button variant="contained" color="primary" onClick={handleBack}>
@@ -802,12 +962,18 @@ const Employee = () => {
               Next
             </Button>
           ) : (
-            <Button variant="contained" color="success">
+            <Button variant="contained" color="success" onClick={handleSubmit}>
               Save
             </Button>
           )}
         </Box>
       </Box>
+
+      <Snackbar open={snackbarOpen} autoHideDuration={6000} onClose={handleSnackbarClose}>
+        <Alert onClose={handleSnackbarClose} severity={Object.keys(errors).length > 0 ? "error" : "success"} sx={{ width: '100%' }}>
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 };

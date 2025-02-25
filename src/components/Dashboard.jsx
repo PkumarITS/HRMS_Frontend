@@ -38,6 +38,7 @@ import {
 // Import the profile images from the assets folder
 import maleIcon from "../assets/male.png";
 import femaleIcon from "../assets/female.png";
+import { Settings2Icon } from "lucide-react";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -45,6 +46,7 @@ const Dashboard = () => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [projectOpen, setProjectOpen] = useState(false);
+  const [systemOpen, setSystemOpen] = useState(false);
 
   axios.defaults.withCredentials = true;
 
@@ -69,6 +71,7 @@ const Dashboard = () => {
     const routes = [
       "/dashboard",
       "/dashboard/employee",
+      "/dashboard/system",
       "/dashboard/organization",
       "/dashboard/timesheet",
       "/dashboard/attendence",
@@ -98,6 +101,9 @@ const Dashboard = () => {
     setAnchorEl(null);
   };
 
+  const toggleSystemMenu = () => {
+    setSystemOpen(!systemOpen);
+  };
   const toggleLeaveMenu = () => {
     setLeaveOpen(!leaveOpen);
   };
@@ -109,6 +115,16 @@ const Dashboard = () => {
   const menuItems = [
     { text: "Dashboard", icon: <DashboardIcon />, link: "/dashboard" },
     { text: "Employees", icon: <PeopleIcon />, link: "/dashboard/employee" },
+    {
+      text: "System",
+      icon: <Settings2Icon />,
+      action: toggleSystemMenu,
+      subItems: [
+        { text: "Users", link: "/dashboard/system/users" }
+
+        
+      ],
+    },
     { text: "Organization", icon: <BusinessIcon />, link: "/dashboard/organization" },
     { text: "Timesheet", icon: <AccessTimeIcon />, link: "/dashboard/timesheet" },
     { text: "Attendance", icon: <CalendarTodayIcon />, link: "/dashboard/attendence" },
@@ -202,52 +218,72 @@ const Dashboard = () => {
             gap: 1,
           }}
         >
-          <List>
-            {menuItems.map((item, index) => (
-              <>
-                <ListItem key={index} disablePadding>
-                  <ListItemButton
-                    component={item.link ? Link : "button"}
-                    to={item.link || "#"}
-                    onClick={item.action || undefined}
-                    sx={{
-                      "&:hover": {
-                        backgroundColor: "#64748b",
-                      },
-                    }}
-                  >
-                    <ListItemIcon sx={{ color: "white" }}>{item.icon}</ListItemIcon>
-                    <ListItemText primary={item.text} />
-                    {item.subItems && (item === menuItems[5] ? leaveOpen : projectOpen) ? (
-                      <ExpandLess />
-                    ) : (
-                      item.subItems && <ExpandMore />
-                    )}
-                  </ListItemButton>
-                </ListItem>
-                {item.subItems && (
-                  <Collapse
-                    in={item === menuItems[5] ? leaveOpen : projectOpen}
-                    timeout="auto"
-                    unmountOnExit
-                  >
-                    <List component="div" disablePadding>
-                      {item.subItems.map((subItem, subIndex) => (
-                        <ListItemButton
-                          key={subIndex}
-                          component={Link}
-                          to={subItem.link}
-                          sx={{ pl: 4, "&:hover": { backgroundColor: "#64748b" } }}
-                        >
-                          <ListItemText primary={subItem.text} />
-                        </ListItemButton>
-                      ))}
-                    </List>
-                  </Collapse>
-                )}
-              </>
+         <List>
+  {menuItems.map((item, index) => (
+    <React.Fragment key={index}>
+      <ListItem disablePadding>
+        <ListItemButton
+          component={item.link ? Link : "button"}
+          to={item.link || "#"}
+          onClick={
+            item.text === "System"
+              ? toggleSystemMenu
+              : item.text === "Leave Management"
+              ? toggleLeaveMenu
+              : item.text === "Projects"
+              ? toggleProjectMenu
+              : undefined
+          }
+          sx={{
+            "&:hover": {
+              backgroundColor: "#64748b",
+            },
+          }}
+        >
+          <ListItemIcon sx={{ color: "white" }}>{item.icon}</ListItemIcon>
+          <ListItemText primary={item.text} />
+          {item.subItems ? (
+            item.text === "System" && systemOpen ? (
+              <ExpandLess />
+            ) : item.text === "Leave Management" && leaveOpen ? (
+              <ExpandLess />
+            ) : item.text === "Projects" && projectOpen ? (
+              <ExpandLess />
+            ) : (
+              <ExpandMore />
+            )
+          ) : null}
+        </ListItemButton>
+      </ListItem>
+
+      {item.subItems && (
+        <Collapse
+          in={
+            (item.text === "System" && systemOpen) ||
+            (item.text === "Leave Management" && leaveOpen) ||
+            (item.text === "Projects" && projectOpen)
+          }
+          timeout="auto"
+          unmountOnExit
+        >
+          <List component="div" disablePadding>
+            {item.subItems.map((subItem, subIndex) => (
+              <ListItemButton
+                key={subIndex}
+                component={Link}
+                to={subItem.link}
+                sx={{ pl: 4, "&:hover": { backgroundColor: "#64748b" } }}
+              >
+                <ListItemText primary={subItem.text} />
+              </ListItemButton>
             ))}
           </List>
+        </Collapse>
+      )}
+    </React.Fragment>
+  ))}
+</List>
+
         </Box>
 
         {/* Main Content */}

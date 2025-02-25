@@ -8,6 +8,8 @@ const Employee = () => {
   const [searchDept, setSearchDept] = useState("");
   const navigate = useNavigate();
 
+
+  
   useEffect(() => {
     fetchEmployees();
   }, []);
@@ -106,7 +108,9 @@ const Employee = () => {
             onClick={fetchEmployees}
             className="btn btn-outline-primary me-2"
           >
+            <Link to="/dashboard/employee_details" > 
             View All Employee Details
+            </Link>
           </button>
           <button
             onClick={handleExportCSV}
@@ -157,54 +161,7 @@ const Employee = () => {
         </div>
       </div>
 
-      {/* Employee Table */}
-      <table className="table table-striped table-hover">
-        <thead className="bg-primary text-white">
-          <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Department</th>
-            <th>Role</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {employee.map((emp) => (
-            <tr key={emp.id}>
-              <td>{emp.id}</td>
-              <td>{emp.name}</td>
-              <td>{emp.department}</td>
-              <td>{emp.role}</td>
-              <td>
-                <button
-                  onClick={() => navigate(`/dashboard/view_employee/${emp.id}`)}
-                  className="btn btn-warning btn-sm me-2"
-                >
-                  View
-                </button>
-                <button
-                  onClick={() => navigate(`/dashboard/edit_employee/${emp.id}`)}
-                  className="btn btn-warning btn-sm me-2"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => navigate(`/dashboard/leave_employee/${emp.id}`)}
-                  className="btn btn-warning btn-sm me-2"
-                >
-                  Leave
-                </button>
-                <button
-                  onClick={() => handleDelete(emp.id)}
-                  className="btn btn-danger btn-sm"
-                >
-                  Delete
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+     
     </div>
   );
 };

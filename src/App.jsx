@@ -19,6 +19,9 @@ import Holiday from './components/Leaves/Holiday';
 import Project from './components/Projects/Project';
 import Task from './components/Projects/Task';
 import Leavebalance from './components/Leaves/LeaveBalance';
+import EmployeeDetails from './components/EmployeeDetails';
+import Users from './components/System/Users';
+import UserInvitation from './components/System/UserInvitation';
 
 
 function App() {
@@ -42,14 +45,20 @@ function App() {
 
         <Route path='/dashboard/Projects/project' element={<Project/>}></Route>
         <Route path='/dashboard/Projects/task' element={<Task/>}></Route>
+        <Route path='/dashboard/system/users' element={<Users/>}></Route>
+        <Route path='/dashboard/system/user_invitation' element={<UserInvitation/>}></Route>
 
 
 
+
+        
 
 
         <Route path='/dashboard/organization' element={<Organization/>}></Route>
         <Route path='/dashboard/add_department' element={<AddDepartment />}></Route>
         <Route path='/dashboard/add_employee' element={<AddEmployee />}></Route>
+        <Route path='/dashboard/employee_details' element={<EmployeeDetails />}></Route>
+
         <Route path='/dashboard/edit_employee' element={<EditEmployee />}></Route>
 
 
