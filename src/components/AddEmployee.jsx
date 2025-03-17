@@ -287,8 +287,7 @@ const Employee = () => {
 
 
   const handleSubmit = async () => {
-    navigate("/dashboard/employee_details", { state: { employeeData: formData } });
-
+    navigate("/dashboard/employee", { state: { refresh: true } });
     const data = new FormData();
     data.append("employee", new Blob([JSON.stringify(formData)], { type: "application/json" }));
     if (formData.documentFile) {
@@ -316,6 +315,9 @@ const Employee = () => {
   };
 
 
+ 
+
+ 
   const handleSnackbarClose = () => {
     setSnackbarOpen(false);
   };

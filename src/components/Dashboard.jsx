@@ -81,6 +81,7 @@ const Dashboard = () => {
       "/dashboard/profile",
       "/dashboard/report",
       "/dashboard/holiday",
+      "/dashboard/Registration"
 
     ];
     const matchedRoute = routes.find((route) =>
@@ -120,7 +121,9 @@ const Dashboard = () => {
       icon: <Settings2Icon />,
       action: toggleSystemMenu,
       subItems: [
-        { text: "Users", link: "/dashboard/system/users" }
+        { text: "Users", link: "/dashboard/system/users" },
+        { text: "Registration", link: "/auth/RegistrationPage" }
+
 
         
       ],

@@ -1,18 +1,41 @@
 import axios from "axios";
 import React, { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  TablePagination,
+  IconButton,
+  TextField,
+  Select,
+  MenuItem,
+  Button,
+  Box,
+  Typography,
+} from "@mui/material";
+import EditIcon from "@mui/icons-material/Edit";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import DeleteIcon from "@mui/icons-material/Delete";
 
 const Employee = () => {
   const [employee, setEmployee] = useState([]);
   const [searchId, setSearchId] = useState("");
   const [searchDept, setSearchDept] = useState("");
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [refreshData, setRefreshData] = useState(false); // State to trigger data refresh
   const navigate = useNavigate();
+  const location = useLocation(); // Hook to access navigation state
 
-
-  
+  // Fetch employees when the component mounts or refreshData changes
   useEffect(() => {
     fetchEmployees();
-  }, []);
+  }, [refreshData]);
 
   const fetchEmployees = () => {
     axios
@@ -26,6 +49,13 @@ const Employee = () => {
       })
       .catch((err) => console.log(err));
   };
+
+  // Check if navigation state contains a refresh flag
+  useEffect(() => {
+    if (location.state?.refresh) {
+      setRefreshData((prev) => !prev); // Toggle refreshData to re-fetch data
+    }
+  }, [location.state]);
 
   const handleSearchById = () => {
     if (searchId) {
@@ -67,7 +97,7 @@ const Employee = () => {
         .delete(`http://localhost:3000/auth/delete_employee/${id}`)
         .then((result) => {
           if (result.data.Status) {
-            fetchEmployees();
+            setRefreshData((prev) => !prev); // Toggle refreshData to re-fetch data
           } else {
             alert(result.data.Error);
           }
@@ -95,74 +125,139 @@ const Employee = () => {
     document.body.removeChild(link);
   };
 
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
   return (
-    <div className="container mt-4">
+    <Box sx={{ p: 3 }}>
       {/* Header */}
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2 className="text-primary">Employee Management</h2>
-        <div>
-          <Link to="/dashboard/add_employee" className="btn btn-outline-primary me-2">
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
+        <Typography variant="h4" color="primary">
+          Employee Management
+        </Typography>
+        <Box>
+          <Button
+            component={Link}
+            to="/dashboard/add_employee"
+            variant="outlined"
+            color="primary"
+            sx={{ mr: 2 }}
+          >
             Add Employee
-          </Link>
-          <button
-            onClick={fetchEmployees}
-            className="btn btn-outline-primary me-2"
+          </Button>
+          <Button
+            component={Link}
+            to="/dashboard/employee_details"
+            variant="outlined"
+            color="primary"
+            sx={{ mr: 2 }}
           >
-            <Link to="/dashboard/employee_details" > 
             View All Employee Details
-            </Link>
-          </button>
-          <button
-            onClick={handleExportCSV}
-            className="btn btn-outline-info"
-          >
+          </Button>
+          <Button onClick={handleExportCSV} variant="outlined" color="info">
             Export CSV
-          </button>
-        </div>
-      </div>
+          </Button>
+        </Box>
+      </Box>
 
       {/* Search Fields */}
-      <div className="row mb-4">
-        <div className="col-md-6 mb-3">
-          <input
-            type="text"
-            placeholder="Search by Employee ID"
-            value={searchId}
-            onChange={(e) => setSearchId(e.target.value)}
-            className="form-control"
-          />
-          <button
-            onClick={handleSearchById}
-            className="btn btn-primary mt-2 w-100"
-          >
-            Search by ID
-          </button>
-        </div>
-        <div className="col-md-6">
-          <select
-            className="form-select"
-            value={searchDept}
-            onChange={(e) => setSearchDept(e.target.value)}
-          >
-            <option value="">Select Department</option>
-            <option value="Management">Management</option>
-            <option value="Project Manager">Project Manager</option>
-            <option value="Team Lead">Team Lead</option>
-            <option value="Development Department">Development Department</option>
-            <option value="HR Team">HR Team</option>
-            <option value="QA Department">QA Department</option>
-          </select>
-          <button
-            onClick={handleSearchByDept}
-            className="btn btn-primary mt-2 w-100"
-          >
-            Search by Department
-          </button>
-        </div>
-      </div>
+      <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
+        <TextField
+          placeholder="Search by Employee ID"
+          value={searchId}
+          onChange={(e) => setSearchId(e.target.value)}
+          fullWidth
+        />
+        <Button onClick={handleSearchById} variant="contained" color="primary">
+          Search by ID
+        </Button>
+        <Select
+          value={searchDept}
+          onChange={(e) => setSearchDept(e.target.value)}
+          displayEmpty
+          fullWidth
+        >
+          <MenuItem value="">Select Department</MenuItem>
+          <MenuItem value="Management">Management</MenuItem>
+          <MenuItem value="Project Manager">Project Manager</MenuItem>
+          <MenuItem value="Team Lead">Team Lead</MenuItem>
+          <MenuItem value="Development Department">Development Department</MenuItem>
+          <MenuItem value="HR Team">HR Team</MenuItem>
+          <MenuItem value="QA Department">QA Department</MenuItem>
+        </Select>
+        <Button onClick={handleSearchByDept} variant="contained" color="primary">
+          Search by Department
+        </Button>
+      </Box>
 
-     
-    </div>
+      {/* Employee Table */}
+      <TableContainer component={Paper}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Sr. No</TableCell>
+              <TableCell>Employee ID</TableCell>
+              <TableCell>First Name</TableCell>
+              <TableCell>Last Name</TableCell>
+              <TableCell>Company Email</TableCell>
+              <TableCell>Department</TableCell>
+              <TableCell>Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {employee
+              .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+              .map((emp, index) => (
+                <TableRow key={emp.id}>
+                  <TableCell>{page * rowsPerPage + index + 1}</TableCell>
+                  <TableCell>{emp.id}</TableCell>
+                  <TableCell>{emp.firstName}</TableCell>
+                  <TableCell>{emp.lastName}</TableCell>
+                  <TableCell>{emp.workEmail}</TableCell>
+                  <TableCell>{emp.department}</TableCell>
+                  <TableCell>
+                    <IconButton
+                      color="primary"
+                      onClick={() => navigate(`/dashboard/edit_employee/${emp.id}`)}
+                    >
+                      <EditIcon />
+                    </IconButton>
+                    <IconButton
+                      color="info"
+                      onClick={() => navigate(`/dashboard/employee_details/${emp.id}`)}
+                    >
+                      <VisibilityIcon />
+                    </IconButton>
+                    <IconButton
+                      color="error"
+                      onClick={() => handleDelete(emp.id)}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+
+      {/* Pagination */}
+      <TablePagination
+        rowsPerPageOptions={[5, 10, 25]}
+        component="div"
+        count={employee.length}
+        rowsPerPage={rowsPerPage}
+        page={page}
+        onPageChange={handleChangePage}
+        onRowsPerPageChange={handleChangeRowsPerPage}
+      />
+    </Box>
   );
 };
 

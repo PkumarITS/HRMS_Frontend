@@ -1,6 +1,8 @@
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
-import Login from './components/login';
+import LoginPage from './components/auth/LoginPage';
+import Register from './components/auth/RegistrationPage';
+import UserService from './components/service/UserService';
 import Dashboard from './components/Dashboard'; // Import Dashboard component
 import EmployeeDashboard from './components/EmployeeDashboard/EmployeeDashboard'; // 
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
@@ -21,14 +23,24 @@ import Task from './components/Projects/Task';
 import Leavebalance from './components/Leaves/LeaveBalance';
 import EmployeeDetails from './components/EmployeeDetails';
 import Users from './components/System/Users';
-import UserInvitation from './components/System/UserInvitation';
+import RegistrationPage from './components/auth/RegistrationPage';
 
 
 function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Login />} /> {/* Login Route */}
+        <Route path="/" element={<LoginPage />} /> {/* Login Route */}
+        <Route path="/auth/registrationpage" element={<RegistrationPage />} /> {/* Register Route */}
+         {/* Check if user is authenticated and admin before rendering admin-only routes */}
+         {UserService.adminOnly() && (
+              <>
+                <Route path="/register" element={<Register />} />
+                <Route path="/admin/user-management" element={<UserManagementPage />} />
+                <Route path="/update-user/:userId" element={<UpdateUser />} />
+              </>
+            )}
+
         <Route path="/forgot-password" element={<ForgetPassword />} />
         <Route path="/dashboard" element={<Dashboard />} > 
         
@@ -46,7 +58,6 @@ function App() {
         <Route path='/dashboard/Projects/project' element={<Project/>}></Route>
         <Route path='/dashboard/Projects/task' element={<Task/>}></Route>
         <Route path='/dashboard/system/users' element={<Users/>}></Route>
-        <Route path='/dashboard/system/user_invitation' element={<UserInvitation/>}></Route>
 
 
 
