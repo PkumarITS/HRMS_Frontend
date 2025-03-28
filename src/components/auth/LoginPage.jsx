@@ -6,6 +6,7 @@ import {
     Box, Checkbox, FormControlLabel, Link 
 } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
+import Cookies from "js-cookie"; // Import js-cookie
 
 function LoginPage() {
     const [email, setEmail] = useState('');
@@ -19,9 +20,10 @@ function LoginPage() {
         try {
             const userData = await UserService.login(email, password);
             if (userData.token) {
-                localStorage.setItem('token', userData.token);
-                localStorage.setItem('role', userData.role);
-                navigate('../dashboard');
+                // Store token in a cookie
+                Cookies.set("token", userData.token, { expires: 7 }); // Expires in 7 days
+                Cookies.set("role", userData.role, { expires: 7 }); // Store role in a cookie
+                navigate('/dashboard'); // Redirect to dashboard
             } else {
                 setError(userData.message);
             }
@@ -30,7 +32,7 @@ function LoginPage() {
             setTimeout(() => setError(''), 5000);
         }
     };
-
+    
     return (
         <Container maxWidth="sm">
             <Card sx={{ mt: 8, p: 3, borderRadius: 2, boxShadow: 3  }}>

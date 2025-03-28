@@ -1,47 +1,27 @@
 import axios from "axios";
+import Cookies from "js-cookie"; // Import js-cookie
 
-class UserService{
-    static BASE_URL = "http://localhost:1010"
+class UserService {
+    static BASE_URL = "http://localhost:1010";
 
-    static async login(email, password){
-        try{
-            const response = await axios.post(`${UserService.BASE_URL}/auth/login`, {email, password})
+    // Login method
+    static async login(email, password) {
+        try {
+            const response = await axios.post(`${UserService.BASE_URL}/auth/login`, { email, password }, {
+                withCredentials: true, // Send cookies with the request
+            });
             return response.data;
-
-        }catch(err){
+        } catch (err) {
             throw err;
         }
     }
 
-    // static async register(userData, token){
-    //     try{
-    //         const response = await axios.post(`${UserService.BASE_URL}/auth/register`, userData, 
-    //         {
-    //             headers: {Authorization: `Bearer ${token}`}
-    //         })
-    //         return response.data;
-    //     }catch(err){
-    //         throw err;
-    //     }
-    // }
-
-    // static async register(userData, token) {
-    //     try {
-    //         const response = await axios.post(`${UserService.BASE_URL}/auth/register`, userData, {
-    //             headers: { Authorization: `Bearer ${token}` }
-    //         });
-    //         return response.data;
-    //     } catch (err) {
-    //         console.error("Error response:", err.response); // Log the error response
-    //         throw err;
-    //     }
-    // }
-
+    // Register method
     static async register(userData, token) {
         try {
             const response = await axios.post(`${UserService.BASE_URL}/auth/register`, userData, {
                 headers: { Authorization: `Bearer ${token}` },
-                withCredentials: false, // Explicitly disable credentials
+                withCredentials: true, // Send cookies with the request
             });
             return response.data;
         } catch (err) {
@@ -50,93 +30,111 @@ class UserService{
         }
     }
 
-    static async getAllUsers(token){
-        try{
-            const response = await axios.get(`${UserService.BASE_URL}/admin/get-all-users`, 
-            {
-                headers: {Authorization: `Bearer ${token}`}
-            })
+    // Get all users (admin only)
+    static async getAllUsers(token) {
+        try {
+            const response = await axios.get(`${UserService.BASE_URL}/admin/get-all-users`, {
+                headers: { Authorization: `Bearer ${token}` },
+                withCredentials: true, // Send cookies with the request
+            });
             return response.data;
-        }catch(err){
+        } catch (err) {
             throw err;
         }
     }
 
-
-    static async getYourProfile(token){
-        try{
-            const response = await axios.get(`${UserService.BASE_URL}/adminuser/get-profile`, 
-            {
-                headers: {Authorization: `Bearer ${token}`}
-            })
+    // Get user profile
+    static async getYourProfile(token) {
+        try {
+            const response = await axios.get(`${UserService.BASE_URL}/adminuser/get-profile`, {
+                headers: { Authorization: `Bearer ${token}` },
+                withCredentials: true, // Send cookies with the request
+            });
             return response.data;
-        }catch(err){
+        } catch (err) {
             throw err;
         }
     }
 
-    static async getUserById(userId, token){
-        try{
-            const response = await axios.get(`${UserService.BASE_URL}/admin/get-users/${userId}`, 
-            {
-                headers: {Authorization: `Bearer ${token}`}
-            })
+    // Get user by ID
+    static async getUserById(userId, token) {
+        try {
+            const response = await axios.get(`${UserService.BASE_URL}/admin/get-users/${userId}`, {
+                headers: { Authorization: `Bearer ${token}` },
+                withCredentials: true, // Send cookies with the request
+            });
             return response.data;
-        }catch(err){
+        } catch (err) {
             throw err;
         }
     }
 
-    static async deleteUser(userId, token){
-        try{
-            const response = await axios.delete(`${UserService.BASE_URL}/admin/delete/${userId}`, 
-            {
-                headers: {Authorization: `Bearer ${token}`}
-            })
+    // Delete user
+    static async deleteUser(userId, token) {
+        try {
+            const response = await axios.delete(`${UserService.BASE_URL}/admin/delete/${userId}`, {
+                headers: { Authorization: `Bearer ${token}` },
+                withCredentials: true, // Send cookies with the request
+            });
             return response.data;
-        }catch(err){
+        } catch (err) {
             throw err;
         }
     }
 
-
-    static async updateUser(userId, userData, token){
-        try{
-            const response = await axios.put(`${UserService.BASE_URL}/admin/update/${userId}`, userData,
-            {
-                headers: {Authorization: `Bearer ${token}`}
-            })
+    // Update user
+    static async updateUser(userId, userData, token) {
+        try {
+            const response = await axios.put(`${UserService.BASE_URL}/admin/update/${userId}`, userData, {
+                headers: { Authorization: `Bearer ${token}` },
+                withCredentials: true, // Send cookies with the request
+            });
             return response.data;
-        }catch(err){
+        } catch (err) {
             throw err;
         }
     }
 
-    /**AUTHENTICATION CHECKER */
-    static logout(){
-        localStorage.removeItem('token')
-        localStorage.removeItem('role')
+    // Logout method
+    static async logout() {
+        try {
+            // Call the backend logout endpoint to invalidate the token
+            await axios.post(`${UserService.BASE_URL}/api/auth/logout`, {}, {
+                withCredentials: true, // Send cookies with the request
+            });
+
+            // Clear cookies on the client side
+            Cookies.remove("token");
+            Cookies.remove("role");
+
+            console.log("Logged out successfully");
+        } catch (err) {
+            console.error("Logout failed:", err);
+        }
     }
 
-    static isAuthenticated(){
-        const token = localStorage.getItem('token')
-        return !!token
+    // Check if the user is authenticated
+    static isAuthenticated() {
+        const token = Cookies.get("token"); // Get token from cookies
+        return !!token;
     }
 
-    static isAdmin(){
-        const role = localStorage.getItem('role')
-        return role === 'ADMIN'
+    // Check if the user is an admin
+    static isAdmin() {
+        const role = Cookies.get("role"); // Get role from cookies
+        return role === "ADMIN";
     }
 
-    static isUser(){
-        const role = localStorage.getItem('role')
-        return role === 'USER'
+    // Check if the user is a regular user
+    static isUser() {
+        const role = Cookies.get("role"); // Get role from cookies
+        return role === "USER";
     }
 
-    static adminOnly(){
+    // Check if the user is an admin and authenticated
+    static adminOnly() {
         return this.isAuthenticated() && this.isAdmin();
     }
-
 }
 
 export default UserService;

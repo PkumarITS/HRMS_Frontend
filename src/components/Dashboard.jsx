@@ -34,11 +34,12 @@ import {
   ExpandLess,
   ExpandMore,
 } from "@mui/icons-material";
+import { Settings2Icon } from "lucide-react";
+import Cookies from "js-cookie"; // Import js-cookie
 
 // Import the profile images from the assets folder
 import maleIcon from "../assets/male.png";
 import femaleIcon from "../assets/female.png";
-import { Settings2Icon } from "lucide-react";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -54,13 +55,30 @@ const Dashboard = () => {
   const userName = "Aishwarya Sahane";
   const userGender = "female"; // Set gender as "male" or "female"
 
-  const handleLogout = () => {
-    axios.get("http://localhost:3000/auth/logout").then((result) => {
-      if (result.data.Status) {
-        localStorage.removeItem("valid");
-        navigate("/");
-      }
-    });
+  const handleLogout = async () => {
+    try {
+      // Call the backend logout endpoint
+      await axios.post(
+        "http://localhost:1010/api/auth/logout",
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${Cookies.get("token")}`, // Send the token in the header
+          },
+          withCredentials: true, // Ensure cookies are sent with the request
+        }
+      );
+
+      // Clear cookies on the client side
+      Cookies.remove("token");
+      Cookies.remove("role");
+
+      // Redirect to the login page
+      navigate("/");
+    } catch (error) {
+      console.error("Logout failed:", error);
+      alert("Logout failed. Please try again.");
+    }
   };
 
   const handleSearch = () => {
@@ -81,8 +99,7 @@ const Dashboard = () => {
       "/dashboard/profile",
       "/dashboard/report",
       "/dashboard/holiday",
-      "/dashboard/Registration"
-
+      "/dashboard/Registration",
     ];
     const matchedRoute = routes.find((route) =>
       route.includes(searchQuery.toLowerCase())
@@ -122,15 +139,24 @@ const Dashboard = () => {
       action: toggleSystemMenu,
       subItems: [
         { text: "Users", link: "/dashboard/system/users" },
-        { text: "Registration", link: "/auth/RegistrationPage" }
-
-
-        
+        { text: "Registration", link: "/auth/RegistrationPage" },
       ],
     },
-    { text: "Organization", icon: <BusinessIcon />, link: "/dashboard/organization" },
-    { text: "Timesheet", icon: <AccessTimeIcon />, link: "/dashboard/timesheet" },
-    { text: "Attendance", icon: <CalendarTodayIcon />, link: "/dashboard/attendence" },
+    {
+      text: "Organization",
+      icon: <BusinessIcon />,
+      link: "/dashboard/organization",
+    },
+    {
+      text: "Timesheet",
+      icon: <AccessTimeIcon />,
+      link: "/dashboard/timesheet",
+    },
+    {
+      text: "Attendance",
+      icon: <CalendarTodayIcon />,
+      link: "/dashboard/attendence",
+    },
     {
       text: "Leave Management",
       icon: <CalendarTodayIcon />,
@@ -139,7 +165,6 @@ const Dashboard = () => {
         { text: "Leave Request", link: "/dashboard/leaves/leave" },
         { text: "Leave Balance", link: "/dashboard/leaves/leavebalance" },
         { text: "Holiday Calendar", link: "/dashboard/leaves/holiday" },
-
       ],
     },
     { text: "Salary", icon: <MonetizationOnIcon />, link: "/dashboard/salary" },
@@ -221,72 +246,73 @@ const Dashboard = () => {
             gap: 1,
           }}
         >
-         <List>
-  {menuItems.map((item, index) => (
-    <React.Fragment key={index}>
-      <ListItem disablePadding>
-        <ListItemButton
-          component={item.link ? Link : "button"}
-          to={item.link || "#"}
-          onClick={
-            item.text === "System"
-              ? toggleSystemMenu
-              : item.text === "Leave Management"
-              ? toggleLeaveMenu
-              : item.text === "Projects"
-              ? toggleProjectMenu
-              : undefined
-          }
-          sx={{
-            "&:hover": {
-              backgroundColor: "#64748b",
-            },
-          }}
-        >
-          <ListItemIcon sx={{ color: "white" }}>{item.icon}</ListItemIcon>
-          <ListItemText primary={item.text} />
-          {item.subItems ? (
-            item.text === "System" && systemOpen ? (
-              <ExpandLess />
-            ) : item.text === "Leave Management" && leaveOpen ? (
-              <ExpandLess />
-            ) : item.text === "Projects" && projectOpen ? (
-              <ExpandLess />
-            ) : (
-              <ExpandMore />
-            )
-          ) : null}
-        </ListItemButton>
-      </ListItem>
+          <List>
+            {menuItems.map((item, index) => (
+              <React.Fragment key={index}>
+                <ListItem disablePadding>
+                  <ListItemButton
+                    component={item.link ? Link : "button"}
+                    to={item.link || "#"}
+                    onClick={
+                      item.text === "System"
+                        ? toggleSystemMenu
+                        : item.text === "Leave Management"
+                        ? toggleLeaveMenu
+                        : item.text === "Projects"
+                        ? toggleProjectMenu
+                        : undefined
+                    }
+                    sx={{
+                      "&:hover": {
+                        backgroundColor: "#64748b",
+                      },
+                    }}
+                  >
+                    <ListItemIcon sx={{ color: "white" }}>
+                      {item.icon}
+                    </ListItemIcon>
+                    <ListItemText primary={item.text} />
+                    {item.subItems ? (
+                      item.text === "System" && systemOpen ? (
+                        <ExpandLess />
+                      ) : item.text === "Leave Management" && leaveOpen ? (
+                        <ExpandLess />
+                      ) : item.text === "Projects" && projectOpen ? (
+                        <ExpandLess />
+                      ) : (
+                        <ExpandMore />
+                      )
+                    ) : null}
+                  </ListItemButton>
+                </ListItem>
 
-      {item.subItems && (
-        <Collapse
-          in={
-            (item.text === "System" && systemOpen) ||
-            (item.text === "Leave Management" && leaveOpen) ||
-            (item.text === "Projects" && projectOpen)
-          }
-          timeout="auto"
-          unmountOnExit
-        >
-          <List component="div" disablePadding>
-            {item.subItems.map((subItem, subIndex) => (
-              <ListItemButton
-                key={subIndex}
-                component={Link}
-                to={subItem.link}
-                sx={{ pl: 4, "&:hover": { backgroundColor: "#64748b" } }}
-              >
-                <ListItemText primary={subItem.text} />
-              </ListItemButton>
+                {item.subItems && (
+                  <Collapse
+                    in={
+                      (item.text === "System" && systemOpen) ||
+                      (item.text === "Leave Management" && leaveOpen) ||
+                      (item.text === "Projects" && projectOpen)
+                    }
+                    timeout="auto"
+                    unmountOnExit
+                  >
+                    <List component="div" disablePadding>
+                      {item.subItems.map((subItem, subIndex) => (
+                        <ListItemButton
+                          key={subIndex}
+                          component={Link}
+                          to={subItem.link}
+                          sx={{ pl: 4, "&:hover": { backgroundColor: "#64748b" } }}
+                        >
+                          <ListItemText primary={subItem.text} />
+                        </ListItemButton>
+                      ))}
+                    </List>
+                  </Collapse>
+                )}
+              </React.Fragment>
             ))}
           </List>
-        </Collapse>
-      )}
-    </React.Fragment>
-  ))}
-</List>
-
         </Box>
 
         {/* Main Content */}

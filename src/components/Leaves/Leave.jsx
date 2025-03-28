@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import Cookies from "js-cookie";
 import {
   Button,
   TextField,
@@ -34,19 +35,25 @@ const Leave = () => {
     toDate: "",
     reason: "",
   });
+  const token = Cookies.get("token"); // Get the token from cookies
+
+  // Fetch all leave requests from the backend
+  const fetchLeaveRequests = () => {
+    axios
+      .get("http://localhost:1010/api/leaves/all", {
+        headers: {
+          Authorization: `Bearer ${token}`, // Include the token in the request
+        },
+      })
+      .then((response) => {
+        setLeaveRequests(response.data);
+        setFilteredRequests(response.data);
+      })
+      .catch((error) => console.error("Error fetching leave requests:", error));
+  };
 
   useEffect(() => {
-    axios
-      .get("http://localhost:3000/api/leave-requests")
-      .then((response) => {
-        if (response.data.Status) {
-          setLeaveRequests(response.data.Result);
-          setFilteredRequests(response.data.Result);
-        } else {
-          alert(response.data.Error);
-        }
-      })
-      .catch((error) => console.error(error));
+    fetchLeaveRequests(); // Fetch leave requests when the component mounts
   }, []);
 
   const handleSearch = (e) => {
@@ -73,26 +80,41 @@ const Leave = () => {
     setNewLeave({ ...newLeave, [name]: value });
   };
 
+  // Add a new leave request to the backend
   const handleAddLeave = () => {
-    setLeaveRequests([...leaveRequests, newLeave]);
-    setFilteredRequests([...leaveRequests, newLeave]);
-    setOpen(false);
+    axios
+      .post("http://localhost:1010/api/leaves/add", newLeave, {
+        headers: {
+          Authorization: `Bearer ${token}`, // Include the token in the request
+        },
+      })
+      .then((response) => {
+        fetchLeaveRequests(); // Refresh the list of leave requests
+        setOpen(false); // Close the dialog
+        setNewLeave({ // Reset the form
+          empId: "",
+          name: "",
+          leaveType: "",
+          fromDate: "",
+          toDate: "",
+          reason: "",
+        });
+      })
+      .catch((error) => console.error("Error adding leave request:", error));
   };
 
   return (
     <div className="container mt-5">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <TextField
-        className="form-control"
+          className="form-control"
           label="Search by Employee ID"
-          
           value={search}
           onChange={handleSearch}
           style={{ maxWidth: "300px" }}
         />
-        
         <div style={{ display: "flex", gap: "10px" }}>
-          <Button variant="outlined" onClick={() => setFilteredRequests(leaveRequests)}>
+          <Button variant="outlined" onClick={fetchLeaveRequests}>
             All
           </Button>
           <Button variant="outlined" onClick={() => filterByStatus("Pending")}>

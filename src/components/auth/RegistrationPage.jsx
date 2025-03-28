@@ -6,6 +6,7 @@ import {
     MenuItem, Select, FormControl, InputLabel, Box, IconButton 
 } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
+import Cookies from "js-cookie";
 
 function RegistrationPage() {
     const navigate = useNavigate();
@@ -23,42 +24,10 @@ function RegistrationPage() {
         setFormData({ ...formData, [name]: value });
     };
 
-    // const handleSubmit = async (e) => {
-    //     e.preventDefault();
-    //     try {
-    //         const token = localStorage.getItem('token');
-    //         await UserService.register(formData, token);
-
-    //         setFormData({ name: '', email: '', password: '', role: '', city: '' });
-    //         alert('User registered successfully');
-    //         navigate('/admin/user-management');
-    //     } catch (error) {
-    //         console.error('Error registering user:', error);
-    //         alert('An error occurred while registering user');
-    //     }
-    // };
-
-    // const handleSubmit = async (e) => {
-    //     e.preventDefault();
-    //     try {
-    //         const token = localStorage.getItem('token');
-    //         console.log("Token:", token); // Log the token to verify its value
-    //         await UserService.register(formData, token);
-    
-    //         setFormData({ name: '', email: '', password: '', role: '', city: '' });
-    //         alert('User registered successfully');
-    //         navigate('/admin/user-management');
-    //     } catch (error) {
-    //         console.error('Error registering user:', error);
-    //         alert('An error occurred while registering user');
-    //     }
-    // };
-
-
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const token = localStorage.getItem('token');
+            const token = Cookies.get("token"); // Get token from cookies
             console.log("Token:", token); // Log the token to verify its value
             await UserService.register(formData, token);
     

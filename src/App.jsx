@@ -12,7 +12,6 @@ import Profile from './components/Profile';
 import Organization from './components/Organization';
 import AddDepartment from './components/AddDepartment';
 import AddEmployee from './components/AddEmployee';
-import EditEmployee from './components/EditEmployee';
 import ForgetPassword from './components/ForgetPassword';
 import Leave from './components/Leaves/Leave';
 import Salary from './components/Salary';
@@ -24,6 +23,7 @@ import Leavebalance from './components/Leaves/LeaveBalance';
 import EmployeeDetails from './components/EmployeeDetails';
 import Users from './components/System/Users';
 import RegistrationPage from './components/auth/RegistrationPage';
+import EditEmployee from './components/EditEmployee';
 
 
 function App() {
@@ -32,53 +32,54 @@ function App() {
       <Routes>
         <Route path="/" element={<LoginPage />} /> {/* Login Route */}
         <Route path="/auth/registrationpage" element={<RegistrationPage />} /> {/* Register Route */}
-         {/* Check if user is authenticated and admin before rendering admin-only routes */}
-         {UserService.adminOnly() && (
-              <>
-                <Route path="/register" element={<Register />} />
-                <Route path="/admin/user-management" element={<UserManagementPage />} />
-                <Route path="/update-user/:userId" element={<UpdateUser />} />
-              </>
-            )}
+        {/* Check if user is authenticated and admin before rendering admin-only routes */}
+        {UserService.adminOnly() && (
+          <>
+            <Route path="/register" element={<Register />} />
+            <Route path="/admin/user-management" element={<UserManagementPage />} />
+            <Route path="/update-user/:userId" element={<UpdateUser />} />
+          </>
+        )}
 
         <Route path="/forgot-password" element={<ForgetPassword />} />
-        <Route path="/dashboard" element={<Dashboard />} > 
-        
-        <Route path='' element={<Home/>}></Route>
+        <Route path="/dashboard" element={<Dashboard />} >
 
-        <Route path='/dashboard/employee' element={<Employee/>}></Route>
+          <Route path='' element={<Home />}></Route>
 
-        <Route path='/dashboard/profile' element={<Profile/>}></Route>
-        <Route path='/dashboard/leaves/leave' element={<Leave/>}></Route>
-        <Route path='/dashboard/salary' element={<Salary/>}></Route>
-        <Route path='/dashboard/attendence' element={<Attendance/>}></Route>
-        <Route path='/dashboard/leaves/holiday' element={<Holiday/>}></Route>
-        <Route path='/dashboard/leaves/leavebalance' element={<Leavebalance/>}></Route>
+          <Route path='/dashboard/employee' element={<Employee />}></Route>
 
-        <Route path='/dashboard/Projects/project' element={<Project/>}></Route>
-        <Route path='/dashboard/Projects/task' element={<Task/>}></Route>
-        <Route path='/dashboard/system/users' element={<Users/>}></Route>
+          <Route path='/dashboard/profile' element={<Profile />}></Route>
+          <Route path='/dashboard/leaves/leave' element={<Leave />}></Route>
+          <Route path='/dashboard/salary' element={<Salary />}></Route>
+          <Route path='/dashboard/attendence' element={<Attendance />}></Route>
+          <Route path='/dashboard/leaves/holiday' element={<Holiday />}></Route>
+          <Route path='/dashboard/leaves/leavebalance' element={<Leavebalance />}></Route>
 
-
-
-
-        
-
-
-        <Route path='/dashboard/organization' element={<Organization/>}></Route>
-        <Route path='/dashboard/add_department' element={<AddDepartment />}></Route>
-        <Route path='/dashboard/add_employee' element={<AddEmployee />}></Route>
-        <Route path='/dashboard/employee_details' element={<EmployeeDetails />}></Route>
-
-        <Route path='/dashboard/edit_employee' element={<EditEmployee />}></Route>
+          <Route path='/dashboard/Projects/project' element={<Project />}></Route>
+          <Route path='/dashboard/Projects/task' element={<Task />}></Route>
+          <Route path='/dashboard/system/users' element={<Users />}></Route>
 
 
 
 
 
-       </Route>
-       <Route path="/employeedashboard/employeedashboard" element={<EmployeeDashboard />} > 
-      </Route>
+
+
+          <Route path='/dashboard/organization' element={<Organization />}></Route>
+          <Route path='/dashboard/add_department' element={<AddDepartment />}></Route>
+          <Route path='/dashboard/add_employee' element={<AddEmployee />}></Route>
+          <Route path='/dashboard/employee_details/:id' element={<EmployeeDetails />}></Route>
+          <Route path="/dashboard/edit_employee/:id" element={<EditEmployee />}/>
+
+
+
+
+
+
+
+        </Route>
+        <Route path="/employeedashboard/employeedashboard" element={<EmployeeDashboard />} >
+        </Route>
       </Routes>
     </Router>
   );
