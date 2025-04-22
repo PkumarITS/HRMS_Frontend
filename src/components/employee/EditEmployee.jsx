@@ -156,7 +156,7 @@ const EditEmployee = () => {
         setLoading(true);
         const token = Cookies.get("token");
         const response = await axios.get(
-          `http://localhost:1010/api/employees/${id}`,
+          `http://localhost:1010/admin/employees/${id}`,
           {
             headers: {
               Authorization: `Bearer ${token}`
@@ -220,7 +220,7 @@ const EditEmployee = () => {
     try {
       const token = Cookies.get("token");
       const response = await axios.put(
-        `http://localhost:1010/api/employees/${id}`,
+        `http://localhost:1010/admin/employees/${id}`,
         employee,
         {
           headers: {
@@ -236,7 +236,7 @@ const EditEmployee = () => {
       });
       
       setTimeout(() => {
-        navigate(`/dashboard/employee`);
+        navigate(`/admin/employees`);
       }, 2000);
     } catch (error) {
       console.error("Error updating employee:", error);

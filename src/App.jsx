@@ -1,87 +1,110 @@
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import LoginPage from './components/auth/LoginPage';
-import Register from './components/auth/RegistrationPage';
-import UserService from './components/service/UserService';
-import Dashboard from './components/Dashboard'; // Import Dashboard component
-import EmployeeDashboard from './components/EmployeeDashboard/EmployeeDashboard'; // 
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import Home from './components/Home';
-import Employee from './components/Employee';
+import RegistrationPage from './components/auth/RegistrationPage';
+import UserManagement from './components/userManagement/UserMangement';
+import UpdateUser from './components/userManagement/UserUpdate';
+import Dashboard from './components/adminDashboard/Dashboard';
+import EmployeeDashboard from './components/EmployeeDashboard/EmployeeDashboard';
+import Employee from './components/employee/Employee';
 import Profile from './components/Profile';
 import Organization from './components/Organization';
-import AddDepartment from './components/AddDepartment';
-import AddEmployee from './components/AddEmployee';
-import ForgetPassword from './components/ForgetPassword';
+import AddEmployee from './components/employee/AddEmployee';
 import Leave from './components/Leaves/Leave';
-import Salary from './components/Salary';
-import Attendance from './components/Attendence';
-import Holiday from './components/Leaves/Holiday';
 import Project from './components/Projects/Project';
 import Task from './components/Projects/Task';
-import Leavebalance from './components/Leaves/LeaveBalance';
-import EmployeeDetails from './components/EmployeeDetails';
-import Users from './components/System/Users';
-import RegistrationPage from './components/auth/RegistrationPage';
-import EditEmployee from './components/EditEmployee';
-
+import EditEmployee from './components/employee/EditEmployee';
+import EmployeeDetails from './components/employee/EmployeeDetails';
+import ProtectedRoute from './components/context/ProtectedRoute';
+import ContextProvider from './components/context/ContextProvider';
+import TimesheetDetailPage from './components/EmployeeDashboard/TimesheetDetailPage';
+import TimesheetForm from './components/EmployeeDashboard/TimesheetForm';
+import LeaveBalance from './components/Leaves/LeaveBalance';
+import MyProject from './components/EmployeeDashboard/MyProject';
+import MyTask from './components/EmployeeDashboard/MyTask';
+import AdminTimesheetManagement from './components/adminDashboard/AdminTimesheetManagement';
+import TimesheetDetailView from './components/adminDashboard/TimesheetDetailView';
+import NotificationSettings from './components/adminDashboard/NotificationSettings';
+import TimesheetViewPage from './components/EmployeeDashboard/TimesheetViewPage';
+import LeaveRequest from './components/adminDashboard/LeaveRequest';
+import AdminLeaveBalance from './components/adminDashboard/AdminLeaveBalance';
+import HolidayAdmin from './components/adminDashboard/HolidayAdmin';
+import HolidayUser from './components/Leaves/HolidayUser';
+import UserAttendance from './components/EmployeeDashboard/UserAttendence';
+import AdminAttendance from './components/adminDashboard/AdminAttendance';
+import ForgetPassword from './components/ForgetPassword';
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<LoginPage />} /> {/* Login Route */}
-        <Route path="/auth/registrationpage" element={<RegistrationPage />} /> {/* Register Route */}
-        {/* Check if user is authenticated and admin before rendering admin-only routes */}
-        {UserService.adminOnly() && (
-          <>
-            <Route path="/register" element={<Register />} />
-            <Route path="/admin/user-management" element={<UserManagementPage />} />
-            <Route path="/update-user/:userId" element={<UpdateUser />} />
-          </>
-        )}
+    <ContextProvider>
+      <Router>
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/" element={<LoginPage />} />
+          <Route path="/forgot-password" element={<ForgetPassword />} />
+          
 
-        <Route path="/forgot-password" element={<ForgetPassword />} />
-        <Route path="/dashboard" element={<Dashboard />} >
+          {/* Admin Routes */}
+          <Route 
+            path="/admin/*" 
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          >
+            
+            <Route path="employees" element={<Employee />} />
+            <Route path="add-employee" element={<AddEmployee />} />
+            <Route path="edit-employee/:id" element={<EditEmployee />} />
+            <Route path="employee-details/:id" element={<EmployeeDetails />} />
+            <Route path="register" element={<RegistrationPage />} />
+            <Route path="user-management" element={<UserManagement />} />
+            <Route path="update-user/:userId" element={<UpdateUser />} />
+            <Route path="projects" element={<Project />} />
+            <Route path="projects/tasks" element={<Task />} />
+            <Route path="dashboard/timesheets" element={<AdminTimesheetManagement />} />
+            <Route path="timesheets/:id" element={<TimesheetDetailView />} />
+            <Route path="timesheets/notifications" element={<NotificationSettings />} />
+            <Route path="holiday" element={<HolidayAdmin />} />
+            <Route path="leaves" element={<LeaveRequest />} />
+            <Route path="leave-balance" element={<AdminLeaveBalance />} />
+            <Route path="attendance" element={<AdminAttendance />} />
+            <Route path="profile" element={<Profile isAdmin={true} />} />
+          </Route>
 
-          <Route path='' element={<Home />}></Route>
+          {/* User Routes */}
+          <Route 
+            path="/user/*" 
+            element={
+              <ProtectedRoute allowedRoles={['user']}>
+                <EmployeeDashboard />
+              </ProtectedRoute>
+            }
+          >
+            
+            <Route path="leaves" element={<Leave />} />
+            <Route path="employee-dashboard/timesheet" element={<TimesheetForm />} />
+            <Route path="employee-dashboard/timesheet-detail" element={<TimesheetDetailPage />} />
+            <Route path="employee-dashboard/timesheet-view" element={<TimesheetViewPage />}/>
+            <Route path="employee-dashboard/attendence" element={<UserAttendance />} />
+            <Route path="leaves" element={<Leave />} />
+            <Route path="leave-balance" element={<LeaveBalance />} />
+            <Route path="holiday" element={<HolidayUser />} />
+            <Route path="projects" element={<Project />} />
+            <Route path="projects/tasks" element={<Task />} />
+            <Route path="profile" element={<Profile isAdmin={false} />} />
+            <Route path="myproject" element={<MyProject />} />
+            <Route path="mytask" element={<MyTask />} />
 
-          <Route path='/dashboard/employee' element={<Employee />}></Route>
+          </Route>
 
-          <Route path='/dashboard/profile' element={<Profile />}></Route>
-          <Route path='/dashboard/leaves/leave' element={<Leave />}></Route>
-          <Route path='/dashboard/salary' element={<Salary />}></Route>
-          <Route path='/dashboard/attendence' element={<Attendance />}></Route>
-          <Route path='/dashboard/leaves/holiday' element={<Holiday />}></Route>
-          <Route path='/dashboard/leaves/leavebalance' element={<Leavebalance />}></Route>
-
-          <Route path='/dashboard/Projects/project' element={<Project />}></Route>
-          <Route path='/dashboard/Projects/task' element={<Task />}></Route>
-          <Route path='/dashboard/system/users' element={<Users />}></Route>
-
-
-
-
-
-
-
-          <Route path='/dashboard/organization' element={<Organization />}></Route>
-          <Route path='/dashboard/add_department' element={<AddDepartment />}></Route>
-          <Route path='/dashboard/add_employee' element={<AddEmployee />}></Route>
-          <Route path='/dashboard/employee_details/:id' element={<EmployeeDetails />}></Route>
-          <Route path="/dashboard/edit_employee/:id" element={<EditEmployee />}/>
-
-
-
-
-
-
-
-        </Route>
-        <Route path="/employeedashboard/employeedashboard" element={<EmployeeDashboard />} >
-        </Route>
-      </Routes>
-    </Router>
+          {/* Catch-all route */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Router>
+    </ContextProvider>
   );
 }
 

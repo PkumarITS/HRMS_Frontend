@@ -427,7 +427,7 @@ const Employee = () => {
         }
       };
 
-      const response = await fetch("http://localhost:1010/api/employees/add", {
+      const response = await fetch("http://localhost:1010/admin/employees/add", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -440,7 +440,7 @@ const Employee = () => {
 
       if (responseData.status === "success") {
         showSnackbar(`Employee added successfully! ID: ${responseData.data.id}`);
-        navigate("/dashboard/employee");
+        navigate("/admin/employees");
       } else {
         throw new Error(responseData.message || "Failed to add employee");
       }
@@ -473,7 +473,7 @@ const Employee = () => {
             <TextField 
               fullWidth 
               margin="normal" 
-              label="Employee Number" 
+              label="Employee ID" 
               name="personal.empId" 
               value={formData.personal.empId} 
               onChange={handleChange} 

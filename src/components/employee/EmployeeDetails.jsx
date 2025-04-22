@@ -65,7 +65,7 @@ const EmployeeDetails = () => {
         setLoading(true);
         const token = Cookies.get("token");
         const response = await axios.get(
-          `http://localhost:1010/api/employees/${id}`,
+          `http://localhost:1010/admin/employees/${id}`,
           {
             headers: {
               Authorization: `Bearer ${token}`

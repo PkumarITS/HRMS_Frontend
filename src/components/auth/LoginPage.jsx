@@ -1,58 +1,96 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import UserService from "../service/UserService";
 import { 
     Container, Card, CardContent, TextField, Button, Typography, 
-    Box, Checkbox, FormControlLabel, Link 
+    Box, Checkbox, FormControlLabel, Link, IconButton, InputAdornment,
+    Alert, CircularProgress
 } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
-import Cookies from "js-cookie"; // Import js-cookie
+import { userContext } from "../context/ContextProvider";
 
 function LoginPage() {
+    const { updateAuthState } = useContext(userContext);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+    const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setLoading(true);
+        setError('');
+        
+        if (!email || !password) {
+            setError('Please fill in all fields');
+            setLoading(false);
+            return;
+        }
+    
         try {
-            const userData = await UserService.login(email, password);
-            if (userData.token) {
-                // Store token in a cookie
-                Cookies.set("token", userData.token, { expires: 7 }); // Expires in 7 days
-                Cookies.set("role", userData.role, { expires: 7 }); // Store role in a cookie
-                navigate('/dashboard'); // Redirect to dashboard
+            const response = await UserService.login(email, password);
+            console.log("Login response:", response); // Debug log
+            
+            if (response.token) {
+                // Normalize role to uppercase
+                const normalizedRole = response.role.toLowerCase();
+                
+                // Update authentication state
+                updateAuthState({
+                    role: normalizedRole,
+                    authenticated: true
+                });
+                
+                // Redirect based on normalized role
+                navigate(normalizedRole === 'admin' ? '/admin/dashboard' : '/user/employee-dashboard');
             } else {
-                setError(userData.message);
+                setError(response.message || 'Login failed. Please try again.');
             }
         } catch (error) {
-            setError(error.message);
-            setTimeout(() => setError(''), 5000);
+            console.error("Login error:", error);
+            setError(error.response?.data?.message || error.message || 'Login failed. Please check your credentials.');
+        } finally {
+            setLoading(false);
         }
     };
     
+    const handleKeyPress = (e) => {
+        if (e.key === 'Enter') {
+            handleSubmit(e);
+        }
+    };
+
     return (
-        <Container maxWidth="sm">
-            <Card sx={{ mt: 8, p: 3, borderRadius: 2, boxShadow: 3  }}>
-                <CardContent>
-                    <Typography variant="h5" align="center" gutterBottom>
+        <Container maxWidth="sm" sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center' }}>
+            <Card sx={{ width: '100%', mt: 2, mb: 2, borderRadius: 3, boxShadow: 6 }}>
+                <CardContent sx={{ p: 4 }}>
+                    <Typography variant="h4" align="center" gutterBottom sx={{ fontWeight: 'bold', mb: 3 }}>
                         Login
                     </Typography>
+                    <Typography variant="body1" align="center" color="text.secondary" sx={{ mb: 4 }}>
+                        Please enter your credentials to login
+                    </Typography>
+
                     {error && (
-                        <Typography color="error" align="center">
+                        <Alert severity="error" sx={{ mb: 3 }}>
                             {error}
-                        </Typography>
+                        </Alert>
                     )}
+
                     <form onSubmit={handleSubmit}>
                         <TextField
                             fullWidth
-                            label="Email"
+                            label="Email Address"
                             variant="outlined"
                             margin="normal"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
+                            onKeyPress={handleKeyPress}
+                            autoComplete="email"
+                            autoFocus
+                            sx={{ mb: 2 }}
                         />
                         <TextField
                             fullWidth
@@ -62,45 +100,53 @@ function LoginPage() {
                             type={showPassword ? "text" : "password"}
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
+                            onKeyPress={handleKeyPress}
+                            autoComplete="current-password"
                             InputProps={{
                                 endAdornment: (
-                                    <Button 
-                                        onClick={() => setShowPassword(!showPassword)}
-                                        size="small"
-                                    >
-                                        {showPassword ? <VisibilityOff /> : <Visibility />}
-                                    </Button>
+                                    <InputAdornment position="end">
+                                        <IconButton
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            edge="end"
+                                        >
+                                            {showPassword ? <VisibilityOff /> : <Visibility />}
+                                        </IconButton>
+                                    </InputAdornment>
                                 ),
                             }}
+                            sx={{ mb: 1 }}
                         />
-                        <FormControlLabel
-                            control={<Checkbox />}
-                            label="Show Password"
-                            onChange={() => setShowPassword(!showPassword)}
-                        />
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                            <FormControlLabel
+                                control={
+                                    <Checkbox 
+                                        checked={showPassword}
+                                        onChange={() => setShowPassword(!showPassword)}
+                                        color="primary"
+                                    />
+                                }
+                                label="Show Password"
+                            />
+                            <Link href="/forgot-password" underline="hover" variant="body2">
+                                Forgot Password?
+                            </Link>
+                        </Box>
                         <Button
                             fullWidth
                             variant="contained"
                             color="primary"
-                            sx={{ mt: 2, py: 1 }}
+                            size="large"
                             type="submit"
+                            disabled={loading}
+                            sx={{ py: 1.5, mb: 2 }}
                         >
-                            Sign In
+                            {loading ? (
+                                <CircularProgress size={24} color="inherit" />
+                            ) : (
+                                'Sign In'
+                            )}
                         </Button>
                     </form>
-                    <Box textAlign="center" mt={2}>
-                        <Link href="/forgot-password" underline="hover">
-                            Forgot Password?
-                        </Link>
-                    </Box>
-                    <Box textAlign="center" mt={1}>
-                        <Typography variant="body2">
-                            Don't have an account?{" "}
-                            <Link href="./register" underline="hover">
-                                Sign up
-                            </Link>
-                        </Typography>
-                    </Box>
                 </CardContent>
             </Card>
         </Container>

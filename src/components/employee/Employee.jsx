@@ -33,11 +33,10 @@ const Employee = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
-    severity: "success"
+    severity: "info"
   });
   const navigate = useNavigate();
 
@@ -47,11 +46,11 @@ const Employee = () => {
     const fetchEmployees = async () => {
       try {
         setLoading(true);
-        setError(null);
         
-        const response = await axios.get("http://localhost:1010/api/employees/all", {
+        const response = await axios.get("http://localhost:1010/admin/employees/all", {
           headers: {
-            "Authorization": `Bearer ${token}`
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
           }
         });
         
@@ -65,9 +64,8 @@ const Employee = () => {
         }
       } catch (error) {
         console.error("Error fetching employees:", error);
-        setError("Failed to fetch employees. Please try again.");
-        showSnackbar(
-          error.response?.data?.message || "Failed to fetch employees", 
+        showNotification(
+          error.response?.data?.message || "Failed to fetch employees. Please try again later.", 
           "error"
         );
         
@@ -86,7 +84,7 @@ const Employee = () => {
     if (window.confirm("Are you sure you want to delete this employee?")) {
       try {
         const response = await axios.delete(
-          `http://localhost:1010/api/employees/${id}`,
+          `http://localhost:1010/admin/employees/${id}`,
           {
             headers: {
               "Authorization": `Bearer ${token}`
@@ -95,7 +93,7 @@ const Employee = () => {
         );
         
         if (response.status === 200) {
-          showSnackbar("Employee deleted successfully", "success");
+          showNotification("Employee deleted successfully", "success");
           setEmployees(prev => prev.filter(emp => emp.id !== id));
           setFilteredEmployees(prev => prev.filter(emp => emp.id !== id));
         } else {
@@ -103,7 +101,7 @@ const Employee = () => {
         }
       } catch (error) {
         console.error("Error deleting employee:", error);
-        showSnackbar(
+        showNotification(
           error.response?.data?.message || "Failed to delete employee", 
           "error"
         );
@@ -111,7 +109,7 @@ const Employee = () => {
     }
   };
 
-  const showSnackbar = (message, severity) => {
+  const showNotification = (message, severity = "info") => {
     setSnackbar({
       open: true,
       message,
@@ -148,155 +146,157 @@ const Employee = () => {
   };
 
   const handleExportCSV = () => {
-    // Define all possible headers from all tabs
-    const headers = [
-      // Personal Information
-      "ID",
-      "Employee Number",
-      "First Name",
-      "Middle Name",
-      "Last Name",
-      "Date of Birth",
-      "Gender",
-      "Marital Status",
-      "Nationality",
-      "Ethnicity",
-      
-      // Identification Information
-      "Immigration Status",
-      "Personal Tax ID",
-      "Social Insurance",
-      "ID Proof",
-      "Document Name",
-      "Document Number",
-      
-      // Work Information
-      "Employment Status",
-      "Department",
-      "Job Title",
-      "Pay Grade",
-      "Date of Joining",
-      "Termination Date",
-      "Workstation ID",
-      "Time Zone",
-      "Shift Start Time",
-      "Shift End Time",
-      
-      // Contact Information
-      "Residential Address",
-      "Permanent Address",
-      "City",
-      "State",
-      "Country",
-      "Postal Code",
-      "Work Email",
-      "Personal Email",
-      "Mobile Number",
-      "Primary Emergency Contact Name",
-      "Primary Emergency Contact Number",
-      "Relationship to Primary Emergency Contact",
-      "Secondary Emergency Contact Name",
-      "Secondary Emergency Contact Number",
-      "Relationship to Secondary Emergency Contact",
-      "Family Doctor Name",
-      "Family Doctor Contact Number",
-      
-      // Report Information
-      "Manager",
-      "Indirect Manager",
-      "First Level Approver",
-      "Second Level Approver",
-      "Third Level Approver",
-      "Notes"
-    ].join(",");
-  
-    // Map through each employee and extract all fields
-    const dataRows = filteredEmployees.map(emp => {
-      const personal = emp.personal || {};
-      const identification = emp.identification || {};
-      const work = emp.work || {};
-      const contact = emp.contact || {};
-      const report = emp.report || {};
-      
-      return [
+    try {
+      const headers = [
         // Personal Information
-        emp.id,
-        personal.empId || "",
-        personal.firstName || "",
-        personal.middleName || "",
-        personal.lastName || "",
-        personal.dateOfBirth ? new Date(personal.dateOfBirth).toISOString().split('T')[0] : "",
-        personal.gender || "",
-        personal.maritalStatus || "",
-        personal.nationality || "",
-        personal.ethnicity || "",
+        "ID",
+        "Employee Number",
+        "First Name",
+        "Middle Name",
+        "Last Name",
+        "Date of Birth",
+        "Gender",
+        "Marital Status",
+        "Nationality",
+        "Ethnicity",
         
         // Identification Information
-        identification.immigrationStatus || "",
-        identification.personalTaxId || "",
-        identification.socialInsurance || "",
-        identification.idProof || "",
-        identification.documentName || "",
-        identification.documentNumber || "",
+        "Immigration Status",
+        "Personal Tax ID",
+        "Social Insurance",
+        "ID Proof",
+        "Document Name",
+        "Document Number",
         
         // Work Information
-        work.employmentStatus || "",
-        work.department || "",
-        work.jobTitle || "",
-        work.payGrade || "",
-        work.doj ? new Date(work.doj).toISOString().split('T')[0] : "",
-        work.terminationDate ? new Date(work.terminationDate).toISOString().split('T')[0] : "",
-        work.workstationId || "",
-        work.timeZone || "",
-        work.shiftStartTime || "",
-        work.shiftEndTime || "",
+        "Employment Status",
+        "Department",
+        "Job Title",
+        "Pay Grade",
+        "Date of Joining",
+        "Termination Date",
+        "Workstation ID",
+        "Time Zone",
+        "Shift Start Time",
+        "Shift End Time",
         
         // Contact Information
-        contact.residentialAddress || "",
-        contact.permanentAddress || "",
-        contact.city || "",
-        contact.state || "",
-        contact.country || "",
-        contact.postalCode || "",
-        contact.workEmail || "",
-        contact.personalEmail || "",
-        contact.mobileNumber || "",
-        contact.primaryEmergencyContactName || "",
-        contact.primaryEmergencyContactNumber || "",
-        contact.relationshipToPrimaryEmergencyContact || "",
-        contact.secondaryEmergencyContactName || "",
-        contact.secondaryEmergencyContactNumber || "",
-        contact.relationshipToSecondaryEmergencyContact || "",
-        contact.familyDoctorName || "",
-        contact.familyDoctorContactNumber || "",
+        "Residential Address",
+        "Permanent Address",
+        "City",
+        "State",
+        "Country",
+        "Postal Code",
+        "Work Email",
+        "Personal Email",
+        "Mobile Number",
+        "Primary Emergency Contact Name",
+        "Primary Emergency Contact Number",
+        "Relationship to Primary Emergency Contact",
+        "Secondary Emergency Contact Name",
+        "Secondary Emergency Contact Number",
+        "Relationship to Secondary Emergency Contact",
+        "Family Doctor Name",
+        "Family Doctor Contact Number",
         
         // Report Information
-        report.manager || "",
-        report.indirectManager || "",
-        report.firstLevelApprover || "",
-        report.secondLevelApprover || "",
-        report.thirdLevelApprover || "",
-        report.note || ""
-      ].map(field => {
-        // Handle fields that might contain commas or quotes
-        if (typeof field === 'string') {
-          return `"${field.replace(/"/g, '""')}"`;
-        }
-        return `"${field}"`;
-      }).join(",");
-    });
-  
-    const csvContent = `data:text/csv;charset=utf-8,${headers}\n${dataRows.join("\n")}`;
-  
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `employees_${new Date().toISOString().slice(0,10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+        "Manager",
+        "Indirect Manager",
+        "First Level Approver",
+        "Second Level Approver",
+        "Third Level Approver",
+        "Notes"
+      ].join(",");
     
-    showSnackbar("CSV exported successfully with all employee data", "success");
+      const dataRows = filteredEmployees.map(emp => {
+        const personal = emp.personal || {};
+        const identification = emp.identification || {};
+        const work = emp.work || {};
+        const contact = emp.contact || {};
+        const report = emp.report || {};
+        
+        return [
+          // Personal Information
+          emp.id,
+          personal.empId || "",
+          personal.firstName || "",
+          personal.middleName || "",
+          personal.lastName || "",
+          personal.dateOfBirth ? new Date(personal.dateOfBirth).toISOString().split('T')[0] : "",
+          personal.gender || "",
+          personal.maritalStatus || "",
+          personal.nationality || "",
+          personal.ethnicity || "",
+          
+          // Identification Information
+          identification.immigrationStatus || "",
+          identification.personalTaxId || "",
+          identification.socialInsurance || "",
+          identification.idProof || "",
+          identification.documentName || "",
+          identification.documentNumber || "",
+          
+          // Work Information
+          work.employmentStatus || "",
+          work.department || "",
+          work.jobTitle || "",
+          work.payGrade || "",
+          work.doj ? new Date(work.doj).toISOString().split('T')[0] : "",
+          work.terminationDate ? new Date(work.terminationDate).toISOString().split('T')[0] : "",
+          work.workstationId || "",
+          work.timeZone || "",
+          work.shiftStartTime || "",
+          work.shiftEndTime || "",
+          
+          // Contact Information
+          contact.residentialAddress || "",
+          contact.permanentAddress || "",
+          contact.city || "",
+          contact.state || "",
+          contact.country || "",
+          contact.postalCode || "",
+          contact.workEmail || "",
+          contact.personalEmail || "",
+          contact.mobileNumber || "",
+          contact.primaryEmergencyContactName || "",
+          contact.primaryEmergencyContactNumber || "",
+          contact.relationshipToPrimaryEmergencyContact || "",
+          contact.secondaryEmergencyContactName || "",
+          contact.secondaryEmergencyContactNumber || "",
+          contact.relationshipToSecondaryEmergencyContact || "",
+          contact.familyDoctorName || "",
+          contact.familyDoctorContactNumber || "",
+          
+          // Report Information
+          report.manager || "",
+          report.indirectManager || "",
+          report.firstLevelApprover || "",
+          report.secondLevelApprover || "",
+          report.thirdLevelApprover || "",
+          report.note || ""
+        ].map(field => {
+          if (typeof field === 'string') {
+            return `"${field.replace(/"/g, '""')}"`;
+          }
+          return `"${field}"`;
+        }).join(",");
+      });
+    
+      const csvContent = `data:text/csv;charset=utf-8,${headers}\n${dataRows.join("\n")}`;
+    
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `employees_${new Date().toISOString().slice(0,10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      showNotification("CSV exported successfully with all employee data", "success");
+    } catch (error) {
+      console.error("Error exporting CSV:", error);
+      showNotification("Failed to export employee data", "error");
+    }
   };
 
   const handleChangePage = (event, newPage) => {
@@ -317,32 +317,6 @@ const Employee = () => {
         height: "80vh" 
       }}>
         <CircularProgress />
-      </Box>
-    );
-  }
-
-  if (error) {
-    return (
-      <Box sx={{ 
-        display: "flex", 
-        flexDirection: "column", 
-        justifyContent: "center", 
-        alignItems: "center", 
-        height: "80vh",
-        textAlign: "center",
-        p: 3
-      }}>
-        <Typography variant="h6" color="error" gutterBottom>
-          {error}
-        </Typography>
-        <Button 
-          variant="contained" 
-          color="primary" 
-          onClick={() => window.location.reload()}
-          sx={{ mt: 2 }}
-        >
-          Refresh Page
-        </Button>
       </Box>
     );
   }
@@ -384,7 +358,7 @@ const Employee = () => {
           
           <Button
             component={Link}
-            to="/dashboard/add_employee"
+            to="/admin/add-employee"
             variant="contained"
             color="primary"
             size="small"
@@ -431,14 +405,14 @@ const Employee = () => {
                     <TableCell>
                       <IconButton
                         color="primary"
-                        onClick={() => navigate(`/dashboard/edit_employee/${emp.id}`)}
+                        onClick={() => navigate(`/admin/edit-employee/${emp.id}`)}
                         title="Edit"
                       >
                         <EditIcon />
                       </IconButton>
                       <IconButton
                         color="info"
-                        onClick={() => navigate(`/dashboard/employee_details/${emp.id}`)}
+                        onClick={() => navigate(`/admin/employee-details/${emp.id}`)}
                         title="View Details"
                       >
                         <VisibilityIcon />

@@ -1,0 +1,380 @@
+import React, { useState, useEffect } from "react";
+import {
+  Box,
+  Typography,
+  TextField,
+  Card,
+  CardContent,
+  Tabs,
+  Tab,
+  LinearProgress,
+  Chip,
+  Divider,
+  CircularProgress,
+  Snackbar,
+  Alert,
+  List,
+  ListItem,
+  ListItemText,
+  Avatar,
+  ListItemAvatar,
+  Badge
+} from "@mui/material";
+import {
+  DateRange,
+  Category,
+  CheckCircle,
+  HourglassEmpty,
+  ThumbUp,
+  People,
+  Work
+} from "@mui/icons-material";
+import { styled } from "@mui/material/styles";
+import axios from "axios";
+import Cookies from "js-cookie";
+import { useNavigate } from "react-router-dom";
+
+// Configure axios
+axios.interceptors.request.use(config => {
+  const token = Cookies.get("token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+const API_BASE_URL = "http://localhost:1010";
+
+const StyledCard = styled(Card)({
+  borderRadius: "12px",
+  boxShadow: "0 4px 20px 0 rgba(0,0,0,0.08)",
+  transition: "transform 0.3s, box-shadow 0.3s",
+  "&:hover": {
+    transform: "translateY(-5px)",
+    boxShadow: "0 8px 30px 0 rgba(0,0,0,0.12)"
+  }
+});
+
+const StatusChip = styled(Chip)(({ status, theme }) => ({
+  backgroundColor:
+    status === "COMPLETED" ? "#e8f5e9" :
+    status === "APPROVAL" ? "#fff3e0" : "#e3f2fd",
+  color:
+    status === "COMPLETED" ? "#2e7d32" :
+    status === "APPROVAL" ? "#e65100" : "#1565c0",
+  fontWeight: 600,
+  borderRadius: "8px"
+}));
+
+const MyProject = () => {
+  const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [tab, setTab] = useState("ALL");
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "info"
+  });
+  const [currentEmployee, setCurrentEmployee] = useState(null);
+  const navigate = useNavigate();
+
+  // Fetch all required data
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        
+        // Get current employee info
+    //     const empResponse = await axios.get(`${API_BASE_URL}/employees/me`);
+    //    setCurrentEmployee(empResponse.data);
+        
+        // Get projects assigned to this employee
+        const projectsResponse = await axios.get(`${API_BASE_URL}/user/projects/by-emp`, {
+         // params: {
+         //   status: tab === "ALL" ? undefined : tab,
+         //   search: searchQuery || undefined
+         // }
+        });
+        
+        // Transform the data to match our frontend structure
+        const transformedProjects = projectsResponse.data.map(project => ({
+          id: project.id,
+          name: project.name,
+          category: project.category,
+          startDate: project.startDate,
+          endDate: project.endDate,
+          status: project.status,
+          progress: project.progress || 0,
+          // Get team members from assignedEmployeeNames
+          teamMembers: project.assignedEmployeeNames?.map((name, index) => ({
+            empId: project.assignments?.[index]?.empId || `temp-${index}`,
+            empName: name
+          })) || []
+        }));
+        
+        setProjects(transformedProjects);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        setSnackbar({
+          open: true,
+          message: error.response?.data?.message || "Failed to fetch projects",
+          severity: "error"
+        });
+        // If unauthorized, redirect to login
+        if (error.response?.status === 401) {
+          navigate("/login");
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    // Add debounce to prevent too many API calls while typing
+    const debounceTimer = setTimeout(() => {
+      fetchData();
+    }, 300);
+    
+    return () => clearTimeout(debounceTimer);
+  }, [tab, searchQuery, navigate]);
+
+  const handleSearchChange = (e) => setSearchQuery(e.target.value);
+  const handleTabChange = (e, newValue) => setTab(newValue);
+
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case "COMPLETED": return <CheckCircle fontSize="small" />;
+      case "APPROVAL": return <ThumbUp fontSize="small" />;
+      default: return <HourglassEmpty fontSize="small" />;
+    }
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "Not set";
+    const date = new Date(dateString);
+    return isNaN(date.getTime()) ? "Invalid date" : date.toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric"
+    });
+  };
+
+  const handleCloseSnackbar = () => {
+    setSnackbar(prev => ({ ...prev, open: false }));
+  };
+
+  if (loading) {
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  return (
+    <Box sx={{ p: 3, backgroundColor: "#f8fafc", minHeight: "100vh" }}>
+      <Typography variant="h4" gutterBottom sx={{ fontWeight: 700 }}>
+        My Projects
+      </Typography>
+      <Typography variant="subtitle1" color="text.secondary" sx={{ mb: 3 }}>
+        {currentEmployee?.name ? `Welcome, ${currentEmployee.name}!` : "Loading..."}
+      </Typography>
+
+      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3, gap: 2, flexWrap: "wrap" }}>
+        <TextField
+          variant="outlined"
+          size="small"
+          placeholder="Search projects by name or ID..."
+          value={searchQuery}
+          onChange={handleSearchChange}
+          sx={{
+            width: 400,
+            "& .MuiOutlinedInput-root": {
+              borderRadius: "10px",
+              backgroundColor: "white"
+            }
+          }}
+          InputProps={{
+            startAdornment: <Work sx={{ mr: 1 }} />
+          }}
+        />
+      </Box>
+
+      <Tabs
+        value={tab}
+        onChange={handleTabChange}
+        textColor="primary"
+        indicatorColor="primary"
+        sx={{ mb: 3, "& .MuiTabs-flexContainer": { gap: 1 } }}
+      >
+        <Tab
+          label={
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Badge badgeContent={projects.length} color="primary" />
+              All
+            </Box>
+          }
+          value="ALL"
+          sx={{ borderRadius: "8px", textTransform: "none" }}
+        />
+        <Tab
+          label={
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <HourglassEmpty fontSize="small" />
+              Started
+              <Badge
+                badgeContent={projects.filter(p => p.status === "STARTED").length}
+                color="primary"
+              />
+            </Box>
+          }
+          value="STARTED"
+          sx={{ borderRadius: "8px", textTransform: "none" }}
+        />
+        <Tab
+          label={
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <ThumbUp fontSize="small" />
+              Approval
+              <Badge
+                badgeContent={projects.filter(p => p.status === "APPROVAL").length}
+                color="primary"
+              />
+            </Box>
+          }
+          value="APPROVAL"
+          sx={{ borderRadius: "8px", textTransform: "none" }}
+        />
+        <Tab
+          label={
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <CheckCircle fontSize="small" />
+              Completed
+              <Badge
+                badgeContent={projects.filter(p => p.status === "COMPLETED").length}
+                color="primary"
+              />
+            </Box>
+          }
+          value="COMPLETED"
+          sx={{ borderRadius: "8px", textTransform: "none" }}
+        />
+      </Tabs>
+
+      {projects.length === 0 ? (
+        <Box sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "300px",
+          backgroundColor: "white",
+          borderRadius: "12px",
+          boxShadow: "0 4px 20px 0 rgba(0,0,0,0.05)"
+        }}>
+          <Typography variant="h6" color="textSecondary">
+            {tab === "ALL"
+              ? "No projects assigned to you"
+              : `No ${tab.toLowerCase()} projects assigned to you`}
+          </Typography>
+        </Box>
+      ) : (
+        <Box sx={{
+          display: "grid",
+          gridTemplateColumns: {
+            xs: "1fr",
+            sm: "repeat(2, 1fr)",
+            lg: "repeat(3, 1fr)"
+          },
+          gap: 3
+        }}>
+          {projects.map((project) => (
+            <StyledCard key={project.id}>
+              <CardContent>
+                <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                    {project.name}
+                    <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                      #{project.id}
+                    </Typography>
+                  </Typography>
+                  <StatusChip
+                    label={project.status.toLowerCase()}
+                    status={project.status}
+                    icon={getStatusIcon(project.status)}
+                    size="small"
+                  />
+                </Box>
+
+                <Typography variant="body2" color="text.secondary" sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+                  <Category fontSize="small" /> {project.category || "No category"}
+                </Typography>
+
+                <Typography variant="body2" color="text.secondary" sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+                  <DateRange fontSize="small" />
+                  {formatDate(project.startDate)} - {formatDate(project.endDate)}
+                </Typography>
+
+                <Box sx={{ my: 2 }}>
+                  <LinearProgress
+                    variant="determinate"
+                    value={project.progress || 0}
+                    sx={{ height: 8, borderRadius: 4 }}
+                  />
+                  <Box sx={{ display: "flex", justifyContent: "space-between", mt: 0.5 }}>
+                    <Typography variant="caption" color="text.secondary">
+                      Progress
+                    </Typography>
+                    <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                      {project.progress || 0}%
+                    </Typography>
+                  </Box>
+                </Box>
+
+                <Divider sx={{ my: 2 }} />
+
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                  <People fontSize="small" sx={{ verticalAlign: "middle", mr: 1 }} />
+                  Team Members ({project.teamMembers?.length || 0})
+                </Typography>
+
+                {project.teamMembers?.length > 0 ? (
+                  <List dense sx={{ py: 0, maxHeight: 150, overflow: "auto" }}>
+                    {project.teamMembers.map((member, index) => (
+                      <ListItem key={`${member.empId}-${index}`} sx={{ px: 0 }}>
+                        <ListItemAvatar>
+                          <Avatar sx={{ width: 32, height: 32, fontSize: 14 }}>
+                            {member.empName?.split(" ").map(n => n[0]).join("") || "?"}
+                          </Avatar>
+                        </ListItemAvatar>
+                        <ListItemText
+                          primary={member.empName || "Unknown member"}
+                          secondary={`ID: ${member.empId || "N/A"}`}
+                          secondaryTypographyProps={{ variant: "caption" }}
+                        />
+                        {member.empId === currentEmployee?.employeeId && (
+                          <Chip label="You" size="small" sx={{ ml: 1, backgroundColor: "#e3f2fd" }} />
+                        )}
+                      </ListItem>
+                    ))}
+                  </List>
+                ) : (
+                  <Typography variant="caption" color="text.secondary">
+                    No team members assigned
+                  </Typography>
+                )}
+              </CardContent>
+            </StyledCard>
+          ))}
+        </Box>
+      )}
+
+      <Snackbar open={snackbar.open} autoHideDuration={6000} onClose={handleCloseSnackbar}>
+        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: "100%" }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </Box>
+  );
+};
+
+export default MyProject;

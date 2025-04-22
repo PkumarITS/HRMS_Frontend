@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { Link, Outlet, useNavigate } from "react-router-dom";
+import { Link, Outlet } from "react-router-dom";
 import {
   AppBar,
   Toolbar,
   Typography,
+  IconButton,
+  Avatar,
+  TextField,
   Button,
   Box,
   List,
@@ -12,40 +15,40 @@ import {
   ListItemIcon,
   ListItemText,
   Collapse,
-  Avatar,
-  TextField,
   CircularProgress,
   Snackbar,
   Alert
 } from "@mui/material";
 import {
+  Logout,
   Dashboard as DashboardIcon,
-  AccessTime as AccessTimeIcon,
+  People as PeopleIcon,
+  Business as BusinessIcon,
   CalendarToday as CalendarTodayIcon,
-  Person as PersonIcon,
-  Logout as LogoutIcon,
-  MonetizationOn as MonetizationOnIcon,
   Work as WorkIcon,
-  BarChart as BarChartIcon,
+  Person as PersonIcon,
+  Settings as SettingsIcon,
+  CheckCircle as CheckCircleIcon,
   ExpandLess,
   ExpandMore,
   Male as MaleIcon,
   Female as FemaleIcon,
+  AccessTime as AccessTimeIcon,
 } from "@mui/icons-material";
 import Cookies from "js-cookie";
 import UserService from "../service/UserService";
- 
-const EmployeeDashboard = () => {
-  const navigate = useNavigate();
+
+const Dashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [timeOpen, setTimeOpen] = useState(false);
   const [leaveOpen, setLeaveOpen] = useState(false);
+  const [systemOpen, setSystemOpen] = useState(false);
   const [projectOpen, setProjectOpen] = useState(false);
   const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
- 
+
+
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -53,9 +56,9 @@ const EmployeeDashboard = () => {
         if (!token) {
           throw new Error("No authentication token found");
         }
- 
+
         const response = await UserService.getCompleteProfile(token);
-       
+
         if (response.employeeData) {
           setProfileData(response.employeeData);
         } else {
@@ -63,71 +66,65 @@ const EmployeeDashboard = () => {
         }
       } catch (error) {
         console.error("Failed to fetch profile:", error);
-        setError(error.message || "Failed to load profile data");
+        const errorMessage = error.message || "Failed to load profile data";
+        setError(errorMessage);
         setSnackbarOpen(true);
       } finally {
         setLoading(false);
       }
     };
-   
+
     fetchProfile();
   }, []);
- 
+
   const handleCloseSnackbar = (event, reason) => {
     if (reason === 'clickaway') {
       return;
     }
     setSnackbarOpen(false);
   };
- 
-  const handleLogout = async () => {
-    try {
-      await UserService.logout();
-      navigate("/", { replace: true });
-    } catch (error) {
-      console.error("Logout error:", error);
-      Cookies.remove("token", { path: '/' });
-      Cookies.remove("role", { path: '/' });
-      navigate("/", { replace: true });
-    }
+
+  const handleLogout = () => {
+    Cookies.remove("token", { path: "/" });
+    Cookies.remove("role", { path: "/" });
+    window.location.href = "/";
   };
- 
+
   const menuItems = [
-    { text: "Home", icon: <DashboardIcon />, link: "/user/employee-dashboard" },
+    { text: "Dashboard", icon: <DashboardIcon />, link: "/admin/dashboard" },
+    { text: "Employees", icon: <PeopleIcon />, link: "/admin/employees" },
     {
-      text: "Projects & Tasks",
+      text: "System",
+      icon: <SettingsIcon />,
+      action: () => setSystemOpen(!systemOpen),
+      subItems: [
+        { text: "User Management", link: "/admin/user-management" },
+      ],
+    },
+    {
+      text: "Projects",
       icon: <WorkIcon />,
       action: () => setProjectOpen(!projectOpen),
-      open: projectOpen,
       subItems: [
-        { text: "My Projects", link: "/user/myproject" },
-        { text: "My Tasks", link: "/user/mytask" },
+        { text: "Projects", link: "/admin/projects" },
+        { text: "Tasks", link: "/admin/projects/tasks" },
       ],
     },
-    {
-      text: "Time & Management",
-      icon: <AccessTimeIcon />,
-      action: () => setTimeOpen(!timeOpen),
-      open: timeOpen,
-      subItems: [
-        { text: "Timesheet", link: "/user/employee-dashboard/timesheet-detail" },
-        { text: "Attendence", link: "/user/employee-dashboard/attendence" },
-      ],
-    },
+    { text: "Timesheets", icon: <AccessTimeIcon />, link: "/admin/dashboard/timesheets" },
     {
       text: "Leave Management",
       icon: <CalendarTodayIcon />,
       action: () => setLeaveOpen(!leaveOpen),
-      open: leaveOpen,
       subItems: [
-        { text: "Leave Request", link: "/user/leaves" },
-        { text: "Leave Balance", link: "/user/leave-balance" },
-        { text: "Holiday Calendar", link: "/user/holiday" },
+        { text: "Leaves", link: "/admin/leaves" },
+        { text: "Leave Balance", link: "/admin/leave-balance" },
+        { text: "Holiday", link: "/admin/holiday" }
       ],
     },
-    { text: "My Profile", icon: <PersonIcon />, link: "/user/profile" },
+    { text: "Attendance", icon: <CheckCircleIcon />, link: "/admin/attendance" },
+    { text: "Profile", icon: <PersonIcon />, link: "/admin/profile" },
   ];
- 
+
   if (loading) {
     return (
       <Box sx={{
@@ -140,11 +137,11 @@ const EmployeeDashboard = () => {
       </Box>
     );
   }
- 
+
   const genderIcon = profileData?.personal?.gender?.toLowerCase() === 'male'
     ? <MaleIcon fontSize="small" color="primary" />
     : <FemaleIcon fontSize="small" color="secondary" />;
- 
+
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100vh" }}>
       {/* Error Snackbar */}
@@ -162,12 +159,14 @@ const EmployeeDashboard = () => {
           {error}
         </Alert>
       </Snackbar>
- 
+
+      {/* App Bar */}
       <AppBar position="static" color="primary">
         <Toolbar sx={{ justifyContent: "space-between" }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
             <Avatar
               sx={{
+                cursor: "pointer",
                 width: 48,
                 height: 48,
                 backgroundColor: 'background.paper'
@@ -183,10 +182,11 @@ const EmployeeDashboard = () => {
                 <Typography variant="caption" sx={{ lineHeight: 1.2 }}>
                   ID: {profileData?.personal?.empId || 'N/A'}
                 </Typography>
+                {genderIcon}
               </Box>
             </Box>
           </Box>
- 
+
           <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
             <TextField
               variant="outlined"
@@ -194,48 +194,112 @@ const EmployeeDashboard = () => {
               placeholder="Search..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              sx={{ backgroundColor: "white", borderRadius: 1 }}
+              sx={{
+                backgroundColor: "white",
+                borderRadius: 1,
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': {
+                    borderColor: 'transparent',
+                  },
+                  '&:hover fieldset': {
+                    borderColor: 'transparent',
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: 'transparent',
+                  },
+                },
+              }}
             />
             <Button
               variant="contained"
               color="secondary"
-              startIcon={<LogoutIcon />}
+              startIcon={<Logout />}
               onClick={handleLogout}
+              sx={{
+                fontWeight: 'bold',
+                textTransform: 'none',
+                boxShadow: 'none',
+                '&:hover': {
+                  boxShadow: 'none',
+                }
+              }}
             >
               Logout
             </Button>
           </Box>
         </Toolbar>
       </AppBar>
- 
+
+      {/* Sidebar & Main Content */}
       <Box sx={{ display: "flex", flexGrow: 1 }}>
-        <Box sx={{ width: 250, bgcolor: "#1e293b", color: "white", p: 2 }}>
+        {/* Sidebar */}
+        <Box sx={{
+          width: 250,
+          bgcolor: "#1e293b",
+          color: "white",
+          p: 2,
+          overflowY: 'auto'
+        }}>
           <List>
             {menuItems.map((item, index) => (
               <React.Fragment key={index}>
                 <ListItem disablePadding>
                   <ListItemButton
-                    component={item.link ? Link : "button"}
-                    to={item.link}
-                    onClick={item.action}
-                    sx={{ "&:hover": { bgcolor: "#64748b" } }}
+                    component={item.subItems ? "button" : Link}
+                    to={item.subItems ? undefined : item.link}
+                    onClick={item.subItems ? item.action : undefined}
+                    sx={{
+                      "&:hover": { bgcolor: "#64748b" },
+                      borderRadius: 1,
+                      mb: 0.5
+                    }}
                   >
-                    <ListItemIcon sx={{ color: "white" }}>{item.icon}</ListItemIcon>
-                    <ListItemText primary={item.text} />
-                    {item.subItems && (item.open ? <ExpandLess /> : <ExpandMore />)}
+                    <ListItemIcon sx={{ color: "white", minWidth: '40px' }}>
+                      {item.icon}
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={item.text}
+                      primaryTypographyProps={{ fontSize: '0.95rem' }}
+                    />
+                    {/* Show collapse icon only if there are sub-items */}
+                    {item.subItems && (
+                      (item.text === "Leave Management" ? leaveOpen
+                        : item.text === "Projects" ? projectOpen
+                          : item.text === "System" ? systemOpen
+                            : false) ? <ExpandLess /> : <ExpandMore />
+                    )}
                   </ListItemButton>
                 </ListItem>
+
+                {/* Submenu items */}
                 {item.subItems && (
-                  <Collapse in={item.open} timeout="auto" unmountOnExit>
+                  <Collapse
+                    in={
+                      item.text === "Leave Management" ? leaveOpen
+                        : item.text === "Projects" ? projectOpen
+                          : item.text === "System" ? systemOpen
+                            : false
+                    }
+                    timeout="auto"
+                    unmountOnExit
+                  >
                     <List component="div" disablePadding>
-                      {item.subItems.map((sub, subIndex) => (
+                      {item.subItems.map((subItem, subIndex) => (
                         <ListItemButton
                           key={subIndex}
                           component={Link}
-                          to={sub.link}
-                          sx={{ pl: 4, "&:hover": { bgcolor: "#475569" } }}
+                          to={subItem.link}
+                          sx={{
+                            pl: 4,
+                            "&:hover": { bgcolor: "#64748b" },
+                            borderRadius: 1,
+                            mb: 0.5
+                          }}
                         >
-                          <ListItemText primary={sub.text} />
+                          <ListItemText
+                            primary={subItem.text}
+                            primaryTypographyProps={{ fontSize: '0.9rem' }}
+                          />
                         </ListItemButton>
                       ))}
                     </List>
@@ -244,14 +308,24 @@ const EmployeeDashboard = () => {
               </React.Fragment>
             ))}
           </List>
+
         </Box>
- 
-        <Box component="main" sx={{ flexGrow: 1, p: 3, bgcolor: "#f8fafc" }}>
+
+        {/* Main Content */}
+        <Box
+          component="main"
+          sx={{
+            flexGrow: 1,
+            p: 3,
+            bgcolor: "#f8fafc",
+            overflowY: 'auto'
+          }}
+        >
           <Outlet />
         </Box>
       </Box>
     </Box>
   );
 };
- 
-export default EmployeeDashboard;
+
+export default Dashboard;

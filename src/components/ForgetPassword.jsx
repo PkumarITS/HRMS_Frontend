@@ -15,7 +15,7 @@ const ForgetPassword = () => {
   const handleEmailSubmit = (event) => {
     event.preventDefault();
     axios
-      .post('http://localhost:3000/auth/send-reset-email', { email })
+      .post('http://localhost:1010/auth/send-reset-email', { email })
       .then((response) => {
         if (response.data.success) {
           setSuccessMessage(response.data.message);
@@ -36,7 +36,7 @@ const ForgetPassword = () => {
     }
 
     axios
-      .post('http://localhost:3000/auth/reset-password', { email, newPassword })
+      .post('http://localhost:1010/auth/reset-password', { email, newPassword })
       .then((response) => {
         if (response.data.success) {
           setSuccessMessage('Password reset successfully. Redirecting to login...');

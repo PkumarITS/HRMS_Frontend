@@ -1,87 +1,236 @@
-import React, { useState } from "react";
-import {
-  Container,
-  TextField,
+import React, { useEffect, useState } from "react";
+import axios from "axios";
+import Cookies from "js-cookie";
+import { 
+  Box, 
+  Typography, 
+  Paper, 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableContainer, 
+  TableHead, 
+  TableRow, 
+  CircularProgress,
+  Alert,
   Button,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Typography,
+  Grid,
+  Card,
+  CardContent,
+  Divider,
+  useTheme
 } from "@mui/material";
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
+import DownloadIcon from '@mui/icons-material/Download';
+import * as XLSX from 'xlsx';
+
+// Configure axios instance
+const api = axios.create({
+  baseURL: "http://localhost:1010",
+});
+
+// Add auth token to requests
+api.interceptors.request.use((config) => {
+  const token = Cookies.get("token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
 const LeaveBalance = () => {
-  const [empId, setEmpId] = useState("");
-  const [leaveBalance, setLeaveBalance] = useState(null);
+  const [balance, setBalance] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const theme = useTheme();
 
-  const mockData = {
-    "101": [
-      { leaveType: "Casual Leave", totalLeaves: 10, usedLeaves: 4, balanceLeaves: 6 },
-      { leaveType: "Sick Leave", totalLeaves: 8, usedLeaves: 2, balanceLeaves: 6 },
-      { leaveType: "Personal Leave", totalLeaves: 5, usedLeaves: 1, balanceLeaves: 4 }
-    ],
-    "102": [
-      { leaveType: "Casual Leave", totalLeaves: 12, usedLeaves: 5, balanceLeaves: 7 },
-      { leaveType: "Sick Leave", totalLeaves: 7, usedLeaves: 3, balanceLeaves: 4 },
-      { leaveType: "Personal Leave", totalLeaves: 6, usedLeaves: 2, balanceLeaves: 4 }
-    ]
-  };
+  useEffect(() => {
+    fetchLeaveBalance();
+  }, []);
 
-  const handleSearch = () => {
-    if (mockData[empId]) {
-      setLeaveBalance(mockData[empId]);
-    } else {
-      alert("No records found for this Employee ID.");
-      setLeaveBalance(null);
+  const fetchLeaveBalance = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get("/adminuser/leave-balance/my-balance");
+      setBalance(response.data);
+    } catch (err) {
+      console.error("Error fetching leave balance:", err);
+      setError(err.response?.data?.message || "Failed to load leave balance");
+    } finally {
+      setLoading(false);
     }
   };
 
+  const handleExport = () => {
+    if (!balance) return;
+    
+    const data = [
+      ["Leave Type", "Allotted", "Used", "Remaining"],
+      ["Annual", balance.annualAllotted, balance.annualUsed, balance.getAnnualRemaining],
+      ["Sick", balance.sickAllotted, balance.sickUsed, balance.getSickRemaining],
+      ["Casual", balance.casualAllotted, balance.casualUsed, balance.getCasualRemaining],
+      ["Maternity", balance.maternityAllotted, balance.maternityUsed, balance.getMaternityRemaining],
+      ["Paternity", balance.paternityAllotted, balance.paternityUsed, balance.getPaternityRemaining],
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "LeaveBalance");
+    XLSX.writeFile(wb, `LeaveBalance_${balance.year}.xlsx`);
+  };
+
+  const chartData = balance ? [
+    { name: "Annual Used", value: balance.annualUsed },
+    { name: "Annual Remaining", value: balance.getAnnualRemaining },
+    { name: "Sick Used", value: balance.sickUsed },
+    { name: "Sick Remaining", value: balance.getSickRemaining },
+    { name: "Casual Used", value: balance.casualUsed },
+    { name: "Casual Remaining", value: balance.getCasualRemaining },
+  ] : [];
+
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert severity="error" sx={{ mt: 2 }}>
+        {error}
+      </Alert>
+    );
+  }
+
+  if (!balance) {
+    return (
+      <Alert severity="info" sx={{ mt: 2 }}>
+        No leave balance data found.
+      </Alert>
+    );
+  }
+
   return (
-    <Container maxWidth="md" sx={{ mt: 4, p: 3, bgcolor: "#f9f9f9", borderRadius: 2 }}>
-      <Typography variant="h4" gutterBottom sx={{ textAlign: "center", mb: 3 }}>
-        Employee Leave Balance
-      </Typography>
-
-      <div style={{ display: "flex", gap: "10px", justifyContent: "center", marginBottom: "20px" }}>
-        <TextField
-          label="Enter Employee ID"
-          variant="outlined"
-          value={empId}
-          onChange={(e) => setEmpId(e.target.value)}
-        />
-        <Button variant="contained" color="primary" onClick={handleSearch}>
-          Search
+    <Box sx={{ p: 4 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+        <Typography variant="h4" sx={{ fontWeight: 700 }}>
+          My Leave Balance - {balance.year}
+        </Typography>
+        <Button 
+          variant="contained" 
+          startIcon={<DownloadIcon />}
+          onClick={handleExport}
+          sx={{ borderRadius: 2 }}
+        >
+          Export to Excel
         </Button>
-      </div>
+      </Box>
 
-      {leaveBalance && (
-        <TableContainer component={Paper} sx={{ mt: 3 }}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell><b>Leave Type</b></TableCell>
-                <TableCell><b>Total Leaves</b></TableCell>
-                <TableCell><b>Used Leaves</b></TableCell>
-                <TableCell><b>Balance Leaves</b></TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {leaveBalance.map((leave, index) => (
-                <TableRow key={index}>
-                  <TableCell>{leave.leaveType}</TableCell>
-                  <TableCell>{leave.totalLeaves}</TableCell>
-                  <TableCell>{leave.usedLeaves}</TableCell>
-                  <TableCell>{leave.balanceLeaves}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
-    </Container>
+      <Grid container spacing={3} sx={{ mb: 4 }}>
+        <Grid item xs={12} md={6}>
+          <Card elevation={3} sx={{ height: '100%' }}>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                Leave Summary
+              </Typography>
+              <Divider sx={{ mb: 2 }} />
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: 600 }}>Leave Type</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }} align="right">Allotted</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }} align="right">Used</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }} align="right">Remaining</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    <TableRow>
+                      <TableCell>Annual</TableCell>
+                      <TableCell align="right">{balance.annualAllotted}</TableCell>
+                      <TableCell align="right">{balance.annualUsed}</TableCell>
+                      <TableCell align="right" sx={{ color: theme.palette.success.main }}>
+                        {balance.getAnnualRemaining}
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell>Sick</TableCell>
+                      <TableCell align="right">{balance.sickAllotted}</TableCell>
+                      <TableCell align="right">{balance.sickUsed}</TableCell>
+                      <TableCell align="right" sx={{ color: theme.palette.success.main }}>
+                        {balance.getSickRemaining}
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell>Casual</TableCell>
+                      <TableCell align="right">{balance.casualAllotted}</TableCell>
+                      <TableCell align="right">{balance.casualUsed}</TableCell>
+                      <TableCell align="right" sx={{ color: theme.palette.success.main }}>
+                        {balance.getCasualRemaining}
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell>Maternity</TableCell>
+                      <TableCell align="right">{balance.maternityAllotted}</TableCell>
+                      <TableCell align="right">{balance.maternityUsed}</TableCell>
+                      <TableCell align="right" sx={{ color: theme.palette.success.main }}>
+                        {balance.getMaternityRemaining}
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell>Paternity</TableCell>
+                      <TableCell align="right">{balance.paternityAllotted}</TableCell>
+                      <TableCell align="right">{balance.paternityUsed}</TableCell>
+                      <TableCell align="right" sx={{ color: theme.palette.success.main }}>
+                        {balance.getPaternityRemaining}
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <Card elevation={3} sx={{ height: '100%' }}>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                Leave Utilization
+              </Typography>
+              <Divider sx={{ mb: 2 }} />
+              <Box sx={{ height: 400 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={chartData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                      label={({ name, percent }) => 
+                        `${name}: ${(percent * 100).toFixed(0)}%`
+                      }
+                    >
+                      {chartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+    </Box>
   );
 };
 
