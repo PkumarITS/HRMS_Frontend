@@ -446,40 +446,44 @@ const TimesheetForm = () => {
                   {errors.hours}
                 </Typography>
               )}
-              <Grid container spacing={1}>
-                {daysOfWeek.map((day, idx) => (
-                  <Grid item xs={4} sm={2} key={idx}>
-                    <Typography
-                      variant="caption"
-                      display="block"
-                      sx={{
-                        fontWeight: "bold",
-                        color: day.isWeekend ? "#f44336" : "inherit",
-                      }}
-                    >
-                      {day.label}
-                    </Typography>
-                    <TextField
-                      type="number"
-                      value={formData.hours[idx]}
-                      onChange={(e) => handleHoursChange(idx, e.target.value)}
-                      inputProps={{
-                        min: 0,
-                        max: 24,
-                        step: 0.25,
-                      }}
-                      fullWidth
-                      size="small"
-                      disabled={loading}
-                      sx={{
-                        "& .MuiInputBase-input": {
-                          textAlign: "center",
-                        },
-                      }}
-                    />
-                  </Grid>
-                ))}
-              </Grid>
+              <Box sx={{ display: 'flex', overflowX: 'auto', py: 1 }}>
+                <Grid container spacing={1} sx={{ flexWrap: 'nowrap', minWidth: 'max-content' }}>
+                  {daysOfWeek.map((day, idx) => (
+                    <Grid item key={idx} sx={{ minWidth: 100 }}>
+                      <Typography
+                        variant="caption"
+                        display="block"
+                        sx={{
+                          fontWeight: "bold",
+                          color: day.isWeekend ? "#f44336" : "inherit",
+                          textAlign: 'center',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        {day.label}
+                      </Typography>
+                      <TextField
+                        type="number"
+                        value={formData.hours[idx]}
+                        onChange={(e) => handleHoursChange(idx, e.target.value)}
+                        inputProps={{
+                          min: 0,
+                          max: 24,
+                          step: 0.25,
+                        }}
+                        fullWidth
+                        size="small"
+                        disabled={loading}
+                        sx={{
+                          "& .MuiInputBase-input": {
+                            textAlign: "center",
+                          },
+                        }}
+                      />
+                    </Grid>
+                  ))}
+                </Grid>
+              </Box>
             </Grid>
 
             <Grid item xs={12}>

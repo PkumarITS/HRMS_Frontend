@@ -19,10 +19,27 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  Snackbar,
+  Alert,
+  Autocomplete
 } from "@mui/material";
 import { ArrowBack, Send } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
+
+// Country and timezone library
+const COUNTRIES = [
+  { code: "US", name: "United States", timezones: ["America/New_York", "America/Chicago", "America/Denver", "America/Los_Angeles"] },
+  { code: "GB", name: "United Kingdom", timezones: ["Europe/London"] },
+  { code: "IN", name: "India", timezones: ["Asia/Kolkata"] },
+  { code: "JP", name: "Japan", timezones: ["Asia/Tokyo"] },
+  { code: "AU", name: "Australia", timezones: ["Australia/Sydney", "Australia/Melbourne"] },
+  { code: "CA", name: "Canada", timezones: ["America/Toronto", "America/Vancouver"] },
+  { code: "DE", name: "Germany", timezones: ["Europe/Berlin"] },
+  { code: "FR", name: "France", timezones: ["Europe/Paris"] },
+  { code: "BR", name: "Brazil", timezones: ["America/Sao_Paulo"] },
+  { code: "CN", name: "China", timezones: ["Asia/Shanghai"] }
+];
 
 // Predefined roles with emails
 const ROLES = [
@@ -32,40 +49,151 @@ const ROLES = [
   { name: "CEO", email: "ceo@company.com" }
 ];
 
-// Mock employee data
+// Mock employee data with country information
 const EMPLOYEES = [
-  { id: 1, name: "John Doe", email: "john@company.com", department: "Development" },
-  { id: 2, name: "Jane Smith", email: "jane@company.com", department: "Marketing" },
-  { id: 3, name: "Mike Johnson", email: "mike@company.com", department: "Sales" }
+  { id: 1, name: "John Doe", email: "john@company.com", department: "Development", country: "US" },
+  { id: 2, name: "Jane Smith", email: "jane@company.com", department: "Marketing", country: "GB" },
+  { id: 3, name: "Mike Johnson", email: "mike@company.com", department: "Sales", country: "IN" },
+  { id: 4, name: "Emma Wilson", email: "emma@company.com", department: "HR", country: "US" },
+  { id: 5, name: "David Brown", email: "david@company.com", department: "Finance", country: "CA" }
 ];
+
+// Mock email service
+const emailService = {
+  sendEscalationEmail: async (to, cc, subject, body, timezone = 'UTC') => {
+    console.log(`Sending escalation email to: ${to} (Timezone: ${timezone})`);
+    console.log(`CC: ${cc.join(', ')}`);
+    console.log(`Subject: ${subject}`);
+    console.log(`Body: ${body}`);
+    return new Promise(resolve => setTimeout(() => resolve({ success: true }), 1000));
+  },
+  sendApprovalReminder: async (to, cc, subject, body, timezone = 'UTC') => {
+    console.log(`Sending approval reminder to: ${to} (Timezone: ${timezone})`);
+    console.log(`CC: ${cc.join(', ')}`);
+    console.log(`Subject: ${subject}`);
+    console.log(`Body: ${body}`);
+    return new Promise(resolve => setTimeout(() => resolve({ success: true }), 1000));
+  }
+};
 
 const NotificationSettings = () => {
   const navigate = useNavigate();
   const [settings, setSettings] = useState({
-    reminder1Enabled: true,
-    reminder1Day: "Saturday",
-    reminder1Time: "23:59",
-    reminder2Enabled: true,
-    reminder2Day: "Sunday",
-    reminder2Time: "23:59",
-    supervisorReminderEnabled: true,
-    supervisorReminderDay: "Monday",
-    supervisorReminderTime: "14:00",
-    hrReminderEnabled: true,
-    hrReminderDay: "Tuesday",
-    hrReminderTime: "14:00",
+    // Employee reminders with country/timezone support
+    employeeReminders: [
+      {
+        enabled: true,
+        level: 1,
+        day: "Saturday",
+        time: "23:59",
+        countries: ["US"],
+        timezone: "America/New_York",
+        selectedEmployees: [1, 4]
+      },
+      {
+        enabled: true,
+        level: 2,
+        day: "Sunday",
+        time: "23:59",
+        countries: ["US"],
+        timezone: "America/New_York",
+        selectedEmployees: [1, 4]
+      }
+    ],
+    
+    // Supervisor reminders with recipients
+    supervisorReminders: [
+      {
+        enabled: true,
+        level: 1,
+        day: "Tuesday",
+        time: "14:00",
+        recipients: ["supervisor@company.com"],
+        timezone: "America/New_York"
+      },
+      {
+        enabled: true,
+        level: 2,
+        day: "Wednesday",
+        time: "14:00",
+        recipients: ["supervisor@company.com", "hr@company.com"],
+        timezone: "America/New_York"
+      }
+    ],
+    
+    // HR reminders with recipients
+    hrReminders: [
+      {
+        enabled: true,
+        level: 1,
+        day: "Tuesday",
+        time: "14:00",
+        recipients: ["hr@company.com"],
+        timezone: "America/New_York"
+      },
+      {
+        enabled: true,
+        level: 2,
+        day: "Wednesday",
+        time: "14:00",
+        recipients: ["hr@company.com", "manager@company.com"],
+        timezone: "America/New_York"
+      }
+    ],
+    
+    // Escalation settings
     escalationEnabled: true,
     escalationDay: "Thursday",
     escalationTime: "14:00",
-    escalationRecipients: ["ceo@company.com", "hr@company.com"]
+    escalationRecipients: ["ceo@company.com", "hr@company.com"],
+    escalationTimezone: "America/New_York",
+    
+    // Approval reminders
+    approvalReminders: [
+      {
+        enabled: true,
+        level: 1,
+        day: "Tuesday",
+        time: "12:00",
+        recipients: ["supervisor@company.com"],
+        timezone: "America/New_York"
+      },
+      {
+        enabled: true,
+        level: 2,
+        day: "Wednesday",
+        time: "12:00",
+        recipients: ["hr@company.com"],
+        timezone: "America/New_York"
+      },
+      {
+        enabled: true,
+        level: 3,
+        day: "Friday",
+        time: "12:00",
+        recipients: ["ceo@company.com", "hr-director@company.com"],
+        timezone: "America/New_York"
+      }
+    ]
   });
+  
   const [newEscalationEmail, setNewEscalationEmail] = useState("");
   const [selectedRoles, setSelectedRoles] = useState(["ceo@company.com", "hr@company.com"]);
-  const [selectedTemplate, setSelectedTemplate] = useState("hr");
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
   const [selectedEmployees, setSelectedEmployees] = useState([]);
-  const [emailPreview, setEmailPreview] = useState("");
+  const [customEmail, setCustomEmail] = useState("");
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success"
+  });
 
+  // Get employees by country
+  const getEmployeesByCountry = (countryCode) => {
+    return EMPLOYEES.filter(emp => emp.country === countryCode);
+  };
+
+  // Handle settings changes
   const handleSettingChange = (setting) => (event) => {
     setSettings({
       ...settings,
@@ -80,6 +208,26 @@ const NotificationSettings = () => {
     });
   };
 
+  // Update reminder settings
+  const updateReminder = (type, index, field, value) => {
+    const updatedReminders = [...settings[type]];
+    updatedReminders[index][field] = value;
+    
+    // If country changes in employee reminders, update timezone and reset selected employees
+    if (type === 'employeeReminders' && field === 'countries') {
+      const country = value[0];
+      const timezone = COUNTRIES.find(c => c.code === country)?.timezones[0] || "UTC";
+      updatedReminders[index].timezone = timezone;
+      updatedReminders[index].selectedEmployees = [];
+    }
+    
+    setSettings({
+      ...settings,
+      [type]: updatedReminders
+    });
+  };
+
+  // Email recipient management
   const handleAddEscalationEmail = () => {
     if (newEscalationEmail && !settings.escalationRecipients.includes(newEscalationEmail)) {
       setSettings({
@@ -99,152 +247,255 @@ const NotificationSettings = () => {
   };
 
   const handleRoleSelectionChange = (event) => {
-    const {
-      target: { value },
-    } = event;
-    setSelectedRoles(
-      typeof value === 'string' ? value.split(',') : value,
-    );
+    const value = event.target.value;
+    setSelectedRoles(typeof value === 'string' ? value.split(',') : value);
     setSettings({
       ...settings,
       escalationRecipients: typeof value === 'string' ? value.split(',') : value
     });
   };
 
-  const handleSave = () => {
-    // In a real app, save to backend
-    console.log("Saved settings:", settings);
-    navigate("/dashboard/timesheets");
-  };
-
-  const handleTemplateChange = (event) => {
-    setSelectedTemplate(event.target.value);
-  };
-
-  const handleSendTestEmail = () => {
+  // Email sending functionality
+  const handleSendEscalationEmail = () => {
     setSendDialogOpen(true);
-    // Generate preview based on selected template
-    updateEmailPreview(selectedTemplate);
   };
 
   const handleCloseSendDialog = () => {
     setSendDialogOpen(false);
     setSelectedEmployees([]);
+    setCustomEmail("");
   };
 
-  const handleSendEmail = () => {
-    // In a real app, this would send the email to selected employees
-    console.log("Sending email to:", selectedEmployees);
-    console.log("Email content:", emailPreview);
-    setSendDialogOpen(false);
-    setSelectedEmployees([]);
-    alert(`Email sent successfully to ${selectedEmployees.length} employee(s)`);
-  };
+  const handleSendEmail = async () => {
+    try {
+      const selectedEmails = EMPLOYEES
+        .filter(emp => selectedEmployees.includes(emp.id))
+        .map(emp => emp.email);
 
-  const updateEmailPreview = (templateKey) => {
-    const template = emailTemplates[templateKey];
-    let preview = template.body;
-    
-    // Replace placeholders with sample data
-    preview = preview.replace("{{employeeName}}", "Employee Name");
-    preview = preview.replace("{{deadline}}", "Friday, 5:00 PM");
-    preview = preview.replace("{{period}}", "this week");
-    preview = preview.replace("{{supervisorName}}", "Supervisor Name");
-    preview = preview.replace("{{managerName}}", "Manager Name");
-    preview = preview.replace("{{ceoName}}", "CEO Name");
-    preview = preview.replace("{{employeeList}}", "John Doe, Jane Smith");
-    preview = preview.replace("{{count}}", "3");
-    preview = preview.replace("{{employeeCount}}", "2");
-    preview = preview.replace("{{unsubmittedCount}}", "5");
-    preview = preview.replace("{{unapprovedCount}}", "2");
-    preview = preview.replace("{{totalUnsubmitted}}", "7");
-    preview = preview.replace("{{affectedDepartments}}", "Development, Marketing");
-    preview = preview.replace("{{impact}}", "Potential payroll delays");
-    
-    setEmailPreview(preview);
-  };
+      const allRecipients = [...selectedEmails];
+      if (customEmail) {
+        allRecipients.push(customEmail);
+      }
 
-  // Email templates for different roles targeting employees
-  const emailTemplates = {
-    hr: {
-      subject: "Action Required: Timesheet Submission Reminder",
-      body: `Dear {{employeeName}},
+      if (allRecipients.length === 0) {
+        showSnackbar("Please select at least one recipient", "error");
+        return;
+      }
 
-Our records indicate that your timesheet for {{period}} has not been submitted yet. 
+      for (const email of allRecipients) {
+        const employee = EMPLOYEES.find(emp => emp.email === email) || { name: email.split('@')[0] };
+        await emailService.sendEscalationEmail(
+          email,
+          settings.escalationRecipients,
+          `URGENT: Timesheet Submission Required - ${employee.name}`,
+          escalationEmailTemplate(employee.name),
+          settings.escalationTimezone
+        );
+      }
 
-Submission Deadline: {{deadline}}
-
-Please submit your timesheet immediately via the employee portal to avoid:
-- Delays in payroll processing
-- Compliance issues
-- Additional follow-ups
-
-If you've already submitted your timesheet, please disregard this message.
-
-Thank you,
-HR Department`
-    },
-    supervisor: {
-      subject: "Urgent: Missing Timesheet Submission",
-      body: `Hi {{employeeName}},
-
-This is a reminder that your timesheet is still pending submission. As your supervisor, I'd like to remind you that timely submission is crucial for our payroll process.
-
-Current Status: Not Submitted
-Due Date: {{deadline}}
-
-Please complete this immediately. If you're facing any issues, please let me know so I can assist.
-
-Best regards,
-{{supervisorName}}
-Team Supervisor`
-    },
-    manager: {
-      subject: "Final Notice: Timesheet Submission",
-      body: `Dear {{employeeName}},
-
-This is a final reminder regarding your overdue timesheet submission. As your department manager, I must emphasize the importance of meeting this compliance requirement.
-
-Impact of Non-Submission:
-- Payroll processing delays for you and your team
-- Departmental compliance metrics affected
-- Potential disciplinary action
-
-Please submit by: {{deadline}}
-
-If you need assistance, contact HR immediately.
-
-Regards,
-{{managerName}}
-Department Manager`
-    },
-    ceo: {
-      subject: "Critical: Timesheet Compliance Issue",
-      body: `Dear {{employeeName}},
-
-This communication is regarding your outstanding timesheet submission, which has now reached the highest level of escalation.
-
-This delay affects:
-- Company-wide payroll processing
-- Financial reporting
-- Regulatory compliance
-
-Required Action:
-Submit your timesheet immediately and reply to this email confirming submission.
-
-Your attention to this matter is expected within the next 24 hours.
-
-Sincerely,
-{{ceoName}}
-Chief Executive Officer`
+      showSnackbar(`Escalation emails sent to ${allRecipients.length} recipient(s)`, "success");
+      handleCloseSendDialog();
+    } catch (error) {
+      console.error("Error sending escalation email:", error);
+      showSnackbar("Failed to send escalation emails", "error");
     }
   };
 
+  // Save settings
+  const handleSave = () => {
+    console.log("Saved settings:", settings);
+    showSnackbar("Settings saved successfully", "success");
+  };
+
+  // Snackbar helpers
+  const showSnackbar = (message, severity) => {
+    setSnackbar({ open: true, message, severity });
+  };
+
+  const handleSnackbarClose = () => {
+    setSnackbar(prev => ({ ...prev, open: false }));
+  };
+
+  // System-generated escalation email template
+  const escalationEmailTemplate = (employeeName) => `
+Dear ${employeeName},
+
+This is an urgent notification regarding your overdue timesheet submission.
+
+This matter has been escalated to the following management team members:
+${settings.escalationRecipients.map(email => `- ${email}`).join('\n')}
+
+Required Actions:
+1. Submit your timesheet immediately through the employee portal
+2. Reply to this email to confirm submission
+3. Contact your supervisor if you encounter any issues
+
+Consequences of non-compliance:
+- Immediate payroll processing delays
+- Formal disciplinary action
+- Further escalation to senior leadership
+
+The deadline for resolution is ${settings.escalationDay} at ${settings.escalationTime} (${settings.escalationTimezone}).
+
+Sincerely,
+Timesheet Compliance Team
+`;
+
+  // Approval reminder email template
+  const approvalReminderTemplate = (level) => `
+Dear ${level === 1 ? 'Supervisor' : level === 2 ? 'HR Team' : 'Management Team'},
+
+This is a reminder regarding pending timesheet approvals.
+
+Pending Approvals:
+- ${level === 1 ? 'Initial reminder' : level === 2 ? 'Second reminder' : 'Final escalation'}
+- Action required by: ${settings.approvalReminders[level-1].day} at ${settings.approvalReminders[level-1].time} (${settings.approvalReminders[level-1].timezone})
+
+Required Actions:
+1. Review and approve pending timesheets immediately
+2. Contact the employees if additional information is needed
+3. Reply to this email once approvals are completed
+
+${level === 3 ? `
+Consequences of non-compliance:
+- Payroll processing delays
+- Formal reporting to senior leadership
+` : ''}
+
+Sincerely,
+Timesheet Compliance Team
+`;
+
+  // Render country selector with search for employee reminders
+  const renderCountrySelector = (index) => (
+    <FormControl size="small" sx={{ minWidth: 200, mb: 2 }}>
+      <Autocomplete
+        options={COUNTRIES}
+        getOptionLabel={(option) => option.name}
+        value={COUNTRIES.find(c => c.code === settings.employeeReminders[index].countries[0]) || null}
+        onChange={(e, newValue) => {
+          updateReminder('employeeReminders', index, 'countries', newValue ? [newValue.code] : []);
+        }}
+        renderInput={(params) => (
+          <TextField
+            {...params}
+            label="Country"
+            variant="outlined"
+            size="small"
+          />
+        )}
+      />
+    </FormControl>
+  );
+
+  // Render timezone selector based on selected country for employee reminders
+  const renderTimezoneSelector = (index) => (
+    <FormControl size="small" sx={{ minWidth: 200, mb: 2 }}>
+      <InputLabel>Timezone</InputLabel>
+      <Select
+        value={settings.employeeReminders[index].timezone}
+        onChange={(e) => updateReminder('employeeReminders', index, 'timezone', e.target.value)}
+        disabled={!settings.employeeReminders[index].enabled}
+      >
+        {COUNTRIES.find(c => c.code === settings.employeeReminders[index].countries[0])?.timezones.map(tz => (
+          <MenuItem key={tz} value={tz}>{tz}</MenuItem>
+        ))}
+      </Select>
+    </FormControl>
+  );
+
+  // Render employee selector for employee reminders
+  const renderEmployeeSelector = (index) => {
+    const countryCode = settings.employeeReminders[index].countries[0];
+    return countryCode ? (
+      <Box sx={{ mt: 2, mb: 2 }}>
+        <Typography variant="subtitle2" sx={{ mb: 1 }}>
+          Employees in {COUNTRIES.find(c => c.code === countryCode)?.name}:
+        </Typography>
+        <Autocomplete
+          multiple
+          options={getEmployeesByCountry(countryCode)}
+          getOptionLabel={(option) => `${option.name} (${option.email})`}
+          value={EMPLOYEES.filter(emp => settings.employeeReminders[index].selectedEmployees.includes(emp.id))}
+          onChange={(e, newValue) => {
+            updateReminder('employeeReminders', index, 'selectedEmployees', newValue.map(emp => emp.id));
+          }}
+          disabled={!settings.employeeReminders[index].enabled}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              variant="outlined"
+              size="small"
+              placeholder="Select employees"
+            />
+          )}
+        />
+      </Box>
+    ) : null;
+  };
+
+  // Render recipients selector for supervisor/HR/approval reminders
+  const renderRecipientsSelector = (type, index) => (
+    <Box sx={{ mt: 2, mb: 2 }}>
+      <Typography variant="subtitle2" sx={{ mb: 1 }}>
+        Recipients:
+      </Typography>
+      <Autocomplete
+        multiple
+        freeSolo
+        options={ROLES.map(role => role.email)}
+        value={settings[type][index].recipients}
+        onChange={(e, newValue) => {
+          updateReminder(type, index, 'recipients', newValue);
+        }}
+        disabled={!settings[type][index].enabled}
+        renderInput={(params) => (
+          <TextField
+            {...params}
+            variant="outlined"
+            size="small"
+            placeholder="Add recipients"
+          />
+        )}
+      />
+    </Box>
+  );
+
+  // Render day/time selectors with consistent spacing
+  const renderDateTimeSelectors = (type, index, days, times) => (
+    <Box sx={{ display: "flex", gap: 2, mt: 2, mb: 2, flexWrap: 'wrap' }}>
+      <FormControl size="small" sx={{ minWidth: 120 }}>
+        <InputLabel>Day</InputLabel>
+        <Select
+          value={settings[type][index].day}
+          onChange={(e) => updateReminder(type, index, 'day', e.target.value)}
+          disabled={!settings[type][index].enabled}
+        >
+          {days.map(day => (
+            <MenuItem key={day} value={day}>{day}</MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+      <FormControl size="small" sx={{ minWidth: 120 }}>
+        <InputLabel>Time</InputLabel>
+        <Select
+          value={settings[type][index].time}
+          onChange={(e) => updateReminder(type, index, 'time', e.target.value)}
+          disabled={!settings[type][index].enabled}
+        >
+          {times.map(time => (
+            <MenuItem key={time} value={time}>{time}</MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+    </Box>
+  );
+
   return (
-    <Paper elevation={0} sx={{ p: 3, width: "100%", maxWidth: 1000, mx: "auto" }}>
+    <Paper elevation={0} sx={{ p: 4, width: "100%", maxWidth: 1200, mx: "auto", borderRadius: 3 }}>
       <Button
         startIcon={<ArrowBack />}
-        onClick={() => navigate("/dashboard/timesheets")}
+        onClick={() => navigate("/admin/timesheets")}
         sx={{ mb: 3 }}
       >
         Back to Timesheets
@@ -255,168 +506,110 @@ Chief Executive Officer`
       </Typography>
 
       <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-        Configure automatic reminders and escalation emails for timesheet submission
+        Configure automatic reminders and escalation emails for timesheet submission and approval
       </Typography>
 
-      {/* Employee Reminders */}
+      {/* Employee Reminders Section */}
       <Typography variant="h6" gutterBottom>
         Employee Reminders
       </Typography>
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} md={6}>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={settings.reminder1Enabled}
-                onChange={handleSettingChange("reminder1Enabled")}
-              />
-            }
-            label="First Reminder"
-          />
-          <Box sx={{ display: "flex", gap: 2, mt: 1, ml: 4 }}>
-            <FormControl size="small" sx={{ minWidth: 120 }}>
-              <InputLabel>Day</InputLabel>
-              <Select
-                value={settings.reminder1Day}
-                onChange={(e) => handleTimeChange("reminder1Day", e.target.value)}
-                disabled={!settings.reminder1Enabled}
-              >
-                <MenuItem value="Saturday">Saturday</MenuItem>
-                <MenuItem value="Sunday">Sunday</MenuItem>
-              </Select>
-            </FormControl>
-            <FormControl size="small" sx={{ minWidth: 120 }}>
-              <InputLabel>Time</InputLabel>
-              <Select
-                value={settings.reminder1Time}
-                onChange={(e) => handleTimeChange("reminder1Time", e.target.value)}
-                disabled={!settings.reminder1Enabled}
-              >
-                <MenuItem value="23:59">11:59 PM</MenuItem>
-                <MenuItem value="20:00">8:00 PM</MenuItem>
-                <MenuItem value="18:00">6:00 PM</MenuItem>
-              </Select>
-            </FormControl>
-          </Box>
-        </Grid>
-        <Grid item xs={12} md={6}>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={settings.reminder2Enabled}
-                onChange={handleSettingChange("reminder2Enabled")}
-              />
-            }
-            label="Second Reminder"
-          />
-          <Box sx={{ display: "flex", gap: 2, mt: 1, ml: 4 }}>
-            <FormControl size="small" sx={{ minWidth: 120 }}>
-              <InputLabel>Day</InputLabel>
-              <Select
-                value={settings.reminder2Day}
-                onChange={(e) => handleTimeChange("reminder2Day", e.target.value)}
-                disabled={!settings.reminder2Enabled}
-              >
-                <MenuItem value="Saturday">Saturday</MenuItem>
-                <MenuItem value="Sunday">Sunday</MenuItem>
-              </Select>
-            </FormControl>
-            <FormControl size="small" sx={{ minWidth: 120 }}>
-              <InputLabel>Time</InputLabel>
-              <Select
-                value={settings.reminder2Time}
-                onChange={(e) => handleTimeChange("reminder2Time", e.target.value)}
-                disabled={!settings.reminder2Enabled}
-              >
-                <MenuItem value="23:59">11:59 PM</MenuItem>
-                <MenuItem value="20:00">8:00 PM</MenuItem>
-                <MenuItem value="18:00">6:00 PM</MenuItem>
-              </Select>
-            </FormControl>
-          </Box>
-        </Grid>
+        {settings.employeeReminders.map((reminder, index) => (
+          <Grid item xs={12} md={6} key={`employee-reminder-${index}`}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={reminder.enabled}
+                  onChange={(e) => updateReminder('employeeReminders', index, 'enabled', e.target.checked)}
+                />
+              }
+              label={`Reminder Level ${reminder.level}`}
+            />
+            <Box sx={{ ml: 4 }}>
+              <Box sx={{ display: "flex", gap: 2, flexWrap: 'wrap' }}>
+                {renderCountrySelector(index)}
+                {renderTimezoneSelector(index)}
+              </Box>
+              {renderDateTimeSelectors('employeeReminders', index, ["Saturday", "Sunday"], ["23:59", "20:00", "18:00"])}
+              {renderEmployeeSelector(index)}
+            </Box>
+          </Grid>
+        ))}
       </Grid>
 
-      {/* Supervisor Reminders */}
+      {/* Supervisor Reminders Section */}
       <Typography variant="h6" gutterBottom>
         Supervisor Reminders
       </Typography>
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} md={6}>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={settings.supervisorReminderEnabled}
-                onChange={handleSettingChange("supervisorReminderEnabled")}
-              />
-            }
-            label="Supervisor Reminder"
-          />
-          <Box sx={{ display: "flex", gap: 2, mt: 1, ml: 4 }}>
-            <FormControl size="small" sx={{ minWidth: 120 }}>
-              <InputLabel>Day</InputLabel>
-              <Select
-                value={settings.supervisorReminderDay}
-                onChange={(e) => handleTimeChange("supervisorReminderDay", e.target.value)}
-                disabled={!settings.supervisorReminderEnabled}
-              >
-                <MenuItem value="Monday">Monday</MenuItem>
-                <MenuItem value="Tuesday">Tuesday</MenuItem>
-              </Select>
-            </FormControl>
-            <FormControl size="small" sx={{ minWidth: 120 }}>
-              <InputLabel>Time</InputLabel>
-              <Select
-                value={settings.supervisorReminderTime}
-                onChange={(e) => handleTimeChange("supervisorReminderTime", e.target.value)}
-                disabled={!settings.supervisorReminderEnabled}
-              >
-                <MenuItem value="14:00">2:00 PM</MenuItem>
-                <MenuItem value="12:00">12:00 PM</MenuItem>
-                <MenuItem value="10:00">10:00 AM</MenuItem>
-              </Select>
-            </FormControl>
-          </Box>
-        </Grid>
-        <Grid item xs={12} md={6}>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={settings.hrReminderEnabled}
-                onChange={handleSettingChange("hrReminderEnabled")}
-              />
-            }
-            label="HR Reminder"
-          />
-          <Box sx={{ display: "flex", gap: 2, mt: 1, ml: 4 }}>
-            <FormControl size="small" sx={{ minWidth: 120 }}>
-              <InputLabel>Day</InputLabel>
-              <Select
-                value={settings.hrReminderDay}
-                onChange={(e) => handleTimeChange("hrReminderDay", e.target.value)}
-                disabled={!settings.hrReminderEnabled}
-              >
-                <MenuItem value="Tuesday">Tuesday</MenuItem>
-                <MenuItem value="Wednesday">Wednesday</MenuItem>
-              </Select>
-            </FormControl>
-            <FormControl size="small" sx={{ minWidth: 120 }}>
-              <InputLabel>Time</InputLabel>
-              <Select
-                value={settings.hrReminderTime}
-                onChange={(e) => handleTimeChange("hrReminderTime", e.target.value)}
-                disabled={!settings.hrReminderEnabled}
-              >
-                <MenuItem value="14:00">2:00 PM</MenuItem>
-                <MenuItem value="12:00">12:00 PM</MenuItem>
-                <MenuItem value="10:00">10:00 AM</MenuItem>
-              </Select>
-            </FormControl>
-          </Box>
-        </Grid>
+        {settings.supervisorReminders.map((reminder, index) => (
+          <Grid item xs={12} md={6} key={`supervisor-reminder-${index}`}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={reminder.enabled}
+                  onChange={(e) => updateReminder('supervisorReminders', index, 'enabled', e.target.checked)}
+                />
+              }
+              label={`Supervisor Reminder Level ${reminder.level}`}
+            />
+            <Box sx={{ ml: 4 }}>
+              {renderDateTimeSelectors('supervisorReminders', index, ["Monday", "Tuesday", "Wednesday"], ["14:00", "12:00", "10:00"])}
+              {renderRecipientsSelector('supervisorReminders', index)}
+            </Box>
+          </Grid>
+        ))}
       </Grid>
 
-      {/* Escalation Settings */}
+      {/* HR Reminders Section */}
+      <Typography variant="h6" gutterBottom>
+        HR Reminders
+      </Typography>
+      <Grid container spacing={3} sx={{ mb: 4 }}>
+        {settings.hrReminders.map((reminder, index) => (
+          <Grid item xs={12} md={6} key={`hr-reminder-${index}`}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={reminder.enabled}
+                  onChange={(e) => updateReminder('hrReminders', index, 'enabled', e.target.checked)}
+                />
+              }
+              label={`HR Reminder Level ${reminder.level}`}
+            />
+            <Box sx={{ ml: 4 }}>
+              {renderDateTimeSelectors('hrReminders', index, ["Tuesday", "Wednesday", "Thursday"], ["14:00", "12:00", "10:00"])}
+              {renderRecipientsSelector('hrReminders', index)}
+            </Box>
+          </Grid>
+        ))}
+      </Grid>
+
+      {/* Approval Reminders Section */}
+      <Typography variant="h6" gutterBottom>
+        Timesheet Approval Reminders
+      </Typography>
+      <Grid container spacing={3} sx={{ mb: 4 }}>
+        {settings.approvalReminders.map((reminder, index) => (
+          <Grid item xs={12} md={4} key={`approval-reminder-${index}`}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={reminder.enabled}
+                  onChange={(e) => updateReminder('approvalReminders', index, 'enabled', e.target.checked)}
+                />
+              }
+              label={`Approval Level ${reminder.level}`}
+            />
+            <Box sx={{ ml: 4 }}>
+              {renderDateTimeSelectors('approvalReminders', index, ["Tuesday", "Wednesday", "Friday"], ["12:00", "14:00", "10:00"])}
+              {renderRecipientsSelector('approvalReminders', index)}
+            </Box>
+          </Grid>
+        ))}
+      </Grid>
+
+      {/* Escalation Settings Section */}
       <Typography variant="h6" gutterBottom>
         Escalation Settings
       </Typography>
@@ -431,8 +624,8 @@ Chief Executive Officer`
             }
             label="Enable Escalation"
           />
-          <Box sx={{ display: "flex", gap: 2, mt: 1, ml: 4 }}>
-            <FormControl size="small" sx={{ minWidth: 120 }}>
+          <Box sx={{ display: "flex", gap: 2, mt: 2, ml: 4, flexWrap: 'wrap' }}>
+            <FormControl size="small" sx={{ minWidth: 120, mb: 2 }}>
               <InputLabel>Day</InputLabel>
               <Select
                 value={settings.escalationDay}
@@ -443,7 +636,7 @@ Chief Executive Officer`
                 <MenuItem value="Friday">Friday</MenuItem>
               </Select>
             </FormControl>
-            <FormControl size="small" sx={{ minWidth: 120 }}>
+            <FormControl size="small" sx={{ minWidth: 120, mb: 2 }}>
               <InputLabel>Time</InputLabel>
               <Select
                 value={settings.escalationTime}
@@ -455,11 +648,25 @@ Chief Executive Officer`
                 <MenuItem value="10:00">10:00 AM</MenuItem>
               </Select>
             </FormControl>
+            <FormControl size="small" sx={{ minWidth: 180, mb: 2 }}>
+              <InputLabel>Timezone</InputLabel>
+              <Select
+                value={settings.escalationTimezone}
+                onChange={(e) => handleTimeChange("escalationTimezone", e.target.value)}
+                disabled={!settings.escalationEnabled}
+              >
+                {COUNTRIES.flatMap(country => 
+                  country.timezones.map(tz => (
+                    <MenuItem key={tz} value={tz}>{tz}</MenuItem>
+                  ))
+                )}
+              </Select>
+            </FormControl>
           </Box>
         </Grid>
         <Grid item xs={12}>
           <Typography variant="subtitle1" sx={{ mb: 1 }}>
-            Escalation Recipients
+            Escalation Recipients (CC)
           </Typography>
           
           <FormControl fullWidth size="small" sx={{ mb: 2 }}>
@@ -520,50 +727,23 @@ Chief Executive Officer`
         </Grid>
       </Grid>
 
-      {/* Email Templates Section */}
+      {/* Escalation Email Section */}
       <Typography variant="h6" gutterBottom>
-        Email Templates
+        Send Escalation Email
       </Typography>
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12}>
-          <FormControl fullWidth size="small" sx={{ mb: 2 }}>
-            <InputLabel>Select Template</InputLabel>
-            <Select
-              value={selectedTemplate}
-              onChange={handleTemplateChange}
-              label="Select Template"
-            >
-              <MenuItem value="hr">HR Template</MenuItem>
-              <MenuItem value="supervisor">Supervisor Template</MenuItem>
-              <MenuItem value="manager">Manager Template</MenuItem>
-              <MenuItem value="ceo">CEO Template</MenuItem>
-            </Select>
-          </FormControl>
-          
-          <Paper elevation={2} sx={{ p: 3, backgroundColor: '#f9f9f9', mb: 2 }}>
-            <Typography variant="subtitle2" sx={{ mb: 1 }}>
-              Subject: {emailTemplates[selectedTemplate].subject}
-            </Typography>
-            <Divider sx={{ mb: 2 }} />
-            <Typography variant="body2" whiteSpace="pre-wrap">
-              {emailTemplates[selectedTemplate].body}
-            </Typography>
-          </Paper>
-          
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <Button
-              variant="contained"
-              startIcon={<Send />}
-              onClick={handleSendTestEmail}
-            >
-              Send Test Email
-            </Button>
-          </Box>
-        </Grid>
-      </Grid>
+      <Box sx={{ mb: 4 }}>
+        <Button
+          variant="contained"
+          startIcon={<Send />}
+          onClick={handleSendEscalationEmail}
+          disabled={!settings.escalationEnabled}
+        >
+          Send Escalation Email
+        </Button>
+      </Box>
 
+      {/* Save Settings Button */}
       <Divider sx={{ my: 3 }} />
-
       <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
         <Button
           variant="contained"
@@ -574,15 +754,15 @@ Chief Executive Officer`
         </Button>
       </Box>
 
-      {/* Send Email Dialog */}
+      {/* Send Escalation Email Dialog */}
       <Dialog open={sendDialogOpen} onClose={handleCloseSendDialog} maxWidth="md" fullWidth>
-        <DialogTitle>Send Test Email</DialogTitle>
+        <DialogTitle>Send Escalation Email</DialogTitle>
         <DialogContent>
           <Typography variant="subtitle1" sx={{ mb: 2 }}>
-            Select employees to receive this email:
+            Select employees to escalate:
           </Typography>
           
-          <FormControl fullWidth sx={{ mb: 3 }}>
+          <FormControl fullWidth sx={{ mb: 2 }}>
             <InputLabel>Employees</InputLabel>
             <Select
               multiple
@@ -601,14 +781,40 @@ Chief Executive Officer`
               ))}
             </Select>
           </FormControl>
+
+          <Typography variant="subtitle1" sx={{ mb: 2, mt: 3 }}>
+            Or enter custom email:
+          </Typography>
+          <TextField
+            fullWidth
+            size="small"
+            placeholder="Enter email address"
+            value={customEmail}
+            onChange={(e) => setCustomEmail(e.target.value)}
+            sx={{ mb: 3 }}
+          />
           
           <Paper elevation={2} sx={{ p: 3, backgroundColor: '#f9f9f9' }}>
             <Typography variant="subtitle2" sx={{ mb: 1 }}>
               Email Preview
             </Typography>
             <Divider sx={{ mb: 2 }} />
+            <Typography variant="body2" sx={{ mb: 1 }}>
+              <strong>To:</strong> {selectedEmployees.length > 0 
+                ? EMPLOYEES.find(e => e.id === selectedEmployees[0])?.email || customEmail
+                : customEmail || "No recipient selected"}
+            </Typography>
+            <Typography variant="body2" sx={{ mb: 2 }}>
+              <strong>CC:</strong> {settings.escalationRecipients.join(', ')}
+            </Typography>
             <Typography variant="body2" whiteSpace="pre-wrap">
-              {emailPreview || emailTemplates[selectedTemplate].body}
+              {selectedEmployees.length > 0 || customEmail
+                ? escalationEmailTemplate(
+                    selectedEmployees.length > 0 
+                      ? EMPLOYEES.find(e => e.id === selectedEmployees[0])?.name 
+                      : customEmail.split('@')[0]
+                  )
+                : "Select an employee or enter email to preview"}
             </Typography>
           </Paper>
         </DialogContent>
@@ -617,12 +823,29 @@ Chief Executive Officer`
           <Button 
             variant="contained" 
             onClick={handleSendEmail}
-            disabled={selectedEmployees.length === 0}
+            disabled={selectedEmployees.length === 0 && !customEmail}
+            startIcon={<Send />}
           >
-            Send Email
+            Send Escalation
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={handleSnackbarClose}
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}
+      >
+        <Alert
+          onClose={handleSnackbarClose}
+          severity={snackbar.severity}
+          sx={{ width: "100%" }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Paper>
   );
 };

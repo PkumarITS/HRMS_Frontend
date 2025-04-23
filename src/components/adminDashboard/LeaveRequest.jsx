@@ -92,7 +92,7 @@ const LeaveRequest = () => {
 
   const handleStatusUpdate = async (id, newStatus) => {
     try {
-      await axios.put(`${API_URL}adminuser/leaves/${id}/status`, null, {
+      await axios.put(`${API_URL}/admin/leaves/${id}/status`, null, {
         params: { status: newStatus }
       });
       setSuccess(`Status updated to ${newStatus} successfully!`);
