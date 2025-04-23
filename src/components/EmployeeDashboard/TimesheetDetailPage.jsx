@@ -728,29 +728,34 @@ const TimesheetDetailPage = () => {
           <Visibility fontSize="small" sx={{ mr: 1 }} /> View
         </MenuItem>
         
-        {/* Show Edit only for DRAFT or REJECTED status */}
-        {(selectedEntry?.status === "DRAFT" || selectedEntry?.status === "REJECTED") && (
-          <MenuItem onClick={handleEdit}>
-            <Edit fontSize="small" sx={{ mr: 1 }} /> Edit
-          </MenuItem>
-        )}
+        {/* Only show other actions if status is not SUBMITTED */}
+        {selectedEntry?.status !== "SUBMITTED" && (
+          <>
+            {/* Show Edit only for DRAFT or REJECTED status */}
+            {(selectedEntry?.status === "DRAFT" || selectedEntry?.status === "REJECTED") && (
+              <MenuItem onClick={handleEdit}>
+                <Edit fontSize="small" sx={{ mr: 1 }} /> Edit
+              </MenuItem>
+            )}
 
-        {/* Show Delete for all statuses except APPROVED */}
-        {selectedEntry?.status !== "APPROVED" && (
-          <MenuItem onClick={handleDelete}>
-            <Delete fontSize="small" sx={{ mr: 1 }} /> Delete
-          </MenuItem>
-        )}
+            {/* Show Delete for all statuses except APPROVED */}
+            {selectedEntry?.status !== "APPROVED" && (
+              <MenuItem onClick={handleDelete}>
+                <Delete fontSize="small" sx={{ mr: 1 }} /> Delete
+              </MenuItem>
+            )}
 
-        {/* Show Submit only for DRAFT or REJECTED status */}
-        {(selectedEntry?.status === "DRAFT" || selectedEntry?.status === "REJECTED") && (
-          <MenuItem
-            onClick={handleSubmitEntry}
-            disabled={loading}
-          >
-            <Send fontSize="small" sx={{ mr: 1 }} /> 
-            {loading ? "Submitting..." : "Submit"}
-          </MenuItem>
+            {/* Show Submit only for DRAFT or REJECTED status */}
+            {(selectedEntry?.status === "DRAFT" || selectedEntry?.status === "REJECTED") && (
+              <MenuItem
+                onClick={handleSubmitEntry}
+                disabled={loading}
+              >
+                <Send fontSize="small" sx={{ mr: 1 }} /> 
+                {loading ? "Submitting..." : "Submit"}
+              </MenuItem>
+            )}
+          </>
         )}
       </Menu>
 

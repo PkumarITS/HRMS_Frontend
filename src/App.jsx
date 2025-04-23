@@ -9,7 +9,6 @@ import Dashboard from './components/adminDashboard/Dashboard';
 import EmployeeDashboard from './components/EmployeeDashboard/EmployeeDashboard';
 import Employee from './components/employee/Employee';
 import Profile from './components/Profile';
-import Organization from './components/Organization';
 import AddEmployee from './components/employee/AddEmployee';
 import Leave from './components/Leaves/Leave';
 import Project from './components/Projects/Project';
