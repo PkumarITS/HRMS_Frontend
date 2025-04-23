@@ -2,14 +2,15 @@ import React, { useState, useEffect } from "react";
 import {
   Box, Button, Typography, TextField, Modal, Card, CardContent, CardActions,
   IconButton, Tabs, Tab, MenuItem, Select, InputLabel, FormControl,
-  LinearProgress, Chip, Divider, Tooltip, Badge, CircularProgress,
+  Chip, Divider, Tooltip, Badge, CircularProgress,
   Snackbar, Alert, List, ListItem, ListItemText, ListItemSecondaryAction,
-  Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete
+  Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete, Table,
+  TableBody, TableCell, TableContainer, TableHead, TableRow, Paper
 } from "@mui/material";
 import {
   Edit, Delete, Add, Search, DateRange, AttachMoney, PriorityHigh,
   Notifications, Description, Category, CheckCircle, HourglassEmpty,
-  ThumbUp, People, Assignment
+  People, Assignment, Visibility
 } from "@mui/icons-material";
 import { styled } from "@mui/material/styles";
 import axios from "axios";
@@ -38,13 +39,12 @@ const StyledCard = styled(Card)(({ theme }) => ({
 
 const StatusChip = styled(Chip)(({ status }) => ({
   backgroundColor:
-    status === "COMPLETED" ? "#e8f5e9" :
-    status === "APPROVAL" ? "#fff3e0" : "#e3f2fd",
+    status === "COMPLETED" ? "#e8f5e9" : "#e3f2fd",
   color:
-    status === "COMPLETED" ? "#2e7d32" :
-    status === "APPROVAL" ? "#e65100" : "#1565c0",
+    status === "COMPLETED" ? "#2e7d32" : "#1565c0",
   fontWeight: 600,
-  borderRadius: "8px"
+  borderRadius: "8px",
+  textTransform: 'capitalize'
 }));
 
 const Project = () => {
@@ -66,8 +66,7 @@ const Project = () => {
     priority: "MEDIUM",
     budget: "",
     description: "",
-    status: "STARTED",
-    progress: 0
+    status: "STARTED"
   });
   const [openAssignmentModal, setOpenAssignmentModal] = useState(false);
   const [currentProjectId, setCurrentProjectId] = useState(null);
@@ -86,24 +85,35 @@ const Project = () => {
     message: "",
     severity: "info"
   });
+  const [openViewAssignments, setOpenViewAssignments] = useState(false);
+  const [projectToEdit, setProjectToEdit] = useState(null);
 
   // Event handlers
   const handleSearchChange = (e) => setSearchQuery(e.target.value);
   const handleTabChange = (e, newValue) => setTab(newValue);
   const handleOpenModal = () => setOpenModal(true);
   const handleCloseModal = () => setOpenModal(false);
-  // const handleOpenAssignmentModal = (projectId) => {
-  //   setCurrentProjectId(projectId);
-  //   setOpenAssignmentModal(true);
-  //   // Fetch assignments for this project
-  //   fetchAssignments(projectId);
-  // }
-  // 
-  // ;
+
+  const handleOpenEditProjectModal = (project) => {
+    setProjectToEdit(project);
+    setNewProject({
+      name: project.name,
+      category: project.category,
+      startDate: project.startDate ? project.startDate.split('T')[0] : "",
+      endDate: project.endDate ? project.endDate.split('T')[0] : "",
+      notification: project.notification,
+      priority: project.priority,
+      budget: project.budget,
+      description: project.description,
+      status: project.status
+    });
+    setOpenModal(true);
+  };
+
   const handleOpenAssignmentModal = async (projectId) => {
     setCurrentProjectId(projectId);
     setOpenAssignmentModal(true);
-    await fetchEmployees(); // Fetch all employees initially
+    await fetchEmployees();
     fetchAssignments(projectId);
     setNewAssignment({
       empId: "",
@@ -136,45 +146,31 @@ const Project = () => {
     fetchProjects();
   }, []);
 
+  // Fetch employees with search
+  const fetchEmployees = async (searchQuery = "") => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/admin/employees/search?query=${searchQuery}`);
+      setEmployees(response.data.data);
+      setFilteredEmployees(response.data.data);
+    } catch (error) {
+      console.error("Error fetching employees:", error);
+      setSnackbar({
+        open: true,
+        message: error.response?.data?.message || "Failed to fetch employees",
+        severity: "error"
+      });
+    }
+  };
 
-//   const fetchEmployees = async () => {
-//     try {
-//         const response = await axios.get(`${API_BASE_URL}/admin/employees/all-employees`);
-//         setEmployees(response.data.data);
-//     } catch (error) {
-//         console.error("Error fetching employees:", error);
-//         setSnackbar({
-//             open: true,
-//             message: error.response?.data?.message || "Failed to fetch employees",
-//             severity: "error"
-//         });
-//     }
-// };
-// Fetch employees with search
-const fetchEmployees = async (searchQuery = "") => {
-  try {
-    const response = await axios.get(`${API_BASE_URL}/admin/employees/search?query=${searchQuery}`);
-    setEmployees(response.data.data);
-    setFilteredEmployees(response.data.data);
-  } catch (error) {
-    console.error("Error fetching employees:", error);
-    setSnackbar({
-      open: true,
-      message: error.response?.data?.message || "Failed to fetch employees",
-      severity: "error"
-    });
-  }
-};
-
- // Handle employee search
- const handleEmployeeSearch = async (searchValue) => {
-  setEmployeeSearch(searchValue);
-  if (searchValue.length > 0) {
-    await fetchEmployees(searchValue);
-  } else {
-    setFilteredEmployees(employees);
-  }
-};
+  // Handle employee search
+  const handleEmployeeSearch = async (searchValue) => {
+    setEmployeeSearch(searchValue);
+    if (searchValue.length > 0) {
+      await fetchEmployees(searchValue);
+    } else {
+      setFilteredEmployees(employees);
+    }
+  };
 
   // Fetch assignments for a project
   const fetchAssignments = async (projectId) => {
@@ -190,7 +186,6 @@ const fetchEmployees = async (searchQuery = "") => {
       });
     }
   };
-  
 
   // Create project
   const handleCreateProject = async () => {
@@ -210,20 +205,27 @@ const fetchEmployees = async (searchQuery = "") => {
         endDate: newProject.endDate ? new Date(newProject.endDate).toISOString() : null
       };
 
-      const response = await axios.post(`${API_BASE_URL}/admin/projects/add`, projectToCreate);
-      setProjects([...projects, response.data]);
+      let response;
+      if (projectToEdit) {
+        response = await axios.put(`${API_BASE_URL}/admin/projects/${projectToEdit.id}`, projectToCreate);
+        setProjects(projects.map(p => p.id === projectToEdit.id ? response.data : p));
+      } else {
+        response = await axios.post(`${API_BASE_URL}/admin/projects/add`, projectToCreate);
+        setProjects([...projects, response.data]);
+      }
       
       setSnackbar({
         open: true,
-        message: "Project created successfully",
+        message: `Project ${projectToEdit ? 'updated' : 'created'} successfully`,
         severity: "success"
       });
       handleCloseModal();
+      setProjectToEdit(null);
     } catch (error) {
       console.error("Error creating project:", error);
       setSnackbar({
         open: true,
-        message: error.response?.data?.message || "Failed to create project",
+        message: error.response?.data?.message || `Failed to ${projectToEdit ? 'update' : 'create'} project`,
         severity: "error"
       });
     }
@@ -254,10 +256,15 @@ const fetchEmployees = async (searchQuery = "") => {
   // Update project status
   const handleStatusChange = async (id, newStatus) => {
     try {
-      const response = await axios.patch(`${API_BASE_URL}/admin/projects/${id}/status`, { status: newStatus });
+      const response = await axios.patch(
+        `${API_BASE_URL}/admin/projects/${id}/status`,
+        newStatus,
+        { headers: { 'Content-Type': 'text/plain' } }
+      );
       setProjects(projects.map((project) =>
         project.id === id ? response.data : project
       ));
+        
       setSnackbar({
         open: true,
         message: "Status updated successfully",
@@ -281,43 +288,6 @@ const fetchEmployees = async (searchQuery = "") => {
       [name]: value
     }));
   };
-
-  // const handleCreateAssignment = async () => {
-  //   if (!newAssignment.empId || !newAssignment.empName) {
-  //     setSnackbar({
-  //       open: true,
-  //       message: "Please fill out all required fields",
-  //       severity: "warning"
-  //     });
-  //     return;
-  //   }
-
-  //   try {
-  //     const assignmentToCreate = {
-  //       ...newAssignment,
-  //       projectId: currentProjectId
-  //     };
-  //     const response = await axios.post(`${API_BASE_URL}/assignments`, assignmentToCreate);
-  //     setAssignments([...assignments, response.data]);
-  //     setNewAssignment({
-  //       empId: "",
-  //       empName: "",
-  //       projectId: currentProjectId
-  //     });
-  //     setSnackbar({
-  //       open: true,
-  //       message: "Assignment created successfully",
-  //       severity: "success"
-  //     });
-  //   } catch (error) {
-  //     console.error("Error creating assignment:", error);
-  //     setSnackbar({
-  //       open: true,
-  //       message: error.response?.data?.message || "Failed to create assignment",
-  //       severity: "error"
-  //     });
-  //   }
-  // };
 
   const handleCreateAssignment = async () => {
     if (!newAssignment.empId) {
@@ -351,7 +321,7 @@ const fetchEmployees = async (searchQuery = "") => {
             severity: "error"
         });
     }
-};
+  };
 
   const handleOpenDeleteDialog = (assignment) => {
     setAssignmentToDelete(assignment);
@@ -439,8 +409,6 @@ const fetchEmployees = async (searchQuery = "") => {
     switch (status) {
       case "COMPLETED":
         return <CheckCircle fontSize="small" />;
-      case "APPROVAL":
-        return <ThumbUp fontSize="small" />;
       default:
         return <HourglassEmpty fontSize="small" />;
     }
@@ -454,6 +422,12 @@ const fetchEmployees = async (searchQuery = "") => {
 
   const handleCloseSnackbar = () => {
     setSnackbar(prev => ({ ...prev, open: false }));
+  };
+
+  const handleViewAssignments = (projectId) => {
+    setCurrentProjectId(projectId);
+    fetchAssignments(projectId);
+    setOpenViewAssignments(true);
   };
 
   if (loading) {
@@ -472,8 +446,7 @@ const fetchEmployees = async (searchQuery = "") => {
   }
 
   return (
-    
-      <Box sx={{ p: 3, backgroundColor: "#f8fafc", minHeight: "100vh" }}>
+    <Box sx={{ p: 3, backgroundColor: "#f8fafc", minHeight: "100vh" }}>
       <Typography variant="h4" gutterBottom sx={{ fontWeight: 700 }}>
         Project Dashboard
       </Typography>
@@ -491,7 +464,21 @@ const fetchEmployees = async (searchQuery = "") => {
         <Button
           variant="contained"
           color="primary"
-          onClick={handleOpenModal}
+          onClick={() => {
+            setProjectToEdit(null);
+            setNewProject({
+              name: "",
+              category: "",
+              startDate: "",
+              endDate: "",
+              notification: "TEAM_ONLY",
+              priority: "MEDIUM",
+              budget: "",
+              description: "",
+              status: "STARTED"
+            });
+            handleOpenModal();
+          }}
           startIcon={<Add />}
           sx={{
             borderRadius: "10px",
@@ -555,20 +542,6 @@ const fetchEmployees = async (searchQuery = "") => {
             </Box>
           }
           value="STARTED"
-          sx={{ borderRadius: "8px", textTransform: "none" }}
-        />
-        <Tab
-          label={
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <ThumbUp fontSize="small" />
-              Approval
-              <Badge
-                badgeContent={projects.filter((p) => p.status === "APPROVAL").length}
-                color="primary"
-              />
-            </Box>
-          }
-          value="APPROVAL"
           sx={{ borderRadius: "8px", textTransform: "none" }}
         />
         <Tab
@@ -675,31 +648,6 @@ const fetchEmployees = async (searchQuery = "") => {
                   />
                 </Box>
 
-                <Box sx={{ my: 2 }}>
-                  <LinearProgress
-                    variant="determinate"
-                    value={project.progress}
-                    sx={{
-                      height: 8,
-                      borderRadius: 4
-                    }}
-                  />
-                  <Box
-                    sx={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      mt: 0.5
-                    }}
-                  >
-                    <Typography variant="caption" color="text.secondary">
-                      Progress
-                    </Typography>
-                    <Typography variant="caption" sx={{ fontWeight: 600 }}>
-                      {project.progress}%
-                    </Typography>
-                  </Box>
-                </Box>
-
                 <Divider sx={{ my: 2 }} />
 
                 <Box
@@ -737,12 +685,20 @@ const fetchEmployees = async (searchQuery = "") => {
                     }}
                   >
                     <MenuItem value="STARTED">Started</MenuItem>
-                    <MenuItem value="APPROVAL">Approval</MenuItem>
                     <MenuItem value="COMPLETED">Completed</MenuItem>
                   </Select>
                 </Box>
                 <Box>
-                  <Tooltip title="Assign to Employee">
+                  <Tooltip title="View Assignments">
+                    <IconButton
+                      size="small"
+                      color="primary"
+                      onClick={() => handleViewAssignments(project.id)}
+                    >
+                      <Visibility fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Assign Employee">
                     <IconButton
                       size="small"
                       color="primary"
@@ -752,7 +708,11 @@ const fetchEmployees = async (searchQuery = "") => {
                     </IconButton>
                   </Tooltip>
                   <Tooltip title="Edit">
-                    <IconButton size="small" color="primary">
+                    <IconButton 
+                      size="small" 
+                      color="primary"
+                      onClick={() => handleOpenEditProjectModal(project)}
+                    >
                       <Edit fontSize="small" />
                     </IconButton>
                   </Tooltip>
@@ -772,6 +732,7 @@ const fetchEmployees = async (searchQuery = "") => {
         </Box>
       )}
 
+      {/* Create/Edit Project Modal */}
       <Modal open={openModal} onClose={handleCloseModal}>
         <Box
           sx={{
@@ -788,7 +749,7 @@ const fetchEmployees = async (searchQuery = "") => {
           }}
         >
           <Typography variant="h5" gutterBottom sx={{ fontWeight: 600 }}>
-            Create New Project
+            {projectToEdit ? "Edit Project" : "Create New Project"}
           </Typography>
 
           <Box sx={{ mb: 3 }}>
@@ -901,7 +862,7 @@ const fetchEmployees = async (searchQuery = "") => {
             }}
           >
             <Button variant="contained" color="primary" onClick={handleCreateProject}>
-              Create
+              {projectToEdit ? "Update" : "Create"}
             </Button>
             <Button variant="outlined" color="secondary" onClick={handleCloseModal}>
               Cancel
@@ -910,11 +871,10 @@ const fetchEmployees = async (searchQuery = "") => {
         </Box>
       </Modal>
 
-     
-
-      {/* <Modal open={openAssignmentModal} onClose={handleCloseAssignmentModal}>
-    <Box
-        sx={{
+      {/* Assignment Modal */}
+      <Modal open={openAssignmentModal} onClose={handleCloseAssignmentModal}>
+        <Box
+          sx={{
             width: { xs: "90%", sm: "70%", md: "50%" },
             maxWidth: "600px",
             maxHeight: "90vh",
@@ -925,242 +885,163 @@ const fetchEmployees = async (searchQuery = "") => {
             mx: "auto",
             my: "5vh",
             boxShadow: 24
-        }}
-    >
-        <Typography variant="h5" gutterBottom sx={{ fontWeight: 600 }}>
+          }}
+        >
+          <Typography variant="h5" gutterBottom sx={{ fontWeight: 600 }}>
             Assign Project to Employee
-        </Typography>
+          </Typography>
 
-        <Box sx={{ mb: 3 }}>
-            <TextField
-                fullWidth
-                label="Search Employee"
-                value={employeeSearch}
-                onChange={(e) => setEmployeeSearch(e.target.value)}
-                sx={{ mb: 2 }}
-                InputProps={{
-                    startAdornment: <Search fontSize="small" />
-                }}
+          <Box sx={{ mb: 3 }}>
+            <Autocomplete
+              freeSolo
+              options={filteredEmployees}
+              getOptionLabel={(option) => 
+                `${option.empId} - ${option.name}` || ""
+              }
+              inputValue={employeeSearch}
+              onInputChange={(event, newInputValue) => {
+                handleEmployeeSearch(newInputValue);
+              }}
+              onChange={(event, newValue) => {
+                if (newValue) {
+                  setNewAssignment({
+                    empId: newValue.empId,
+                    empName: newValue.name,
+                    projectId: currentProjectId
+                  });
+                }
+              }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Search Employee"
+                  variant="outlined"
+                  fullWidth
+                  sx={{ mb: 2 }}
+                  InputProps={{
+                    ...params.InputProps,
+                    startAdornment: <Search sx={{ mr: 1 }} />
+                  }}
+                />
+              )}
+              renderOption={(props, option) => (
+                <li {...props}>
+                  <Box sx={{ display: "flex", flexDirection: "column" }}>
+                    <Typography>{option.empId}</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {option.name}
+                    </Typography>
+                  </Box>
+                </li>
+              )}
             />
 
-            <FormControl fullWidth sx={{ mb: 2 }}>
-                <InputLabel>Select Employee</InputLabel>
-                <Select
-                    label="Select Employee"
-                    value={newAssignment.empId}
-                    onChange={(e) => {
-                        const selectedEmp = employees.find(emp => emp.empId === e.target.value);
-                        setNewAssignment({
-                            empId: e.target.value,
-                            empName: selectedEmp ? selectedEmp.name : "",
-                            projectId: currentProjectId
-                        });
-                    }}
-                >
-                    {employees
-                        .filter(emp => 
-                            emp.empId.toLowerCase().includes(employeeSearch.toLowerCase()) ||
-                            emp.name.toLowerCase().includes(employeeSearch.toLowerCase())
-                        )
-                        .map((employee) => (
-                            <MenuItem key={employee.empId} value={employee.empId}>
-                                <Box sx={{ display: "flex", justifyContent: "space-between", width: "100%" }}>
-                                    <Typography>{employee.empId}</Typography>
-                                    <Typography sx={{ ml: 2, color: "text.secondary" }}>
-                                        {employee.name}
-                                    </Typography>
-                                </Box>
-                            </MenuItem>
-                        ))}
-                </Select>
-            </FormControl>
-
             <Button
-                variant="contained"
-                color="primary"
-                onClick={handleCreateAssignment}
-                startIcon={<Assignment />}
-                sx={{ mb: 3 }}
-                disabled={!newAssignment.empId}
+              variant="contained"
+              color="primary"
+              onClick={handleCreateAssignment}
+              startIcon={<Assignment />}
+              sx={{ mb: 3 }}
+              disabled={!newAssignment.empId}
             >
-                Assign
+              Assign
             </Button>
 
             <Typography variant="h6" sx={{ mb: 2 }}>
-                Current Assignments
+              Current Assignments
             </Typography>
             {assignments.length === 0 ? (
-                <Typography variant="body2" color="text.secondary">
-                    No employees assigned to this project yet.
-                </Typography>
+              <Typography variant="body2" color="text.secondary">
+                No employees assigned to this project yet.
+              </Typography>
             ) : (
-                <List>
-                    {assignments.map((assignment) => (
-                        <ListItem key={assignment.id}>
-                            <ListItemText
-                                primary={assignment.empName}
-                                secondary={`Employee ID: ${assignment.empId}`}
-                            />
-                            <ListItemSecondaryAction>
-                                <IconButton
-                                    edge="end"
-                                    onClick={() => handleOpenEditModal(assignment)}
-                                >
-                                    <Edit fontSize="small" />
-                                </IconButton>
-                                <IconButton
-                                    edge="end"
-                                    onClick={() => handleOpenDeleteDialog(assignment)}
-                                >
-                                    <Delete fontSize="small" color="error" />
-                                </IconButton>
-                            </ListItemSecondaryAction>
-                        </ListItem>
-                    ))}
-                </List>
+              <List>
+                {assignments.map((assignment) => (
+                  <ListItem key={assignment.id}>
+                    <ListItemText
+                      primary={assignment.empName}
+                      secondary={`Employee ID: ${assignment.empId}`}
+                    />
+                    <ListItemSecondaryAction>
+                      <IconButton
+                        edge="end"
+                        onClick={() => handleOpenEditModal(assignment)}
+                      >
+                        <Edit fontSize="small" />
+                      </IconButton>
+                      <IconButton
+                        edge="end"
+                        onClick={() => handleOpenDeleteDialog(assignment)}
+                      >
+                        <Delete fontSize="small" color="error" />
+                      </IconButton>
+                    </ListItemSecondaryAction>
+                  </ListItem>
+                ))}
+              </List>
             )}
-        </Box>
+          </Box>
 
-        <Box
+          <Box
             sx={{
-                display: "flex",
-                justifyContent: "flex-end"
+              display: "flex",
+              justifyContent: "flex-end"
             }}
-        >
-            <Button variant="outlined" color="secondary" onClick={handleCloseAssignmentModal}>
-                Close
-            </Button>
-        </Box>
-    </Box>
-</Modal> */}
-
-
-
-const assignmentModal = (
-<Modal open={openAssignmentModal} onClose={handleCloseAssignmentModal}>
-      <Box
-        sx={{
-          width: { xs: "90%", sm: "70%", md: "50%" },
-          maxWidth: "600px",
-          maxHeight: "90vh",
-          overflowY: "auto",
-          backgroundColor: "white",
-          p: 4,
-          borderRadius: "16px",
-          mx: "auto",
-          my: "5vh",
-          boxShadow: 24
-        }}
-      >
-        <Typography variant="h5" gutterBottom sx={{ fontWeight: 600 }}>
-          Assign Project to Employee
-        </Typography>
-
-        <Box sx={{ mb: 3 }}>
-          <Autocomplete
-            freeSolo
-            options={filteredEmployees}
-            getOptionLabel={(option) => 
-              `${option.empId} - ${option.name}` || ""
-            }
-            inputValue={employeeSearch}
-            onInputChange={(event, newInputValue) => {
-              handleEmployeeSearch(newInputValue);
-            }}
-            onChange={(event, newValue) => {
-              if (newValue) {
-                setNewAssignment({
-                  empId: newValue.empId,
-                  empName: newValue.name,
-                  projectId: currentProjectId
-                });
-              }
-            }}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label="Search Employee"
-                variant="outlined"
-                fullWidth
-                sx={{ mb: 2 }}
-                InputProps={{
-                  ...params.InputProps,
-                  startAdornment: <Search sx={{ mr: 1 }} />
-                }}
-              />
-            )}
-            renderOption={(props, option) => (
-              <li {...props}>
-                <Box sx={{ display: "flex", flexDirection: "column" }}>
-                  <Typography>{option.empId}</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {option.name}
-                  </Typography>
-                </Box>
-              </li>
-            )}
-          />
-
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleCreateAssignment}
-            startIcon={<Assignment />}
-            sx={{ mb: 3 }}
-            disabled={!newAssignment.empId}
           >
-            Assign
-          </Button>
-
-          <Typography variant="h6" sx={{ mb: 2 }}>
-            Current Assignments
-          </Typography>
-          {assignments.length === 0 ? (
-            <Typography variant="body2" color="text.secondary">
-              No employees assigned to this project yet.
-            </Typography>
-          ) : (
-            <List>
-              {assignments.map((assignment) => (
-                <ListItem key={assignment.id}>
-                  <ListItemText
-                    primary={assignment.empName}
-                    secondary={`Employee ID: ${assignment.empId}`}
-                  />
-                  <ListItemSecondaryAction>
-                    <IconButton
-                      edge="end"
-                      onClick={() => handleOpenEditModal(assignment)}
-                    >
-                      <Edit fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                      edge="end"
-                      onClick={() => handleOpenDeleteDialog(assignment)}
-                    >
-                      <Delete fontSize="small" color="error" />
-                    </IconButton>
-                  </ListItemSecondaryAction>
-                </ListItem>
-              ))}
-            </List>
-          )}
+            <Button variant="outlined" color="secondary" onClick={handleCloseAssignmentModal}>
+              Close
+            </Button>
+          </Box>
         </Box>
+      </Modal>
 
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "flex-end"
-          }}
-        >
-          <Button variant="outlined" color="secondary" onClick={handleCloseAssignmentModal}>
-            Close
-          </Button>
-        </Box>
-      </Box>
-    </Modal>
-  );
+      {/* View Assignments Dialog */}
+      <Dialog 
+        open={openViewAssignments} 
+        onClose={() => setOpenViewAssignments(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>Assigned Employees</DialogTitle>
+        <DialogContent>
+          <TableContainer component={Paper}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Employee ID</TableCell>
+                  <TableCell>Name</TableCell>
+                  <TableCell>Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {assignments.map((assignment) => (
+                  <TableRow key={assignment.id}>
+                    <TableCell>{assignment.empId}</TableCell>
+                    <TableCell>{assignment.empName}</TableCell>
+                    <TableCell>
+                      <IconButton
+                        onClick={() => handleOpenEditModal(assignment)}
+                      >
+                        <Edit fontSize="small" />
+                      </IconButton>
+                      <IconButton
+                        onClick={() => handleOpenDeleteDialog(assignment)}
+                      >
+                        <Delete fontSize="small" color="error" />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenViewAssignments(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
 
+      {/* Edit Assignment Dialog */}
       <Dialog open={openEditModal} onClose={handleCloseEditModal}>
         <DialogTitle>Edit Assignment</DialogTitle>
         <DialogContent>
@@ -1201,6 +1082,7 @@ const assignmentModal = (
         </DialogActions>
       </Dialog>
 
+      {/* Delete Assignment Dialog */}
       <Dialog open={openDeleteDialog} onClose={handleCloseDeleteDialog}>
         <DialogTitle>Confirm Delete</DialogTitle>
         <DialogContent>

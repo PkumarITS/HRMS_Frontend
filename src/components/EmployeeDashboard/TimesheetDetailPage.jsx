@@ -49,6 +49,8 @@ import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import Cookies from "js-cookie";
 
+
+
 const API_BASE_URL = "http://localhost:1010";
 
 const TimesheetDetailPage = () => {
@@ -60,11 +62,11 @@ const TimesheetDetailPage = () => {
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [notificationAnchor, setNotificationAnchor] = useState(null);
-  const [notifications] = useState([
-    "Timesheet submission reminder",
-    "New project assigned",
-    "System maintenance scheduled",
-  ]);
+
+
+  const [notificationAnchorEl, setNotificationAnchorEl] = useState(null);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [loading, setLoading] = useState(false);
@@ -224,18 +226,18 @@ const TimesheetDetailPage = () => {
       const response = await axios.put(
         `${API_BASE_URL}/user/timesheet/${selectedEntry.id}/submit`
       );
-      
+
       setRefreshTrigger(prev => prev + 1);
       setSnackbar({
         open: true,
         message: "Timesheet submitted successfully",
         severity: "success",
       });
-      
-      setEntries(prevEntries => 
-        prevEntries.map(entry => 
-          entry.id === selectedEntry.id 
-            ? { ...entry, status: "SUBMITTED" } 
+
+      setEntries(prevEntries =>
+        prevEntries.map(entry =>
+          entry.id === selectedEntry.id
+            ? { ...entry, status: "SUBMITTED" }
             : entry
         )
       );
@@ -307,13 +309,13 @@ const TimesheetDetailPage = () => {
     return total + entry.hours.reduce((sum, hour) => sum + hour, 0);
   }, 0);
 
-  const handleNotificationClick = (event) => {
-    setNotificationAnchor(event.currentTarget);
-  };
+  // const handleNotificationClick = (event) => {
+  //   setNotificationAnchor(event.currentTarget);
+  // };
 
-  const handleNotificationClose = () => {
-    setNotificationAnchor(null);
-  };
+  // const handleNotificationClose = () => {
+  //   setNotificationAnchor(null);
+  // };
 
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
@@ -323,6 +325,15 @@ const TimesheetDetailPage = () => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   };
+
+  // Add this useEffect to load notifications on component mount
+  useEffect(() => {
+    fetchNotifications();
+
+    // Poll for new notifications every 30 seconds
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const getStatusIcon = (status) => {
     switch (status) {
@@ -340,6 +351,45 @@ const TimesheetDetailPage = () => {
         return <Drafts color="action" fontSize="small" />;
     }
   };
+
+
+  // Add these functions
+  const fetchNotifications = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/notifications/unread`);
+      setNotifications(response.data);
+      setUnreadCount(response.data.length);
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+    }
+  };
+
+  const handleNotificationClick = (event) => {
+    setNotificationAnchorEl(event.currentTarget);
+  };
+
+  const handleNotificationClose = () => {
+    setNotificationAnchorEl(null);
+  };
+
+  const markAsRead = async (notificationId) => {
+    try {
+      await axios.post(`${API_BASE_URL}/api/notifications/mark-as-read/${notificationId}`);
+      fetchNotifications(); // Refresh notifications
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+    }
+  };
+
+  const markAllAsRead = async () => {
+    try {
+      await axios.post(`${API_BASE_URL}/api/notifications/mark-all-read`);
+      fetchNotifications(); // Refresh notifications
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+    }
+  };
+
 
   const handleCloseSnackbar = () => {
     setSnackbar({ ...snackbar, open: false });
@@ -406,8 +456,17 @@ const TimesheetDetailPage = () => {
                 variant="outlined"
               />
 
-              <IconButton onClick={handleNotificationClick} disabled={loading}>
+              {/* <IconButton onClick={handleNotificationClick} disabled={loading}>
                 <Badge badgeContent={notifications.length} color="error">
+                  <Notifications />
+                </Badge>
+              </IconButton> */}
+              <IconButton
+                onClick={handleNotificationClick}
+                disabled={loading}
+                sx={{ mr: 1 }}
+              >
+                <Badge badgeContent={unreadCount} color="error">
                   <Notifications />
                 </Badge>
               </IconButton>
@@ -421,7 +480,7 @@ const TimesheetDetailPage = () => {
           </Grid>
         </Grid>
 
-        <Menu
+        {/* <Menu
           anchorEl={notificationAnchor}
           open={Boolean(notificationAnchor)}
           onClose={handleNotificationClose}
@@ -434,6 +493,56 @@ const TimesheetDetailPage = () => {
             ))
           ) : (
             <MenuItem onClick={handleNotificationClose}>No notifications</MenuItem>
+          )}
+        </Menu> */}
+        <Menu
+          anchorEl={notificationAnchorEl}
+          open={Boolean(notificationAnchorEl)}
+          onClose={handleNotificationClose}
+        >
+          <MenuItem
+            onClick={() => {
+              markAllAsRead();
+              handleNotificationClose();
+            }}
+            disabled={notifications.length === 0}
+          >
+            Mark all as read
+          </MenuItem>
+          <Divider />
+          {notifications.length > 0 ? (
+            notifications.map((notification) => (
+              <MenuItem
+                key={notification.id}
+                onClick={() => {
+                  markAsRead(notification.id);
+                  // Optionally navigate to relevant timesheet
+                  if (notification.timesheetId) {
+                    navigate(`/user/employee-dashboard/timesheet-view`, {
+                      state: { entry: { timesheetId: notification.timesheetId } }
+                    });
+                  }
+                  handleNotificationClose();
+                }}
+                sx={{
+                  backgroundColor: notification.isRead ? 'inherit' : '#f5f5f5',
+                  maxWidth: 300,
+                  whiteSpace: 'normal'
+                }}
+              >
+                <Typography variant="body2">
+                  {notification.message}
+                  <br />
+                  <Typography variant="caption" color="text.secondary">
+                    {format(parseISO(notification.createdAt), "MMM dd, h:mm a")}
+                  </Typography>
+                </Typography>
+              </MenuItem>
+            ))
+          ) : (
+            <MenuItem disabled>
+              No new notifications
+            </MenuItem>
           )}
         </Menu>
 
@@ -604,15 +713,15 @@ const TimesheetDetailPage = () => {
                                 hover
                                 selected={selectedEntry?.id === entry.id}
                                 onClick={() => setSelectedEntry(entry)}
-                                sx={{ 
+                                sx={{
                                   cursor: "pointer",
-                                  backgroundColor: 
-                                    entry.status === "SUBMITTED" ? "#f5f5f5" : 
-                                    entry.status === "APPROVED" ? "#e8f5e9" :
-                                    entry.status === "REJECTED" ? "#ffebee" : "inherit",
-                                  opacity: 
-                                    entry.status === "SUBMITTED" || 
-                                    entry.status === "APPROVED" ? 0.8 : 1
+                                  backgroundColor:
+                                    entry.status === "SUBMITTED" ? "#f5f5f5" :
+                                      entry.status === "APPROVED" ? "#e8f5e9" :
+                                        entry.status === "REJECTED" ? "#ffebee" : "inherit",
+                                  opacity:
+                                    entry.status === "SUBMITTED" ||
+                                      entry.status === "APPROVED" ? 0.8 : 1
                                 }}
                               >
                                 <TableCell>
@@ -727,7 +836,7 @@ const TimesheetDetailPage = () => {
         <MenuItem onClick={handleView}>
           <Visibility fontSize="small" sx={{ mr: 1 }} /> View
         </MenuItem>
-        
+
         {/* Only show other actions if status is not SUBMITTED */}
         {selectedEntry?.status !== "SUBMITTED" && (
           <>
@@ -751,7 +860,7 @@ const TimesheetDetailPage = () => {
                 onClick={handleSubmitEntry}
                 disabled={loading}
               >
-                <Send fontSize="small" sx={{ mr: 1 }} /> 
+                <Send fontSize="small" sx={{ mr: 1 }} />
                 {loading ? "Submitting..." : "Submit"}
               </MenuItem>
             )}

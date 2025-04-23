@@ -7,7 +7,6 @@ import {
   CardContent,
   Tabs,
   Tab,
-  LinearProgress,
   Chip,
   Divider,
   CircularProgress,
@@ -25,7 +24,6 @@ import {
   Category,
   CheckCircle,
   HourglassEmpty,
-  ThumbUp,
   People,
   Work
 } from "@mui/icons-material";
@@ -57,11 +55,9 @@ const StyledCard = styled(Card)({
 
 const StatusChip = styled(Chip)(({ status, theme }) => ({
   backgroundColor:
-    status === "COMPLETED" ? "#e8f5e9" :
-    status === "APPROVAL" ? "#fff3e0" : "#e3f2fd",
+    status === "COMPLETED" ? "#e8f5e9" : "#e3f2fd",
   color:
-    status === "COMPLETED" ? "#2e7d32" :
-    status === "APPROVAL" ? "#e65100" : "#1565c0",
+    status === "COMPLETED" ? "#2e7d32" : "#1565c0",
   fontWeight: 600,
   borderRadius: "8px"
 }));
@@ -85,17 +81,8 @@ const MyProject = () => {
       try {
         setLoading(true);
         
-        // Get current employee info
-    //     const empResponse = await axios.get(`${API_BASE_URL}/employees/me`);
-    //    setCurrentEmployee(empResponse.data);
-        
         // Get projects assigned to this employee
-        const projectsResponse = await axios.get(`${API_BASE_URL}/user/projects/by-emp`, {
-         // params: {
-         //   status: tab === "ALL" ? undefined : tab,
-         //   search: searchQuery || undefined
-         // }
-        });
+        const projectsResponse = await axios.get(`${API_BASE_URL}/user/projects/by-emp`);
         
         // Transform the data to match our frontend structure
         const transformedProjects = projectsResponse.data.map(project => ({
@@ -105,10 +92,8 @@ const MyProject = () => {
           startDate: project.startDate,
           endDate: project.endDate,
           status: project.status,
-          progress: project.progress || 0,
           // Get team members from assignedEmployeeNames
           teamMembers: project.assignedEmployeeNames?.map((name, index) => ({
-            empId: project.assignments?.[index]?.empId || `temp-${index}`,
             empName: name
           })) || []
         }));
@@ -144,7 +129,6 @@ const MyProject = () => {
   const getStatusIcon = (status) => {
     switch (status) {
       case "COMPLETED": return <CheckCircle fontSize="small" />;
-      case "APPROVAL": return <ThumbUp fontSize="small" />;
       default: return <HourglassEmpty fontSize="small" />;
     }
   };
@@ -234,20 +218,6 @@ const MyProject = () => {
         <Tab
           label={
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <ThumbUp fontSize="small" />
-              Approval
-              <Badge
-                badgeContent={projects.filter(p => p.status === "APPROVAL").length}
-                color="primary"
-              />
-            </Box>
-          }
-          value="APPROVAL"
-          sx={{ borderRadius: "8px", textTransform: "none" }}
-        />
-        <Tab
-          label={
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               <CheckCircle fontSize="small" />
               Completed
               <Badge
@@ -293,9 +263,9 @@ const MyProject = () => {
                 <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
                   <Typography variant="h6" sx={{ fontWeight: 600 }}>
                     {project.name}
-                    <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                    {/* <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
                       #{project.id}
-                    </Typography>
+                    </Typography> */}
                   </Typography>
                   <StatusChip
                     label={project.status.toLowerCase()}
@@ -314,22 +284,6 @@ const MyProject = () => {
                   {formatDate(project.startDate)} - {formatDate(project.endDate)}
                 </Typography>
 
-                <Box sx={{ my: 2 }}>
-                  <LinearProgress
-                    variant="determinate"
-                    value={project.progress || 0}
-                    sx={{ height: 8, borderRadius: 4 }}
-                  />
-                  <Box sx={{ display: "flex", justifyContent: "space-between", mt: 0.5 }}>
-                    <Typography variant="caption" color="text.secondary">
-                      Progress
-                    </Typography>
-                    <Typography variant="caption" sx={{ fontWeight: 600 }}>
-                      {project.progress || 0}%
-                    </Typography>
-                  </Box>
-                </Box>
-
                 <Divider sx={{ my: 2 }} />
 
                 <Typography variant="subtitle2" sx={{ mb: 1 }}>
@@ -340,7 +294,7 @@ const MyProject = () => {
                 {project.teamMembers?.length > 0 ? (
                   <List dense sx={{ py: 0, maxHeight: 150, overflow: "auto" }}>
                     {project.teamMembers.map((member, index) => (
-                      <ListItem key={`${member.empId}-${index}`} sx={{ px: 0 }}>
+                      <ListItem key={index} sx={{ px: 0 }}>
                         <ListItemAvatar>
                           <Avatar sx={{ width: 32, height: 32, fontSize: 14 }}>
                             {member.empName?.split(" ").map(n => n[0]).join("") || "?"}
@@ -348,8 +302,6 @@ const MyProject = () => {
                         </ListItemAvatar>
                         <ListItemText
                           primary={member.empName || "Unknown member"}
-                          secondary={`ID: ${member.empId || "N/A"}`}
-                          secondaryTypographyProps={{ variant: "caption" }}
                         />
                         {member.empId === currentEmployee?.employeeId && (
                           <Chip label="You" size="small" sx={{ ml: 1, backgroundColor: "#e3f2fd" }} />

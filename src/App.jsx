@@ -33,6 +33,7 @@ import HolidayUser from './components/Leaves/HolidayUser';
 import UserAttendance from './components/EmployeeDashboard/UserAttendence';
 import AdminAttendance from './components/adminDashboard/AdminAttendance';
 import ForgetPassword from './components/ForgetPassword';
+import ResetPassword from './components/ResetPassword';
 
 function App() {
   return (
@@ -42,6 +43,8 @@ function App() {
           {/* Public Routes */}
           <Route path="/" element={<LoginPage />} />
           <Route path="/forgot-password" element={<ForgetPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+
           
 
           {/* Admin Routes */}

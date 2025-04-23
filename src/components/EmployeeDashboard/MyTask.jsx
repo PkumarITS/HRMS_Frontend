@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
 import {
-  Box, Typography, Card, CardContent, CardActions,
-  IconButton, Tabs, Tab, LinearProgress, Chip, Divider, 
-  Tooltip, Badge, CircularProgress, Avatar, Button
+  Box, Typography, Card, CardContent,
+  IconButton, Tabs, Tab, Chip, Divider, 
+  Badge, CircularProgress, Avatar
 } from "@mui/material";
 import {
-  Edit, Delete, DateRange, PriorityHigh, 
+  DateRange, PriorityHigh, 
   Description, Category, CheckCircle, HourglassEmpty, 
   ThumbUp, Person, Assignment, CalendarToday, Alarm
 } from "@mui/icons-material";
@@ -64,37 +64,21 @@ const MyTask = () => {
       try {
         const response = await axios.get(`${API_BASE_URL}/users/tasks`);
         setTasks(response.data);
-        setLoading(false);
       } catch (error) {
         console.error("Error fetching user tasks:", error);
+      } finally {
         setLoading(false);
       }
     };
+  
     fetchMyTasks();
-  }, []);
+  }, [tab]); // ✅ Re-fetches every time the tab changes
+  
+  
+    
 
   const handleTabChange = (event, newTab) => {
     setTab(newTab);
-  };
-
-  const handleStatusChange = async (id, newStatus) => {
-    try {
-      const response = await axios.patch(`${API_BASE_URL}/adminuser/tasks/${id}/status`, {
-        status: newStatus
-      });
-      setTasks(
-        tasks.map((task) =>
-          task.id === id ? response.data : task
-        )
-      );
-    } catch (error) {
-      console.error("Error updating status:", error);
-    }
-  };
-
-  const handleTaskCompletion = async (id, isCompleted) => {
-    const newStatus = isCompleted ? "COMPLETED" : "TODO";
-    await handleStatusChange(id, newStatus);
   };
 
   const filteredTasks = tasks.filter(
@@ -333,37 +317,6 @@ const MyTask = () => {
                   </Box>
                 </Box>
               </CardContent>
-              <CardActions
-                sx={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  px: 2,
-                  pb: 2
-                }}
-              >
-                <Button
-                  size="small"
-                  variant={task.status === "COMPLETED" ? "contained" : "outlined"}
-                  color={task.status === "COMPLETED" ? "success" : "primary"}
-                  onClick={() => handleTaskCompletion(task.id, task.status !== "COMPLETED")}
-                >
-                  {task.status === "COMPLETED" ? "Completed" : "Mark Complete"}
-                </Button>
-                <Box>
-                  {task.status !== "COMPLETED" && (
-                    <Tooltip title="Update Status">
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        color="secondary"
-                        onClick={() => navigate(`/tasks/${task.id}/update`)}
-                      >
-                        Update
-                      </Button>
-                    </Tooltip>
-                  )}
-                </Box>
-              </CardActions>
             </StyledCard>
           ))}
         </Box>

@@ -27,7 +27,14 @@ import {
   DialogContentText,
   DialogActions,
   Snackbar,
-  Alert
+  Alert,
+  Badge,
+  Avatar,
+  List,
+  ListItem,
+  ListItemAvatar,
+  ListItemText,
+  CircularProgress
 } from "@mui/material";
 import {
   Search,
@@ -38,7 +45,8 @@ import {
   Visibility,
   FileDownload,
   Email,
-  Notifications
+  Notifications as NotificationsIcon,
+  Person
 } from "@mui/icons-material";
 import * as XLSX from 'xlsx';
 import { useNavigate } from "react-router-dom";
@@ -64,8 +72,12 @@ const AdminTimesheetManagement = () => {
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarSeverity, setSnackbarSeverity] = useState("success");
   const [loading, setLoading] = useState(true);
+  const [notificationAnchorEl, setNotificationAnchorEl] = useState(null);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notificationLoading, setNotificationLoading] = useState(false);
 
-  // API calls
+  // Fetch timesheets
   const fetchTimesheets = async () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/admin/timesheets/non-draft`);
@@ -117,6 +129,99 @@ const AdminTimesheetManagement = () => {
     }
   };
 
+  // Fetch notifications
+  const fetchNotifications = async () => {
+    try {
+      setNotificationLoading(true);
+      const response = await axios.get(`${API_BASE_URL}/api/notifications/unread`);
+      setNotifications(response.data);
+      const countResponse = await axios.get(`${API_BASE_URL}/api/notifications/unread-count`);
+      setUnreadCount(countResponse.data);
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+      showSnackbar("Failed to load notifications", "error");
+    } finally {
+      setNotificationLoading(false);
+    }
+  };
+
+  const markAsRead = async (notificationId) => {
+    try {
+      await axios.post(`${API_BASE_URL}/api/notifications/mark-as-read/${notificationId}`);
+      fetchNotifications();
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+    }
+  };
+
+  const markAllAsRead = async () => {
+    try {
+      await axios.post(`${API_BASE_URL}/api/notifications/mark-all-read`);
+      fetchNotifications();
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+    }
+  };
+
+  const handleNotificationClick = (event) => {
+    setNotificationAnchorEl(event.currentTarget);
+  };
+
+  const handleNotificationClose = () => {
+    setNotificationAnchorEl(null);
+  };
+
+  // Load data on component mount
+  useEffect(() => {
+    fetchTimesheets();
+    fetchNotifications();
+    
+    // Poll for new notifications every 30 seconds
+    const interval = setInterval(() => {
+      fetchNotifications();
+    }, 30000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
+  // Filter timesheets when search term changes
+  useEffect(() => {
+    const filtered = timesheets.filter(ts =>
+      Object.values(ts).some(
+        value =>
+          value &&
+          value.toString().toLowerCase().includes(searchTerm.toLowerCase())
+    ));
+    setFilteredTimesheets(filtered);
+    setPage(0);
+  }, [searchTerm, timesheets]);
+
+  // Action menu handlers
+  const handleMenuOpen = (event, timesheet) => {
+    setAnchorEl(event.currentTarget);
+    setSelectedTimesheet(timesheet);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleDialogOpen = (type) => {
+    if (!selectedTimesheet) {
+      showSnackbar("No timesheet selected", "error");
+      return;
+    }
+    setDialogType(type);
+    setOpenDialog(true);
+    handleMenuClose();
+  };
+
+  const handleDialogClose = () => {
+    setOpenDialog(false);
+    setRejectionReason("");
+  };
+
+  // Timesheet actions
   const approveTimesheet = async (timesheetId) => {
     try {
       const response = await axios.put(`${API_BASE_URL}/timesheets/${timesheetId}/status`, null, {
@@ -160,46 +265,7 @@ const AdminTimesheetManagement = () => {
     return { success: true };
   };
 
-  useEffect(() => {
-    fetchTimesheets();
-  }, []);
-
-  useEffect(() => {
-    const filtered = timesheets.filter(ts =>
-      Object.values(ts).some(
-        value =>
-          value &&
-          value.toString().toLowerCase().includes(searchTerm.toLowerCase())
-    ));
-    setFilteredTimesheets(filtered);
-    setPage(0);
-  }, [searchTerm, timesheets]);
-
-  const handleMenuOpen = (event, timesheet) => {
-    console.log('Setting selected timesheet:', timesheet);
-    setAnchorEl(event.currentTarget);
-    setSelectedTimesheet(timesheet);
-  };
-
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-  };
-
-  const handleDialogOpen = (type) => {
-    if (!selectedTimesheet) {
-      showSnackbar("No timesheet selected", "error");
-      return;
-    }
-    setDialogType(type);
-    setOpenDialog(true);
-    handleMenuClose();
-  };
-
-  const handleDialogClose = () => {
-    setOpenDialog(false);
-    setRejectionReason("");
-  };
-
+  // Action handlers
   const handleApproval = async () => {
     if (!selectedTimesheet?.id) {
       showSnackbar("No valid timesheet selected for approval", "error");
@@ -311,7 +377,6 @@ const AdminTimesheetManagement = () => {
         state: { 
             timesheet: {
                 ...selectedTimesheet,
-                // Ensure the data structure matches what TimesheetDetailView expects
                 timesheetId: selectedTimesheet.id,
                 empId: selectedTimesheet.employeeId,
                 empName: selectedTimesheet.employeeName,
@@ -333,7 +398,7 @@ const AdminTimesheetManagement = () => {
         }
     });
     handleMenuClose();
-};
+  };
 
   const handleSendReminder = async () => {
     if (!selectedTimesheet?.id) {
@@ -358,6 +423,7 @@ const AdminTimesheetManagement = () => {
     handleMenuClose();
   };
 
+  // Helper functions
   const showSnackbar = (message, severity) => {
     setSnackbarMessage(message);
     setSnackbarSeverity(severity);
@@ -450,6 +516,15 @@ const AdminTimesheetManagement = () => {
           >
             Export to Excel
           </Button>
+          <IconButton 
+            color="inherit" 
+            onClick={handleNotificationClick}
+            sx={{ mr: 2 }}
+          >
+            <Badge badgeContent={unreadCount} color="error">
+              <NotificationsIcon />
+            </Badge>
+          </IconButton>
           <Button
             variant="outlined"
             startIcon={<Email />}
@@ -459,6 +534,79 @@ const AdminTimesheetManagement = () => {
           </Button>
         </Grid>
       </Grid>
+
+      {/* Notification Menu */}
+      <Menu
+        anchorEl={notificationAnchorEl}
+        open={Boolean(notificationAnchorEl)}
+        onClose={handleNotificationClose}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'right',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+        PaperProps={{
+          style: {
+            maxHeight: '400px',
+            width: '400px',
+          },
+        }}
+      >
+        <MenuItem 
+          onClick={() => {
+            markAllAsRead();
+            handleNotificationClose();
+          }}
+          disabled={notifications.length === 0}
+        >
+          Mark all as read
+        </MenuItem>
+        <Divider />
+        {notificationLoading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+            <CircularProgress size={24} />
+          </Box>
+        ) : notifications.length > 0 ? (
+          <List sx={{ width: '100%', maxWidth: 360 }}>
+            {notifications.map((notification) => (
+              <ListItem 
+                key={notification.id}
+                alignItems="flex-start"
+                onClick={() => {
+                  markAsRead(notification.id);
+                  if (notification.timesheetId) {
+                    navigate(`/admin/timesheets/${notification.timesheetId}`);
+                  }
+                  handleNotificationClose();
+                }}
+                sx={{
+                  cursor: 'pointer',
+                  '&:hover': {
+                    backgroundColor: '#f5f5f5'
+                  }
+                }}
+              >
+                <ListItemAvatar>
+                  <Avatar>
+                    <Person />
+                  </Avatar>
+                </ListItemAvatar>
+                <ListItemText
+                  primary={notification.message}
+                  secondary={format(new Date(notification.createdAt), "MMM dd, h:mm a")}
+                />
+              </ListItem>
+            ))}
+          </List>
+        ) : (
+          <MenuItem disabled>
+            No new notifications
+          </MenuItem>
+        )}
+      </Menu>
 
       {/* Search and Filters */}
       <Box sx={{ display: "flex", gap: 2, mb: 3, flexWrap: "wrap" }}>
@@ -604,7 +752,7 @@ const AdminTimesheetManagement = () => {
               <Cancel fontSize="small" sx={{ mr: 1 }} /> Reject
             </MenuItem>
             <MenuItem onClick={handleSendReminder}>
-              <Notifications fontSize="small" sx={{ mr: 1 }} /> Send Reminder
+              <NotificationsIcon fontSize="small" sx={{ mr: 1 }} /> Send Reminder
             </MenuItem>
           </>
         )}

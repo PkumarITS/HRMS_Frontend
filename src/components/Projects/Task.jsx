@@ -60,6 +60,8 @@ const Task = () => {
   const [tab, setTab] = useState("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [openModal, setOpenModal] = useState(false);
+  const [editingTaskId, setEditingTaskId] = useState(null);
+
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
@@ -120,10 +122,23 @@ const Task = () => {
       });
       return;
     }
- 
+  
     try {
-      const response = await axios.post(`${API_BASE_URL}/admin/tasks/add`, newTask);
-      setTasks([...tasks, response.data]);
+      let response;
+      if (editingTaskId) {
+        response = await axios.put(`${API_BASE_URL}/admin/tasks/${editingTaskId}`, newTask);
+        setTasks(tasks.map((t) => (t.id === editingTaskId ? response.data : t)));
+      } else {
+        response = await axios.post(`${API_BASE_URL}/admin/tasks/add`, newTask);
+        setTasks([...tasks, response.data]);
+      }
+  
+      setSnackbar({
+        open: true,
+        message: `Task ${editingTaskId ? "updated" : "created"} successfully`,
+        severity: "success"
+      });
+  
       setNewTask({
         title: "",
         description: "",
@@ -134,21 +149,18 @@ const Task = () => {
         status: "TODO",
         estimatedHours: 0
       });
-      setSnackbar({
-        open: true,
-        message: "Task created successfully",
-        severity: "success"
-      });
+      setEditingTaskId(null);
       handleCloseModal();
     } catch (error) {
-      console.error("Error creating task:", error);
+      console.error("Error saving task:", error);
       setSnackbar({
         open: true,
-        message: "Failed to create task",
+        message: `Failed to ${editingTaskId ? "update" : "create"} task`,
         severity: "error"
       });
     }
   };
+  
  
   const handleDeleteTask = async (id) => {
     if (window.confirm("Are you sure you want to delete this task?")) {
@@ -173,9 +185,11 @@ const Task = () => {
  
   const handleStatusChange = async (id, newStatus) => {
     try {
-      const response = await axios.patch(`${API_BASE_URL}/adminuser/tasks/${id}/status`, {
-        status: newStatus
-      });
+      const response = await axios.patch(
+        `${API_BASE_URL}/adminuser/tasks/${id}/status`,
+        newStatus,
+        { headers: { 'Content-Type': 'text/plain' } }
+      );
       setTasks(
         tasks.map((task) =>
           task.id === id ? response.data : task
@@ -194,7 +208,7 @@ const Task = () => {
         severity: "error"
       });
     }
-  };
+  };  
  
   const handleTaskCompletion = async (id, isCompleted) => {
     const newStatus = isCompleted ? "COMPLETED" : "TODO";
@@ -522,20 +536,40 @@ const Task = () => {
                   />
                 </Box>
                 <Box>
-                  <Tooltip title="Edit">
-                    <IconButton size="small" color="primary">
-                      <Edit fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Delete">
-                    <IconButton
-                      size="small"
-                      color="error"
-                      onClick={() => handleDeleteTask(task.id)}
-                    >
-                      <Delete fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
+                <Tooltip title="Edit">
+  <IconButton
+    size="small"
+    color="primary"
+    onClick={() => {
+      setEditingTaskId(task.id);
+      setNewTask({
+        title: task.title,
+        description: task.description,
+        projectId: task.project.id,
+        assigneeId: task.assigneeId || "",
+        dueDate: task.dueDate ? task.dueDate.split("T")[0] : "",
+        priority: task.priority,
+        status: task.status,
+        estimatedHours: task.estimatedHours
+      });
+      setOpenModal(true);
+    }}
+  >
+    <Edit fontSize="small" />
+  </IconButton>
+</Tooltip>
+
+<Tooltip title="Delete">
+  <IconButton
+    size="small"
+    color="error"
+    onClick={() => handleDeleteTask(task.id)}
+  >
+    <Delete fontSize="small" />
+  </IconButton>
+</Tooltip>
+
+
                 </Box>
               </CardActions>
             </StyledCard>

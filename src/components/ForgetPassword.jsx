@@ -12,20 +12,24 @@ const ForgetPassword = () => {
   const [successMessage, setSuccessMessage] = useState(null);
   const navigate = useNavigate();
 
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+};
+
   const handleEmailSubmit = (event) => {
     event.preventDefault();
     axios
-      .post('http://localhost:1010/auth/send-reset-email', { email })
+      .post('http://localhost:1010/auth/forgot-password', { email }) // ✅ Updated API URL
       .then((response) => {
-        if (response.data.success) {
-          setSuccessMessage(response.data.message);
-          setStep(2); // Move to step 2
-          setError(null);
-        } else {
-          setError(response.data.error);
-        }
+        setSuccessMessage("Password reset link sent to your email!");
+        setStep(2); // Move to step 2
+        setError(null);
       })
-      .catch((err) => console.error(err));
+      .catch((err) => {
+        console.error(err);
+        setError("Failed to send reset link. Please try again.");
+      });
   };
 
   const handlePasswordSubmit = (event) => {
@@ -34,19 +38,18 @@ const ForgetPassword = () => {
       setError('Passwords do not match.');
       return;
     }
-
+  
     axios
-      .post('http://localhost:1010/auth/reset-password', { email, newPassword })
+      .post('http://localhost:1010/auth/reset-password', { email, newPassword }) // ✅ Updated API URL
       .then((response) => {
-        if (response.data.success) {
-          setSuccessMessage('Password reset successfully. Redirecting to login...');
-          setError(null);
-          setTimeout(() => navigate('/login'), 3000); // Redirect to login after 3 seconds
-        } else {
-          setError(response.data.error);
-        }
+        setSuccessMessage("Password reset successfully. Redirecting to login...");
+        setError(null);
+        setTimeout(() => navigate('/login'), 3000); // Redirect to login after 3 seconds
       })
-      .catch((err) => console.error(err));
+      .catch((err) => {
+        console.error(err);
+        setError("Failed to reset password. Please try again.");
+      });
   };
 
   return (
