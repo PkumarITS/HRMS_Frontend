@@ -25,7 +25,9 @@ function RegistrationPage() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+    // Convert empId to uppercase as user types
+    const processedValue = name === 'empId' ? value.toUpperCase() : value;
+    setFormData({ ...formData, [name]: processedValue });
   };
 
   const handleSubmit = async (e) => {
@@ -37,6 +39,11 @@ function RegistrationPage() {
       // Basic validation
       if (!formData.empId || !formData.name || !formData.email || !formData.role || !formData.password) {
         throw new Error('All fields are required');
+      }
+
+      // Validate empId format (uppercase alphanumeric)
+      if (!/^[A-Z0-9]+$/.test(formData.empId)) {
+        throw new Error('Employee ID must contain only uppercase letters and numbers');
       }
 
       const token = Cookies.get("token");
@@ -101,6 +108,12 @@ function RegistrationPage() {
               onChange={handleInputChange}
               required
               disabled={loading}
+              inputProps={{
+                style: { textTransform: 'uppercase' },
+                pattern: "[A-Z0-9]*",
+                title: "Only uppercase letters and numbers are allowed"
+              }}
+              helperText="Must be uppercase alphanumeric characters"
             />
             <TextField
               fullWidth

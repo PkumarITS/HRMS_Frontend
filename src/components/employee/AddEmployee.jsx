@@ -1,28 +1,28 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { getNames } from "country-list";
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { 
-  Autocomplete, 
-  Container, 
-  TextField, 
-  MenuItem, 
-  Button, 
-  Stepper, 
-  Step, 
-  StepLabel, 
-  Box, 
-  Typography, 
-  Select, 
-  InputLabel, 
-  FormControl, 
-  IconButton, 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableRow, 
-  Snackbar, 
+import {
+  Autocomplete,
+  Container,
+  TextField,
+  MenuItem,
+  Button,
+  Stepper,
+  Step,
+  StepLabel,
+  Box,
+  Typography,
+  Select,
+  InputLabel,
+  FormControl,
+  IconButton,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  Snackbar,
   Alert,
   CircularProgress
 } from "@mui/material";
@@ -62,6 +62,7 @@ const Employee = () => {
   const [search, setSearch] = useState("");
   const [filteredOptions, setFilteredOptions] = useState(countryOptions);
   const [activeStep, setActiveStep] = useState(0);
+  const [existingEmpIds, setExistingEmpIds] = useState([]);
   const [formData, setFormData] = useState({
     personal: {
       empId: "",
@@ -131,6 +132,28 @@ const Employee = () => {
 
   const token = Cookies.get("token");
 
+  useEffect(() => {
+    const fetchExistingEmpIds = async () => {
+      try {
+        const response = await fetch("http://localhost:1010/admin/employees/ids", {
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+        if (response.ok) {
+          const responseData = await response.json();
+          // Access the data property from the response
+          const ids = responseData.data || [];
+          setExistingEmpIds(ids.map(id => id.toUpperCase()));
+        }
+      } catch (error) {
+        console.error("Failed to fetch existing employee IDs:", error);
+      }
+    };
+
+    fetchExistingEmpIds();
+  }, [token]);
+
   const handleNext = () => {
     const requiredFields = getRequiredFieldsForStep(activeStep);
     const newErrors = validateFields(requiredFields);
@@ -149,16 +172,19 @@ const Employee = () => {
 
   const handleChange = (event) => {
     const { name, value } = event.target;
-    const [section, field] = name.includes('.') ? name.split('.') : [activeStep === 0 ? 'personal' : 
-                                 activeStep === 1 ? 'identification' : 
-                                 activeStep === 2 ? 'work' : 
-                                 activeStep === 3 ? 'contact' : 'report', name];
-    
+    const [section, field] = name.includes('.') ? name.split('.') : [activeStep === 0 ? 'personal' :
+      activeStep === 1 ? 'identification' :
+        activeStep === 2 ? 'work' :
+          activeStep === 3 ? 'contact' : 'report', name];
+
+    // Auto-uppercase empId
+    const processedValue = (section === 'personal' && field === 'empId') ? value.toUpperCase() : value;
+
     setFormData(prev => ({
       ...prev,
       [section]: {
         ...prev[section],
-        [field]: value
+        [field]: processedValue
       }
     }));
 
@@ -180,9 +206,9 @@ const Employee = () => {
   const handleAddNote = () => {
     if (formData.report.note) {
       setNotes(prev => [...prev, formData.report.note]);
-      setFormData(prev => ({ 
-        ...prev, 
-        report: { ...prev.report, note: '' } 
+      setFormData(prev => ({
+        ...prev,
+        report: { ...prev.report, note: '' }
       }));
       setIsNoteFormVisible(false);
     }
@@ -194,9 +220,9 @@ const Employee = () => {
   };
 
   const handleEditNote = (index) => {
-    setFormData(prev => ({ 
-      ...prev, 
-      report: { ...prev.report, note: notes[index] } 
+    setFormData(prev => ({
+      ...prev,
+      report: { ...prev.report, note: notes[index] }
     }));
     setIsNoteFormVisible(true);
     handleDeleteNote(index);
@@ -211,14 +237,14 @@ const Employee = () => {
   const validateFields = (fields) => {
     const newErrors = {};
     fields.forEach(field => {
-      const [section, fieldName] = field.includes('.') ? field.split('.') : 
-        [activeStep === 0 ? 'personal' : 
-         activeStep === 1 ? 'identification' : 
-         activeStep === 2 ? 'work' : 
-         activeStep === 3 ? 'contact' : 'report', field];
-      
+      const [section, fieldName] = field.includes('.') ? field.split('.') :
+        [activeStep === 0 ? 'personal' :
+          activeStep === 1 ? 'identification' :
+            activeStep === 2 ? 'work' :
+              activeStep === 3 ? 'contact' : 'report', field];
+
       const value = formData[section][fieldName];
-      
+
       // Skip validation for optional fields when empty
       const optionalFields = [
         'middleName', 'personalEmail', 'secondaryEmergencyContactNumber',
@@ -227,13 +253,20 @@ const Employee = () => {
         'workstationId', 'terminationDate', 'shiftStartTime', 'shiftEndTime',
         'indirectManager', 'firstLevelApprover', 'secondLevelApprover', 'thirdLevelApprover'
       ];
-      
+
       if (!value && !optionalFields.includes(fieldName)) {
         newErrors[field] = "This field is required.";
         return;
       }
 
       switch (fieldName) {
+        case "empId":
+          if (!/^[A-Z0-9]+$/.test(value)) {
+            newErrors[field] = "Must contain only uppercase letters and numbers";
+          } else if (existingEmpIds.includes(value)) {
+            newErrors[field] = "Employee ID must be unique";
+          }
+          break;
         case "mobileNumber":
         case "primaryEmergencyContactNumber":
           if (!/^\d{10,15}$/.test(value)) {
@@ -272,7 +305,7 @@ const Employee = () => {
 
   const validateDocumentNumber = (errors, field, value) => {
     const idProof = formData.identification.idProof;
-    
+
     if (!idProof) return;
 
     switch (idProof) {
@@ -308,39 +341,39 @@ const Employee = () => {
     switch (step) {
       case 0: // Personal
         return [
-          "personal.empId", 
-          "personal.firstName", 
-          "personal.lastName", 
-          "personal.dateOfBirth", 
-          "personal.gender", 
-          "personal.maritalStatus", 
+          "personal.empId",
+          "personal.firstName",
+          "personal.lastName",
+          "personal.dateOfBirth",
+          "personal.gender",
+          "personal.maritalStatus",
           "personal.nationality"
         ];
       case 1: // Identification
         return [
-          "identification.immigrationStatus", 
-          "identification.idProof", 
+          "identification.immigrationStatus",
+          "identification.idProof",
           "identification.documentNumber"
         ];
       case 2: // Work
         return [
-          "work.employmentStatus", 
-          "work.department", 
-          "work.jobTitle", 
-          "work.doj", 
+          "work.employmentStatus",
+          "work.department",
+          "work.jobTitle",
+          "work.doj",
           "work.timeZone"
         ];
       case 3: // Contact
         return [
-          "contact.residentialAddress", 
-          "contact.city", 
-          "contact.state", 
-          "contact.country", 
-          "contact.postalCode", 
-          "contact.workEmail", 
-          "contact.mobileNumber", 
-          "contact.primaryEmergencyContactName", 
-          "contact.primaryEmergencyContactNumber", 
+          "contact.residentialAddress",
+          "contact.city",
+          "contact.state",
+          "contact.country",
+          "contact.postalCode",
+          "contact.workEmail",
+          "contact.mobileNumber",
+          "contact.primaryEmergencyContactName",
+          "contact.primaryEmergencyContactNumber",
           "contact.relationshipToPrimaryEmergencyContact"
         ];
       case 4: // Report
@@ -417,7 +450,7 @@ const Employee = () => {
         work: {
           ...formData.work,
           doj: formatDateForBackend(formData.work.doj),
-          terminationDate: formData.work.terminationDate 
+          terminationDate: formData.work.terminationDate
             ? formatDateForBackend(formData.work.terminationDate)
             : null
         },
@@ -457,12 +490,12 @@ const Employee = () => {
   };
 
   const getError = (fieldName) => {
-    return errors[fieldName] || 
-           errors[`personal.${fieldName}`] || 
-           errors[`identification.${fieldName}`] || 
-           errors[`work.${fieldName}`] || 
-           errors[`contact.${fieldName}`] || 
-           errors[`report.${fieldName}`];
+    return errors[fieldName] ||
+      errors[`personal.${fieldName}`] ||
+      errors[`identification.${fieldName}`] ||
+      errors[`work.${fieldName}`] ||
+      errors[`contact.${fieldName}`] ||
+      errors[`report.${fieldName}`];
   };
 
   const renderFormSection = () => {
@@ -470,71 +503,75 @@ const Employee = () => {
       case 0: // Personal
         return (
           <>
-            <TextField 
-              fullWidth 
-              margin="normal" 
-              label="Employee ID" 
-              name="personal.empId" 
-              value={formData.personal.empId} 
-              onChange={handleChange} 
-              required 
-              error={!!getError("personal.empId")} 
-              helperText={getError("personal.empId")} 
+            <TextField
+              fullWidth
+              margin="normal"
+              label="Employee ID"
+              name="personal.empId"
+              placeholder="EMP0000"
+              value={formData.personal.empId}
+              onChange={handleChange}
+              required
+              error={!!getError("personal.empId")}
+              helperText={getError("personal.empId") || "Must be unique and in uppercase"}
+              inputProps={{
+                style: { textTransform: 'uppercase' }
+              }}
             />
-            <TextField 
-              fullWidth 
-              margin="normal" 
-              label="First Name" 
-              name="personal.firstName" 
-              value={formData.personal.firstName} 
-              onChange={handleChange} 
-              required 
-              error={!!getError("personal.firstName")} 
-              helperText={getError("personal.firstName")} 
+            <TextField
+              fullWidth
+              margin="normal"
+              label="First Name"
+              name="personal.firstName"
+              value={formData.personal.firstName}
+              onChange={handleChange}
+              required
+              error={!!getError("personal.firstName")}
+              helperText={getError("personal.firstName")}
             />
-            <TextField 
-              fullWidth 
-              margin="normal" 
-              label="Middle Name" 
-              name="personal.middleName" 
-              value={formData.personal.middleName} 
-              onChange={handleChange} 
+            <TextField
+              fullWidth
+              margin="normal"
+              label="Middle Name"
+              name="personal.middleName"
+              value={formData.personal.middleName}
+              onChange={handleChange}
             />
-            <TextField 
-              fullWidth 
-              margin="normal" 
-              label="Last Name" 
-              name="personal.lastName" 
-              value={formData.personal.lastName} 
-              onChange={handleChange} 
-              required 
-              error={!!getError("personal.lastName")} 
-              helperText={getError("personal.lastName")} 
+            <TextField
+              fullWidth
+              margin="normal"
+              label="Last Name"
+              name="personal.lastName"
+              value={formData.personal.lastName}
+              onChange={handleChange}
+              required
+              error={!!getError("personal.lastName")}
+              helperText={getError("personal.lastName")}
             />
-            <TextField 
-              fullWidth 
-              margin="normal" 
-              type="date" 
-              label="Date Of Birth" 
-              name="personal.dateOfBirth" 
-              value={formData.personal.dateOfBirth} 
-              onChange={handleChange} 
-              required 
-              InputLabelProps={{ shrink: true }} 
-              error={!!getError("personal.dateOfBirth")} 
-              helperText={getError("personal.dateOfBirth")} 
+            <TextField
+              fullWidth
+              margin="normal"
+              type="date"
+              label="Date Of Birth"
+              name="personal.dateOfBirth"
+              value={formData.personal.dateOfBirth}
+              onChange={handleChange}
+              required
+              InputLabelProps={{ shrink: true }}
+              error={!!getError("personal.dateOfBirth")}
+              helperText={getError("personal.dateOfBirth")}
             />
-            <FormControl 
-              fullWidth 
-              margin="normal" 
+            <FormControl
+              fullWidth
+              margin="normal"
               error={!!getError("personal.gender")}
             >
               <InputLabel>Gender</InputLabel>
-              <Select 
-                name="personal.gender" 
-                value={formData.personal.gender} 
-                onChange={handleChange} 
-                label="Gender" 
+              <Select
+                name="personal.gender"
+                value={formData.personal.gender}
+                onChange={handleChange}
+                label="Gender"
                 required
               >
                 <MenuItem value="Male">Male</MenuItem>
@@ -543,35 +580,36 @@ const Employee = () => {
               </Select>
               {getError("personal.gender") && <Typography variant="caption" color="error">{getError("personal.gender")}</Typography>}
             </FormControl>
-            <FormControl 
-              fullWidth 
-              margin="normal" 
+            <FormControl
+              fullWidth
+              margin="normal"
               error={!!getError("personal.maritalStatus")}
             >
               <InputLabel>Marital Status</InputLabel>
-              <Select 
-                name="personal.maritalStatus" 
-                value={formData.personal.maritalStatus} 
-                onChange={handleChange} 
-                label="Marital Status" 
+              <Select
+                name="personal.maritalStatus"
+                value={formData.personal.maritalStatus}
+                onChange={handleChange}
+                label="Marital Status"
                 required
               >
                 <MenuItem value="Unmarried">Unmarried</MenuItem>
                 <MenuItem value="Married">Married</MenuItem>
+                <MenuItem value="Married">Widow</MenuItem>
               </Select>
               {getError("personal.maritalStatus") && <Typography variant="caption" color="error">{getError("personal.maritalStatus")}</Typography>}
             </FormControl>
-            <FormControl 
-              fullWidth 
-              margin="normal" 
+            <FormControl
+              fullWidth
+              margin="normal"
               error={!!getError("personal.nationality")}
             >
               <InputLabel>Nationality</InputLabel>
-              <Select 
-                name="personal.nationality" 
-                value={formData.personal.nationality || ""} 
-                onChange={handleChange} 
-                label="Nationality" 
+              <Select
+                name="personal.nationality"
+                value={formData.personal.nationality || ""}
+                onChange={handleChange}
+                label="Nationality"
                 required
               >
                 <MenuItem disabled>
@@ -587,10 +625,10 @@ const Employee = () => {
             </FormControl>
             <FormControl fullWidth margin="normal">
               <InputLabel>Ethnicity</InputLabel>
-              <Select 
-                name="personal.ethnicity" 
-                value={formData.personal.ethnicity} 
-                onChange={handleChange} 
+              <Select
+                name="personal.ethnicity"
+                value={formData.personal.ethnicity}
+                onChange={handleChange}
                 label="Ethnicity"
               >
                 <MenuItem value="Asian">Asian</MenuItem>
@@ -603,11 +641,7 @@ const Employee = () => {
       case 1: // Identification
         return (
           <>
-            <FormControl 
-              fullWidth 
-              margin="normal" 
-              error={!!getError("identification.immigrationStatus")}
-            >
+            <FormControl fullWidth margin="normal" error={!!getError("identification.immigrationStatus")}>
               <InputLabel>Immigration Status</InputLabel>
               <Select
                 name="identification.immigrationStatus"
@@ -616,13 +650,26 @@ const Employee = () => {
                 label="Immigration Status"
                 required
               >
-                <MenuItem value="Citizen">Citizen</MenuItem>
                 <MenuItem value="Permanent Resident">Permanent Resident</MenuItem>
+                <MenuItem value="Work Visa">Work Visa/Work Permit</MenuItem>
+                <MenuItem value="Student Visa">Student Visa</MenuItem>
+                <MenuItem value="Temporary Resident">Temporary Resident</MenuItem>
+                <MenuItem value="Refugee">Refugee/Asylum Seeker</MenuItem>
+                <MenuItem value="Diplomatic Visa">Diplomatic Visa</MenuItem>
+                <MenuItem value="Dependent Visa">Dependent Visa</MenuItem>
+                <MenuItem value="Business Visa">Business Visa</MenuItem>
+                <MenuItem value="Tourist Visa">Tourist Visa</MenuItem>
+                <MenuItem value="Undocumented">Undocumented/No Status</MenuItem>
+                <MenuItem value="Other">Other</MenuItem>
               </Select>
-              {getError("identification.immigrationStatus") && <Typography variant="caption" color="error">{getError("identification.immigrationStatus")}</Typography>}
+              {getError("identification.immigrationStatus") &&
+                <Typography variant="caption" color="error">
+                  {getError("identification.immigrationStatus")}
+                </Typography>
+              }
             </FormControl>
 
-            <TextField
+            {/* <TextField
               fullWidth
               margin="normal"
               label="Personal Tax ID"
@@ -644,11 +691,11 @@ const Employee = () => {
               name="identification.socialInsurance"
               value={formData.identification.socialInsurance}
               onChange={handleChange}
-            />
+            /> */}
 
-            <FormControl 
-              fullWidth 
-              margin="normal" 
+            <FormControl
+              fullWidth
+              margin="normal"
               error={!!getError("identification.idProof")}
             >
               <InputLabel>ID Proof</InputLabel>
@@ -678,18 +725,18 @@ const Employee = () => {
                 onChange={handleChange}
                 required
                 error={!!getError("identification.documentNumber")}
-                helperText={getError("identification.documentNumber") || 
+                helperText={getError("identification.documentNumber") ||
                   (formData.identification.idProof === "Aadhar Card" ? "Aadhar Number must be 12 digits" :
-                  formData.identification.idProof === "Pan Card" ? "PAN Number must be 10 characters" :
-                  formData.identification.idProof === "Driving Licence" ? "Driving Licence Number must be 16 characters" :
-                  formData.identification.idProof === "Passport" ? "Passport Number must be 8 characters" : "")
+                    formData.identification.idProof === "Pan Card" ? "PAN Number must be 10 characters" :
+                      formData.identification.idProof === "Driving Licence" ? "Driving Licence Number must be 16 characters" :
+                        formData.identification.idProof === "Passport" ? "Passport Number must be 8 characters" : "")
                 }
                 inputProps={{
                   maxLength:
                     formData.identification.idProof === "Aadhar Card" ? 12 :
-                    formData.identification.idProof === "Pan Card" ? 10 :
-                    formData.identification.idProof === "Driving Licence" ? 16 :
-                    formData.identification.idProof === "Passport" ? 8 : 20,
+                      formData.identification.idProof === "Pan Card" ? 10 :
+                        formData.identification.idProof === "Driving Licence" ? 16 :
+                          formData.identification.idProof === "Passport" ? 8 : 20,
                 }}
               />
             )}
@@ -723,9 +770,9 @@ const Employee = () => {
       case 2: // Work
         return (
           <>
-            <FormControl 
-              fullWidth 
-              margin="normal" 
+            <FormControl
+              fullWidth
+              margin="normal"
               error={!!getError("work.employmentStatus")}
             >
               <InputLabel>Employment Status</InputLabel>
@@ -736,86 +783,84 @@ const Employee = () => {
                 label="Employment Status"
                 required
               >
-                <MenuItem value="Full-Time Internship">Full-Time Internship</MenuItem>
-                <MenuItem value="Full-Time Contract">Full-Time Contract</MenuItem>
                 <MenuItem value="Full-Time Permanent">Full-Time Permanent</MenuItem>
-                <MenuItem value="Part-Time Internship">Part-Time Internship</MenuItem>
-                <MenuItem value="Part-Time Contract">Part-Time Contract</MenuItem>
-                <MenuItem value="Part-Time Permanent">Part-Time Permanent</MenuItem>
+                <MenuItem value="Full-Time Contract">Contract</MenuItem>
+                <MenuItem value="Part-Time Contract">Part-Time</MenuItem>
+                <MenuItem value="Full-Time Internship">Internship</MenuItem>
               </Select>
               {getError("work.employmentStatus") && <Typography variant="caption" color="error">{getError("work.employmentStatus")}</Typography>}
             </FormControl>
 
-            <TextField 
-              fullWidth 
-              margin="normal" 
-              label="Department" 
-              name="work.department" 
-              value={formData.work.department} 
-              onChange={handleChange} 
-              required 
-              error={!!getError("work.department")} 
-              helperText={getError("work.department")} 
+            <TextField
+              fullWidth
+              margin="normal"
+              label="Department"
+              name="work.department"
+              value={formData.work.department}
+              onChange={handleChange}
+              required
+              error={!!getError("work.department")}
+              helperText={getError("work.department")}
             />
-            <TextField 
-              fullWidth 
-              margin="normal" 
-              label="Job Title" 
-              name="work.jobTitle" 
-              value={formData.work.jobTitle} 
-              onChange={handleChange} 
-              required 
-              error={!!getError("work.jobTitle")} 
-              helperText={getError("work.jobTitle")} 
+            <TextField
+              fullWidth
+              margin="normal"
+              label="Job Title"
+              name="work.jobTitle"
+              value={formData.work.jobTitle}
+              onChange={handleChange}
+              required
+              error={!!getError("work.jobTitle")}
+              helperText={getError("work.jobTitle")}
             />
-            <TextField 
-              fullWidth 
-              margin="normal" 
-              label="Pay Grade" 
-              name="work.payGrade" 
-              value={formData.work.payGrade} 
-              onChange={handleChange} 
+            <TextField
+              fullWidth
+              margin="normal"
+              label="Pay Grade"
+              name="work.payGrade"
+              value={formData.work.payGrade}
+              onChange={handleChange}
             />
-            <TextField 
-              fullWidth 
-              margin="normal" 
-              label="Date Of Joining" 
-              name="work.doj" 
-              type="date" 
-              value={formData.work.doj} 
-              onChange={handleChange} 
-              required 
-              InputLabelProps={{ shrink: true }} 
-              error={!!getError("work.doj")} 
-              helperText={getError("work.doj")} 
+            <TextField
+              fullWidth
+              margin="normal"
+              label="Date Of Joining"
+              name="work.doj"
+              type="date"
+              value={formData.work.doj}
+              onChange={handleChange}
+              required
+              InputLabelProps={{ shrink: true }}
+              error={!!getError("work.doj")}
+              helperText={getError("work.doj")}
             />
-            <TextField 
-              fullWidth 
-              margin="normal" 
-              label="Termination Date" 
-              name="work.terminationDate" 
-              type="date" 
-              value={formData.work.terminationDate} 
-              onChange={handleChange} 
-              InputLabelProps={{ shrink: true }} 
+            <TextField
+              fullWidth
+              margin="normal"
+              label="Termination Date"
+              name="work.terminationDate"
+              type="date"
+              value={formData.work.terminationDate}
+              onChange={handleChange}
+              InputLabelProps={{ shrink: true }}
             />
-            <TextField 
-              fullWidth 
-              margin="normal" 
-              label="Workstation ID" 
-              name="work.workstationId" 
-              value={formData.work.workstationId} 
-              onChange={handleChange} 
+            <TextField
+              fullWidth
+              margin="normal"
+              label="Workstation ID"
+              name="work.workstationId"
+              value={formData.work.workstationId}
+              onChange={handleChange}
             />
             <Autocomplete
               fullWidth
               options={timeZones}
               renderInput={(params) => (
-                <TextField 
-                  {...params} 
-                  label="Time Zone" 
-                  margin="normal" 
-                  required 
+                <TextField
+                  {...params}
+                  label="Time Zone"
+                  margin="normal"
+                  required
                   error={!!getError("work.timeZone")}
                   helperText={getError("work.timeZone")}
                 />
@@ -831,25 +876,25 @@ const Employee = () => {
                 }))
               }
             />
-            <TextField 
-              fullWidth 
-              margin="normal" 
-              label="Shift Start Time" 
-              name="work.shiftStartTime" 
-              type="time" 
-              value={formData.work.shiftStartTime} 
-              onChange={handleChange} 
-              InputLabelProps={{ shrink: true }} 
+            <TextField
+              fullWidth
+              margin="normal"
+              label="Shift Start Time"
+              name="work.shiftStartTime"
+              type="time"
+              value={formData.work.shiftStartTime}
+              onChange={handleChange}
+              InputLabelProps={{ shrink: true }}
             />
-            <TextField 
-              fullWidth 
-              margin="normal" 
-              label="Shift End Time" 
-              name="work.shiftEndTime" 
-              type="time" 
-              value={formData.work.shiftEndTime} 
-              onChange={handleChange} 
-              InputLabelProps={{ shrink: true }} 
+            <TextField
+              fullWidth
+              margin="normal"
+              label="Shift End Time"
+              name="work.shiftEndTime"
+              type="time"
+              value={formData.work.shiftEndTime}
+              onChange={handleChange}
+              InputLabelProps={{ shrink: true }}
             />
           </>
         );
@@ -859,10 +904,10 @@ const Employee = () => {
             <TextField
               fullWidth
               margin="normal"
-              label="Residential Address"
+              label="Current Address"
               name="contact.residentialAddress"
               value={formData.contact.residentialAddress}
-              onChange={handleChange} 
+              onChange={handleChange}
               required
               error={!!getError("contact.residentialAddress")}
               helperText={getError("contact.residentialAddress")}
@@ -873,34 +918,12 @@ const Employee = () => {
               label="Permanent Address"
               name="contact.permanentAddress"
               value={formData.contact.permanentAddress}
-              onChange={handleChange} 
+              onChange={handleChange}
             />
 
-            <TextField
+            <FormControl
               fullWidth
               margin="normal"
-              label="City"
-              name="contact.city"
-              value={formData.contact.city}
-              onChange={handleChange} 
-              required
-              error={!!getError("contact.city")}
-              helperText={getError("contact.city")}
-            />
-            <TextField
-              fullWidth
-              margin="normal"
-              label="State"
-              name="contact.state"
-              value={formData.contact.state}
-              onChange={handleChange} 
-              required
-              error={!!getError("contact.state")}
-              helperText={getError("contact.state")}
-            />
-            <FormControl 
-              fullWidth 
-              margin="normal" 
               error={!!getError("contact.country")}
             >
               <InputLabel>Country</InputLabel>
@@ -940,10 +963,34 @@ const Employee = () => {
             <TextField
               fullWidth
               margin="normal"
+              label="State"
+              name="contact.state"
+              value={formData.contact.state}
+              onChange={handleChange}
+              required
+              error={!!getError("contact.state")}
+              helperText={getError("contact.state")}
+            />
+
+            <TextField
+              fullWidth
+              margin="normal"
+              label="City"
+              name="contact.city"
+              value={formData.contact.city}
+              onChange={handleChange}
+              required
+              error={!!getError("contact.city")}
+              helperText={getError("contact.city")}
+            />
+
+            <TextField
+              fullWidth
+              margin="normal"
               label="Postal Code"
               name="contact.postalCode"
               value={formData.contact.postalCode}
-              onChange={handleChange} 
+              onChange={handleChange}
               required
               error={!!getError("contact.postalCode")}
               helperText={getError("contact.postalCode")}
@@ -955,7 +1002,7 @@ const Employee = () => {
               label="Work Email"
               name="contact.workEmail"
               value={formData.contact.workEmail}
-              onChange={handleChange} 
+              onChange={handleChange}
               required
               error={!!getError("contact.workEmail")}
               helperText={getError("contact.workEmail")}
@@ -976,7 +1023,7 @@ const Employee = () => {
               label="Mobile Number"
               name="contact.mobileNumber"
               value={formData.contact.mobileNumber}
-              onChange={handleChange} 
+              onChange={handleChange}
               required
               error={!!getError("contact.mobileNumber")}
               helperText={getError("contact.mobileNumber")}
@@ -987,7 +1034,7 @@ const Employee = () => {
               label="Primary Emergency Contact Name"
               name="contact.primaryEmergencyContactName"
               value={formData.contact.primaryEmergencyContactName}
-              onChange={handleChange} 
+              onChange={handleChange}
               required
               error={!!getError("contact.primaryEmergencyContactName")}
               helperText={getError("contact.primaryEmergencyContactName")}
@@ -998,7 +1045,7 @@ const Employee = () => {
               label="Primary Emergency Contact Number"
               name="contact.primaryEmergencyContactNumber"
               value={formData.contact.primaryEmergencyContactNumber}
-              onChange={handleChange} 
+              onChange={handleChange}
               required
               error={!!getError("contact.primaryEmergencyContactNumber")}
               helperText={getError("contact.primaryEmergencyContactNumber")}
@@ -1009,7 +1056,7 @@ const Employee = () => {
               label="Relationship to Primary Emergency Contact"
               name="contact.relationshipToPrimaryEmergencyContact"
               value={formData.contact.relationshipToPrimaryEmergencyContact}
-              onChange={handleChange} 
+              onChange={handleChange}
               required
               error={!!getError("contact.relationshipToPrimaryEmergencyContact")}
               helperText={getError("contact.relationshipToPrimaryEmergencyContact")}
@@ -1063,9 +1110,9 @@ const Employee = () => {
       case 4: // Report
         return (
           <Box sx={{ padding: 3 }}>
-            <FormControl 
-              fullWidth 
-              margin="normal" 
+            {/* <FormControl
+              fullWidth
+              margin="normal"
               error={!!getError("report.manager")}
             >
               <InputLabel>Manager</InputLabel>
@@ -1081,8 +1128,21 @@ const Employee = () => {
                 <MenuItem value="Manager 3">Manager 3</MenuItem>
               </Select>
               {getError("report.manager") && <Typography variant="caption" color="error">{getError("report.manager")}</Typography>}
-            </FormControl>
-      
+            </FormControl> */}
+
+            <TextField
+              fullWidth
+              margin="normal"
+              label="Manager"
+              placeholder="Manager-Name"
+              name="report.manager"
+              value={formData.report.manager}
+              onChange={handleChange}
+              required
+              error={!!getError("report.manager")}
+              helperText={getError("report.manager")}
+            />
+
             <FormControl fullWidth margin="normal">
               <InputLabel>Indirect Manager</InputLabel>
               <Select
@@ -1096,7 +1156,7 @@ const Employee = () => {
                 <MenuItem value="Indirect Manager 3">Indirect Manager 3</MenuItem>
               </Select>
             </FormControl>
-      
+
             <FormControl fullWidth margin="normal">
               <InputLabel>First Level Approver</InputLabel>
               <Select
@@ -1110,7 +1170,7 @@ const Employee = () => {
                 <MenuItem value="Approver 3">Approver 3</MenuItem>
               </Select>
             </FormControl>
-      
+
             <FormControl fullWidth margin="normal">
               <InputLabel>Second Level Approver</InputLabel>
               <Select
@@ -1124,7 +1184,7 @@ const Employee = () => {
                 <MenuItem value="Approver 3">Approver 3</MenuItem>
               </Select>
             </FormControl>
-      
+
             <FormControl fullWidth margin="normal">
               <InputLabel>Third Level Approver</InputLabel>
               <Select
@@ -1138,7 +1198,7 @@ const Employee = () => {
                 <MenuItem value="Approver 3">Approver 3</MenuItem>
               </Select>
             </FormControl>
-      
+
             <Button
               variant="contained"
               color="primary"
@@ -1147,7 +1207,7 @@ const Employee = () => {
             >
               Add Note
             </Button>
-      
+
             {isNoteFormVisible && (
               <Box sx={{ mt: 2 }}>
                 <TextField
@@ -1170,7 +1230,7 @@ const Employee = () => {
                 </Box>
               </Box>
             )}
-      
+
             <Table sx={{ mt: 3 }}>
               <TableHead>
                 <TableRow>
@@ -1229,9 +1289,9 @@ const Employee = () => {
               Next
             </Button>
           ) : (
-            <Button 
-              variant="contained" 
-              color="success" 
+            <Button
+              variant="contained"
+              color="success"
               onClick={handleSubmit}
               disabled={isSubmitting}
               startIcon={isSubmitting ? <CircularProgress size={20} /> : null}
@@ -1242,15 +1302,15 @@ const Employee = () => {
         </Box>
       </Box>
 
-      <Snackbar 
-        open={snackbarOpen} 
-        autoHideDuration={6000} 
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={6000}
         onClose={handleSnackbarClose}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       >
-        <Alert 
-          onClose={handleSnackbarClose} 
-          severity={snackbarSeverity} 
+        <Alert
+          onClose={handleSnackbarClose}
+          severity={snackbarSeverity}
           sx={{ width: '100%' }}
           variant="filled"
         >

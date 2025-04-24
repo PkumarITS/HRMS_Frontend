@@ -101,7 +101,7 @@ const MyTask = () => {
   const formatDate = (dateString) => {
     if (!dateString) return "No due date";
     const date = new Date(dateString);
-    return date.toLocaleDateString() + " " + date.toLocaleTimeString();
+    return date.toLocaleDateString();
   };
 
   if (loading) {

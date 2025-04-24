@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   Paper,
   Typography,
@@ -7,15 +7,55 @@ import {
   Button,
   Divider,
   Chip,
+  CircularProgress,
 } from "@mui/material";
 import { format, parseISO } from "date-fns";
 import { useNavigate, useLocation } from "react-router-dom";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import axios from "axios";
+
+const API_BASE_URL = "http://localhost:1010";
 
 const TimesheetViewPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const entry = location.state?.entry;
+  const [entry, setEntry] = useState(location.state?.entry || null);
+  const [loading, setLoading] = useState(false);
+
+  const timesheetId = location.state?.timesheetId;
+
+  useEffect(() => {
+    if (!entry && timesheetId) {
+      setLoading(true);
+      axios
+        .get(`${API_BASE_URL}/user/timesheet/${timesheetId}`)
+        .then((res) => {
+          const data = res.data;
+          setEntry({
+            ...data,
+            mondayHours: data.mondayHours || 0,
+            tuesdayHours: data.tuesdayHours || 0,
+            wednesdayHours: data.wednesdayHours || 0,
+            thursadyHours: data.thursadyHours || 0,
+            fridayHours: data.fridayHours || 0,
+            saturdayHours: data.saturdayHours || 0,
+            sundayHours: data.sundayHours || 0,
+          });
+        })
+        .catch((err) => {
+          console.error("Failed to fetch timesheet data", err);
+        })
+        .finally(() => setLoading(false));
+    }
+  }, [entry, timesheetId]);
+
+  if (loading) {
+    return (
+      <Box sx={{ p: 3, textAlign: "center" }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   if (!entry) {
     return (
@@ -89,6 +129,10 @@ const TimesheetViewPage = () => {
                     ? "success"
                     : entry.status === "DRAFT"
                     ? "info"
+                    : entry.status === "APPROVED"
+                    ? "success"
+                    : entry.status === "REJECTED"
+                    ? "error"
                     : "warning"
                 }
                 size="small"
@@ -99,7 +143,9 @@ const TimesheetViewPage = () => {
                 Created At
               </Typography>
               <Typography>
-                {format(parseISO(entry.createdAt), "dd MMM yyyy HH:mm")}
+                {entry.createdAt
+                  ? format(parseISO(entry.createdAt), "dd MMM yyyy HH:mm")
+                  : "N/A"}
               </Typography>
             </Grid>
           </Grid>
@@ -155,7 +201,7 @@ const TimesheetViewPage = () => {
                 <Paper elevation={1} sx={{ p: 2 }}>
                   <Typography variant="subtitle2">{day.name}</Typography>
                   <Typography variant="h6">
-                    {day.hours > 0 ? day.hours + " hours" : "No hours logged"}
+                    {day.hours > 0 ? `${day.hours} hours` : "No hours logged"}
                   </Typography>
                 </Paper>
               </Grid>
@@ -178,6 +224,19 @@ const TimesheetViewPage = () => {
             <Divider sx={{ mb: 2 }} />
             <Paper elevation={1} sx={{ p: 2 }}>
               <Typography>{entry.comments}</Typography>
+            </Paper>
+          </Grid>
+        )}
+
+        {/* Rejection Reason */}
+        {entry.status === "REJECTED" && entry.rejectionReason && (
+          <Grid item xs={12}>
+            <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: "bold", color: "error.main" }}>
+              Rejection Reason
+            </Typography>
+            <Divider sx={{ mb: 2 }} />
+            <Paper elevation={1} sx={{ p: 2, backgroundColor: "#ffebee" }}>
+              <Typography color="error">{entry.rejectionReason}</Typography>
             </Paper>
           </Grid>
         )}
