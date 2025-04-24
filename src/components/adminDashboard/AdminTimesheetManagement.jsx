@@ -133,9 +133,9 @@ const AdminTimesheetManagement = () => {
   const fetchNotifications = async () => {
     try {
       setNotificationLoading(true);
-      const response = await axios.get(`${API_BASE_URL}/api/notifications/unread`);
+      const response = await axios.get(`${API_BASE_URL}/api/notifications/admin/unread`);
       setNotifications(response.data);
-      const countResponse = await axios.get(`${API_BASE_URL}/api/notifications/unread-count`);
+      const countResponse = await axios.get(`${API_BASE_URL}/api/notifications/admin/unread-count`);
       setUnreadCount(countResponse.data);
     } catch (error) {
       console.error("Error fetching notifications:", error);
