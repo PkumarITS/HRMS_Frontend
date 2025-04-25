@@ -639,7 +639,7 @@ const TimesheetDetailPage = () => {
                 <Paper elevation={2} sx={{ p: 2, height: "100%" }}>
                   {selectedEntry ? (
                     <Box>
-                      <Typography variant="subtitle2" gutterBottom>
+                      <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: "bold" }}>
                         {selectedEntry.taskName}
                       </Typography>
                       <Typography variant="caption" display="block">
@@ -650,6 +650,12 @@ const TimesheetDetailPage = () => {
                       </Typography>
                       <Typography variant="caption" display="block">
                         Status: {selectedEntry.status}
+                      </Typography>
+                      <Typography variant="caption" display="block">
+                        Comments: {selectedEntry.comments}
+                      </Typography>
+                      <Typography variant="caption" display="block">
+                        Total Hours: {selectedEntry.hours.reduce((sum, hour) => sum + hour, 0)} hours
                       </Typography>
                     </Box>
                   ) : (

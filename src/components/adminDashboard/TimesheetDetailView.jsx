@@ -94,7 +94,7 @@ const TimesheetDetailView = () => {
     <Paper elevation={0} sx={{ p: 3, width: "100%", maxWidth: 1200, mx: "auto" }}>
       <Button
         startIcon={<ArrowBack />}
-        onClick={() => navigate("/admin/timesheets")}
+        onClick={() => navigate("/admin/dashboard/timesheets")}
         sx={{ mb: 3 }}
       >
         Back to Timesheets

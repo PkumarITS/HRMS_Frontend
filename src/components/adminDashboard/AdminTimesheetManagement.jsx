@@ -41,7 +41,6 @@ import {
   MoreVert,
   CheckCircle,
   Cancel,
-  Delete,
   Visibility,
   FileDownload,
   Email,
@@ -76,6 +75,7 @@ const AdminTimesheetManagement = () => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notificationLoading, setNotificationLoading] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("");
 
   // Fetch timesheets
   const fetchTimesheets = async () => {
@@ -95,7 +95,7 @@ const AdminTimesheetManagement = () => {
         task: ts.taskName || "N/A",
         startDate: ts.weekStart || new Date().toISOString(),
         endDate: ts.weekEnd || new Date().toISOString(),
-        status: ts.status === "SUBMITTED" ? "Pending Approval" : ts.status || "Unknown",
+        status: ts.status === "SUBMITTED" ? "Pending" : ts.status || "Unknown",
         hours: [
           ts.mondayHours || 0,
           ts.tuesdayHours || 0,
@@ -184,17 +184,26 @@ const AdminTimesheetManagement = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Filter timesheets when search term changes
+  // Filter timesheets when search term or status filter changes
   useEffect(() => {
-    const filtered = timesheets.filter(ts =>
-      Object.values(ts).some(
+    const filtered = timesheets.filter(ts => {
+      // Search term filter
+      const matchesSearch = Object.values(ts).some(
         value =>
           value &&
-          value.toString().toLowerCase().includes(searchTerm.toLowerCase())
-    ));
+          value.toString().toLowerCase().includes(searchTerm.toLowerCase()))
+      
+      // Status filter
+      const matchesStatus = !statusFilter || 
+        (statusFilter === "SUBMITTED" && ts.status === "Pending") ||
+        ts.status.toUpperCase().includes(statusFilter.toUpperCase());
+      
+      return matchesSearch && matchesStatus;
+    });
+    
     setFilteredTimesheets(filtered);
     setPage(0);
-  }, [searchTerm, timesheets]);
+  }, [searchTerm, statusFilter, timesheets]);
 
   // Action menu handlers
   const handleMenuOpen = (event, timesheet) => {
@@ -245,16 +254,6 @@ const AdminTimesheetManagement = () => {
       return response.data;
     } catch (error) {
       console.error("Error rejecting timesheet:", error);
-      throw error;
-    }
-  };
-
-  const deleteTimesheet = async (timesheetId) => {
-    try {
-      await axios.delete(`${API_BASE_URL}/admin/timesheet/${timesheetId}`);
-      return { success: true };
-    } catch (error) {
-      console.error("Error deleting timesheet:", error);
       throw error;
     }
   };
@@ -341,32 +340,6 @@ const AdminTimesheetManagement = () => {
     } catch (error) {
       console.error("Error rejecting timesheet:", error);
       showSnackbar(error.response?.data || "Failed to reject timesheet", "error");
-    }
-    
-    handleDialogClose();
-  };
-
-  const handleDelete = async () => {
-    if (!selectedTimesheet?.id) {
-      showSnackbar("No valid timesheet selected for deletion", "error");
-      handleDialogClose();
-      return;
-    }
-
-    try {
-      await deleteTimesheet(selectedTimesheet.id);
-      setTimesheets(prev => prev.filter(ts => ts.id !== selectedTimesheet.id));
-      
-      await sendNotification(
-        selectedTimesheet.employeeEmail,
-        "Timesheet Deleted",
-        `Your timesheet for ${format(parseISO(selectedTimesheet.startDate), "MMM dd")} to ${format(parseISO(selectedTimesheet.endDate), "MMM dd, yyyy")} has been deleted by admin.`
-      );
-      
-      showSnackbar("Timesheet deleted permanently", "info");
-    } catch (error) {
-      console.error("Error deleting timesheet:", error);
-      showSnackbar("Failed to delete timesheet", "error");
     }
     
     handleDialogClose();
@@ -480,7 +453,7 @@ const AdminTimesheetManagement = () => {
       case "Rejected":
       case "REJECTED":
         return <Chip label="Rejected" color="error" size="small" />;
-      case "Pending Approval":
+      case "Pending":
       case "SUBMITTED":
         return <Chip label="Pending" color="warning" size="small" />;
       case "Draft":
@@ -627,26 +600,13 @@ const AdminTimesheetManagement = () => {
         <FormControl size="small" sx={{ minWidth: 200 }}>
           <InputLabel>Status</InputLabel>
           <Select
-            value=""
+            value={statusFilter}
             label="Status"
-            onChange={(e) => {
-              if (e.target.value === "") {
-                setFilteredTimesheets(timesheets);
-              } else {
-                setFilteredTimesheets(
-                  timesheets.filter(ts => {
-                    const status = ts.status.toUpperCase();
-                    const filterValue = e.target.value.toUpperCase();
-                    return status.includes(filterValue);
-                  })
-                );
-              }
-              setPage(0);
-            }}
+            onChange={(e) => setStatusFilter(e.target.value)}
           >
             <MenuItem value="">All Statuses</MenuItem>
             <MenuItem value="DRAFT">Draft</MenuItem>
-            <MenuItem value="SUBMITTED">Pending Approval</MenuItem>
+            <MenuItem value="SUBMITTED">Pending</MenuItem>
             <MenuItem value="APPROVED">Approved</MenuItem>
             <MenuItem value="REJECTED">Rejected</MenuItem>
           </Select>
@@ -743,7 +703,7 @@ const AdminTimesheetManagement = () => {
         <MenuItem onClick={handleViewDetails}>
           <Visibility fontSize="small" sx={{ mr: 1 }} /> View Details
         </MenuItem>
-        {selectedTimesheet?.status === "Pending Approval" && (
+        {selectedTimesheet?.status === "Pending" && (
           <>
             <MenuItem onClick={() => handleDialogOpen("approve")}>
               <CheckCircle fontSize="small" sx={{ mr: 1 }} /> Approve
@@ -756,9 +716,6 @@ const AdminTimesheetManagement = () => {
             </MenuItem>
           </>
         )}
-        <MenuItem onClick={() => handleDialogOpen("delete")}>
-          <Delete fontSize="small" sx={{ mr: 1 }} /> Delete
-        </MenuItem>
       </Menu>
 
       {/* Approval Dialog */}
@@ -827,34 +784,6 @@ const AdminTimesheetManagement = () => {
             disabled={!selectedTimesheet || !rejectionReason}
           >
             Reject
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Delete Dialog */}
-      <Dialog open={openDialog && dialogType === "delete"} onClose={handleDialogClose}>
-        <DialogTitle>Delete Timesheet</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            {selectedTimesheet ? (
-              <>
-                Are you sure you want to permanently delete this timesheet submitted by{" "}
-                <strong>{selectedTimesheet.employeeName}</strong>? This action cannot be undone.
-              </>
-            ) : (
-              "No timesheet selected"
-            )}
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleDialogClose}>Cancel</Button>
-          <Button 
-            onClick={handleDelete} 
-            color="error" 
-            variant="contained"
-            disabled={!selectedTimesheet}
-          >
-            Delete
           </Button>
         </DialogActions>
       </Dialog>
