@@ -581,7 +581,7 @@ const TimesheetDetailPage = () => {
             }}
           />
 
-          <FormControl size="small" sx={{ minWidth: 200 }}>
+          {/* <FormControl size="small" sx={{ minWidth: 200 }}>
             <InputLabel>All Tasks</InputLabel>
             <Select value="" label="All Tasks" disabled={loading || entries.length === 0}>
               {entries.map((entry, index) => (
@@ -590,7 +590,7 @@ const TimesheetDetailPage = () => {
                 </MenuItem>
               ))}
             </Select>
-          </FormControl>
+          </FormControl> */}
         </Box>
 
         {loading && entries.length === 0 ? (

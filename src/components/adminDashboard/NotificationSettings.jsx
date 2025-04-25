@@ -52,10 +52,10 @@ const COUNTRIES = [
  
 // Predefined roles with emails
 const ROLES = [
-  { name: "HR Manager", email: "hr@company.com" },
-  { name: "Department Manager", email: "manager@company.com" },
-  { name: "Team Supervisor", email: "supervisor@company.com" },
-  { name: "CEO", email: "ceo@company.com" }
+  { name: "HR Manager", email: "hr@infinevocloud.com" },
+  { name: "Department Manager", email: "manager@infinevocloud.com" },
+  { name: "Team Supervisor", email: "supervisor@infinevocloud.com" },
+  { name: "CEO", email: "ceo@infinevocloud.com" }
 ];
  
 const NotificationSettings = () => {
