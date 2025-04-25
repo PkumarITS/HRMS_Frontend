@@ -117,6 +117,7 @@ const Dashboard = () => {
       action: () => setLeaveOpen(!leaveOpen),
       subItems: [
         { text: "Leaves", link: "/admin/leaves" },
+        { text: "Leave Type", link: "/admin/leaves-type" },
         { text: "Leave Balance", link: "/admin/leave-balance" },
         { text: "Holiday", link: "/admin/holiday" }
       ],

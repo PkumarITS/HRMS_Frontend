@@ -149,6 +149,9 @@ function RegistrationPage() {
               >
                 <MenuItem value="admin">ADMIN</MenuItem>
                 <MenuItem value="user">USER</MenuItem>
+                <MenuItem value="hr">HR</MenuItem>
+                <MenuItem value="supervisor">SUPERVISOR</MenuItem>
+
               </Select>
             </FormControl>
             <TextField

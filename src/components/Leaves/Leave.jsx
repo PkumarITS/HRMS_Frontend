@@ -51,7 +51,8 @@ const Leave = () => {
   const [employeeData, setEmployeeData] = useState(null);
   const recordsPerPage = 5;
   const [profileData, setProfileData] = useState(null);
-
+  const [leaveTypes, setLeaveTypes] = useState([]);
+  const [loadingLeaveTypes, setLoadingLeaveTypes] = useState(false);
 
   // Configure axios instance
   const api = axios.create({
@@ -67,45 +68,72 @@ const Leave = () => {
     return config;
   });
 
-
-
   useEffect(() => {
-      const fetchProfile = async () => {
-        try {
-          const token = Cookies.get("token");
-          if (!token) {
-            throw new Error("No authentication token found");
-          }
-  
-          const response = await UserService.getCompleteProfile(token);
-          
-          if (response.employeeData) {
-            //console.log(response);
-            setProfileData(response.employeeData);
-          } else {
-            throw new Error("No employee data found in response");
-          }
-        } catch (error) {
-          console.error("Failed to fetch profile:", error);
-          setError(error.message || "Failed to load profile data");
-        } finally {
-          setLoading(false);
+    const fetchProfile = async () => {
+      try {
+        const token = Cookies.get("token");
+        if (!token) {
+          throw new Error("No authentication token found");
         }
-      };
-      
-      fetchProfile();
-    }, []);  
 
+        const response = await UserService.getCompleteProfile(token);
+        
+        if (response.employeeData) {
+          setProfileData(response.employeeData);
+        } else {
+          throw new Error("No employee data found in response");
+        }
+      } catch (error) {
+        console.error("Failed to fetch profile:", error);
+        setSnackbar({
+          open: true,
+          message: error.message || "Failed to load profile data",
+          severity: "error",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchProfile();
+  }, []);  
 
+  // Fetch leave types from backend
+  useEffect(() => {
+    const fetchLeaveTypes = async () => {
+      setLoadingLeaveTypes(true);
+      try {
+        const response = await api.get("/leave-types");
+     //   const response =  await axios.get(`${baseURL}/admin/leave-types`);
+        setLeaveTypes(response.data);
+      } catch (error) {
+        console.error("Error fetching leave types:", error);
+        setSnackbar({
+          open: true,
+          message: "Failed to load leave types. Using default options.",
+          severity: "warning",
+        });
+        // Fallback to default leave types if API fails
+        setLeaveTypes([
+          { name: "Casual" },
+          { name: "Sick" },
+          { name: "Paid" },
+          { name: "Maternity" },
+          { name: "Paternity" }
+        ]);
+      } finally {
+        setLoadingLeaveTypes(false);
+      }
+    };
+
+    fetchLeaveTypes();
+  }, []);
 
   // Fetch employee data on component mount
   useEffect(() => {
     const fetchEmployeeData = async () => {
       try {
-      //  const response = await api.get("/employees/me");
-        
         setEmployeeData(response.data);
-        // Pre-fill employee details in form
         setLeaveData(prev => ({
           ...prev,
           employeeId: response.data.employeeId,
@@ -193,8 +221,7 @@ const Leave = () => {
   const fetchLeaveHistory = async () => {
     setLoading(true);
     try {
-    //  const response = await api.get("/adminuser/leaves");
-    const response = await api.get("/user/leaves");
+      const response = await api.get("/user/leaves");
       const sortedData = response.data.sort(
         (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
       );
@@ -267,24 +294,16 @@ const Leave = () => {
               <TextField
                 fullWidth
                 name="employeeId"
-              
                 value={profileData?.personal?.empId}
-             
-
                 readonly
-              
               />
-             
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
                 name="employeeName"
-               
                 value={profileData?.personal?.firstName}
-               
                 readonly
-                
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -295,14 +314,21 @@ const Leave = () => {
                   value={leaveData.leaveType}
                   onChange={handleChange}
                   label="Leave Type"
+                  disabled={loadingLeaveTypes}
                 >
                   <MenuItem value=""><em>Select</em></MenuItem>
-                  <MenuItem value="Casual">Casual</MenuItem>
-                  <MenuItem value="Sick">Sick</MenuItem>
-                  <MenuItem value="Paid">Paid</MenuItem>
-                  <MenuItem value="Maternity">Maternity</MenuItem>
-                  <MenuItem value="Paternity">Paternity</MenuItem>
+                  {leaveTypes.map((type) => (
+                    <MenuItem key={type.description} value={type.description}>
+                      {type.description}
+                    </MenuItem>
+                  ))}
                 </Select>
+                {loadingLeaveTypes && (
+                  <FormHelperText>
+                    <CircularProgress size={14} sx={{ mr: 1 }} />
+                    Loading leave types...
+                  </FormHelperText>
+                )}
               </FormControl>
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -388,11 +414,8 @@ const Leave = () => {
               label="Filter by Status"
             >
               {["All", "Pending", "Approved", "Rejected"].map((status) => (
-              
                 <MenuItem key={status} value={status}>
                   {status}
-                {console.log(status)}
-
                 </MenuItem>
               ))}
             </Select>

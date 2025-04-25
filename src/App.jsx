@@ -34,6 +34,7 @@ import UserAttendance from './components/EmployeeDashboard/UserAttendence';
 import AdminAttendance from './components/adminDashboard/AdminAttendance';
 import ForgetPassword from './components/ForgetPassword';
 import ResetPassword from './components/ResetPassword';
+import LeaveType from './components/adminDashboard/LeaveType';
 
 function App() {
   return (
@@ -71,6 +72,7 @@ function App() {
             <Route path="timesheets/notifications" element={<NotificationSettings />} />
             <Route path="holiday" element={<HolidayAdmin />} />
             <Route path="leaves" element={<LeaveRequest />} />
+            <Route path="leaves-type" element={<LeaveType />} />
             <Route path="leave-balance" element={<AdminLeaveBalance />} />
             <Route path="attendance" element={<AdminAttendance />} />
             <Route path="profile" element={<Profile isAdmin={true} />} />
