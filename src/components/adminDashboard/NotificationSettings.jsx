@@ -175,8 +175,7 @@ const NotificationSettings = () => {
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
-     //   const response = await axios.get(API.GET_EMPLOYEES);
-        const response = await axios.get(`${API_BASE_URL}/api/employees/basic-info`);
+      const response = await axios.get(`${API_BASE_URL}/api/employees/basic-info`);
         setEmployees(response.data);
         showSnackbar("Employees loaded successfully", "success");
       } catch (error) {
@@ -189,9 +188,9 @@ const NotificationSettings = () => {
   }, []);
  
   // Get employees by country
-  // const getEmployeesByCountry = (countryCode) => {
-  //   return employees.filter(emp => emp.country === countryCode);
-  // };
+  const getEmployeesByCountry = (countryCode) => {
+    return employees.filter(emp => emp.country === countryCode);
+  };
  
   // Handle settings changes
   const handleSettingChange = (setting) => (event) => {
@@ -292,21 +291,12 @@ const NotificationSettings = () => {
       }
  
       // Call backend API to send emails
-    //  const response = await axios.post(API.SEND_EMAILS, {
-    //    to: selectedEmails,
-     //   cc: settings.escalationRecipients,
-     //   subject: "Timesheet Reminder",
-   //     messageBody: escalationEmailTemplate(selectedEmails[0].name)
-   //   });
- 
-      const response = await axios.post(`${API_BASE_URL}/api/emails/employee-reminders`,
-      {
-        to: selectedEmails,
-        cc: settings.escalationRecipients,
-        subject: "Timesheet Reminder",
-        messageBody: escalationEmailTemplate(selectedEmails[0].name)
-      });
- 
+const response = await axios.post(`${API_BASE_URL}/api/emails/employee-reminders`, {
+  to: selectedEmails,
+  cc: settings.escalationRecipients,
+  subject: "Timesheet Reminder",
+  messageBody: escalationEmailTemplate(selectedEmails[0].name)
+});
  
  
       if (response.status === 200) {
@@ -430,92 +420,92 @@ Timesheet Compliance Team
     </FormControl>
   );
  
-  // Render employee selector for employee reminders
-  // const renderEmployeeSelector = (index) => {
-  //   const countryCode = settings.employeeReminders[index].countries[0];
-  //   return countryCode ? (
-  //     <Box sx={{ mt: 2, mb: 2 }}>
-  //       <Typography variant="subtitle2" sx={{ mb: 1 }}>
-  //         Employees in {COUNTRIES.find(c => c.code === countryCode)?.name}:
-  //       </Typography>
-  //       <Autocomplete
-  //         multiple
-  //         options={getEmployeesByCountry(countryCode)}
-  //         getOptionLabel={(option) => `${option.name} (${option.email})`}
-  //         value={employees.filter(emp => settings.employeeReminders[index].selectedEmployees.includes(emp.empId))}
-  //         onChange={(e, newValue) => {
-  //           updateReminder('employeeReminders', index, 'selectedEmployees', newValue.map(emp => emp.empId));
-  //         }}
-  //         disabled={!settings.employeeReminders[index].enabled}
-  //         renderInput={(params) => (
-  //           <TextField
-  //             {...params}
-  //             variant="outlined"
-  //             size="small"
-  //             placeholder="Select employees"
-  //           />
-  //         )}
-  //       />
-  //     </Box>
-  //   ) : null;
-  // };
+ // Render employee selector for employee reminders
+  const renderEmployeeSelector = (index) => {
+    const countryCode = settings.employeeReminders[index].countries[0];
+    return countryCode ? (
+      <Box sx={{ mt: 2, mb: 2 }}>
+        <Typography variant="subtitle2" sx={{ mb: 1 }}>
+          Employees in {COUNTRIES.find(c => c.code === countryCode)?.name}:
+        </Typography>
+        <Autocomplete
+          multiple
+          options={getEmployeesByCountry(countryCode)}
+          getOptionLabel={(option) => `${option.name} (${option.email})`}
+          value={employees.filter(emp => settings.employeeReminders[index].selectedEmployees.includes(emp.empId))}
+          onChange={(e, newValue) => {
+            updateReminder('employeeReminders', index, 'selectedEmployees', newValue.map(emp => emp.empId));
+          }}
+          disabled={!settings.employeeReminders[index].enabled}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              variant="outlined"
+              size="small"
+              placeholder="Select employees"
+            />
+          )}
+        />
+      </Box>
+    ) : null;
+  };
  
   // Render recipients selector for supervisor/HR/approval reminders
-  // const renderRecipientsSelector = (type, index) => (
-  //   <Box sx={{ mt: 2, mb: 2 }}>
-  //     <Typography variant="subtitle2" sx={{ mb: 1 }}>
-  //       Recipients:
-  //     </Typography>
-  //     <Autocomplete
-  //       multiple
-  //       freeSolo
-  //       options={ROLES.map(role => role.email)}
-  //       value={settings[type][index].recipients}
-  //       onChange={(e, newValue) => {
-  //         updateReminder(type, index, 'recipients', newValue);
-  //       }}
-  //       disabled={!settings[type][index].enabled}
-  //       renderInput={(params) => (
-  //         <TextField
-  //           {...params}
-  //           variant="outlined"
-  //           size="small"
-  //           placeholder="Add recipients"
-  //         />
-  //       )}
-  //     />
-  //   </Box>
-  // );
+  const renderRecipientsSelector = (type, index) => (
+    <Box sx={{ mt: 2, mb: 2 }}>
+      <Typography variant="subtitle2" sx={{ mb: 1 }}>
+        Recipients:
+      </Typography>
+      <Autocomplete
+        multiple
+        freeSolo
+        options={ROLES.map(role => role.email)}
+        value={settings[type][index].recipients}
+        onChange={(e, newValue) => {
+          updateReminder(type, index, 'recipients', newValue);
+        }}
+        disabled={!settings[type][index].enabled}
+        renderInput={(params) => (
+          <TextField
+            {...params}
+            variant="outlined"
+            size="small"
+            placeholder="Add recipients"
+          />
+        )}
+      />
+    </Box>
+  );
  
-  // // Render day/time selectors with consistent spacing
-  // const renderDateTimeSelectors = (type, index, days, times) => (
-  //   <Box sx={{ display: "flex", gap: 2, mt: 2, mb: 2, flexWrap: 'wrap' }}>
-  //     <FormControl size="small" sx={{ minWidth: 120 }}>
-  //       <InputLabel>Day</InputLabel>
-  //       <Select
-  //         value={settings[type][index].day}
-  //         onChange={(e) => updateReminder(type, index, 'day', e.target.value)}
-  //         disabled={!settings[type][index].enabled}
-  //       >
-  //         {days.map(day => (
-  //           <MenuItem key={day} value={day}>{day}</MenuItem>
-  //         ))}
-  //       </Select>
-  //     </FormControl>
-  //     <FormControl size="small" sx={{ minWidth: 120 }}>
-  //       <InputLabel>Time</InputLabel>
-  //       <Select
-  //         value={settings[type][index].time}
-  //         onChange={(e) => updateReminder(type, index, 'time', e.target.value)}
-  //         disabled={!settings[type][index].enabled}
-  //       >
-  //         {times.map(time => (
-  //           <MenuItem key={time} value={time}>{time}</MenuItem>
-  //         ))}
-  //       </Select>
-  //     </FormControl>
-  //   </Box>
-  // );
+  // Render day/time selectors with consistent spacing
+  const renderDateTimeSelectors = (type, index, days, times) => (
+    <Box sx={{ display: "flex", gap: 2, mt: 2, mb: 2, flexWrap: 'wrap' }}>
+      <FormControl size="small" sx={{ minWidth: 120 }}>
+        <InputLabel>Day</InputLabel>
+        <Select
+          value={settings[type][index].day}
+          onChange={(e) => updateReminder(type, index, 'day', e.target.value)}
+          disabled={!settings[type][index].enabled}
+        >
+          {days.map(day => (
+            <MenuItem key={day} value={day}>{day}</MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+      <FormControl size="small" sx={{ minWidth: 120 }}>
+        <InputLabel>Time</InputLabel>
+        <Select
+          value={settings[type][index].time}
+          onChange={(e) => updateReminder(type, index, 'time', e.target.value)}
+          disabled={!settings[type][index].enabled}
+        >
+          {times.map(time => (
+            <MenuItem key={time} value={time}>{time}</MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+    </Box>
+  );
  
   return (
     <Paper elevation={0} sx={{ p: 4, width: "100%", maxWidth: 1200, mx: "auto", borderRadius: 3 }}>
@@ -551,14 +541,14 @@ Timesheet Compliance Team
               }
               label={`Reminder Level ${reminder.level}`}
             />
-            {/* <Box sx={{ ml: 4 }}>
+            <Box sx={{ ml: 4 }}>
               <Box sx={{ display: "flex", gap: 2, flexWrap: 'wrap' }}>
                 {renderCountrySelector(index)}
                 {renderTimezoneSelector(index)}
               </Box>
               {renderDateTimeSelectors('employeeReminders', index, ["Saturday", "Sunday"], ["23:59", "20:00", "18:00"])}
               {renderEmployeeSelector(index)}
-            </Box> */}
+            </Box>
           </Grid>
         ))}
       </Grid>
@@ -579,10 +569,10 @@ Timesheet Compliance Team
               }
               label={`Supervisor Reminder Level ${reminder.level}`}
             />
-            {/* <Box sx={{ ml: 4 }}>
+            <Box sx={{ ml: 4 }}>
               {renderDateTimeSelectors('supervisorReminders', index, ["Monday", "Tuesday", "Wednesday"], ["14:00", "12:00", "10:00"])}
               {renderRecipientsSelector('supervisorReminders', index)}
-            </Box> */}
+            </Box>
           </Grid>
         ))}
       </Grid>
@@ -603,10 +593,10 @@ Timesheet Compliance Team
               }
               label={`HR Reminder Level ${reminder.level}`}
             />
-            {/* <Box sx={{ ml: 4 }}>
+            <Box sx={{ ml: 4 }}>
               {renderDateTimeSelectors('hrReminders', index, ["Tuesday", "Wednesday", "Thursday"], ["14:00", "12:00", "10:00"])}
               {renderRecipientsSelector('hrReminders', index)}
-            </Box> */}
+            </Box>
           </Grid>
         ))}
       </Grid>
@@ -627,10 +617,10 @@ Timesheet Compliance Team
               }
               label={`Approval Level ${reminder.level}`}
             />
-            {/* <Box sx={{ ml: 4 }}>
+            <Box sx={{ ml: 4 }}>
               {renderDateTimeSelectors('approvalReminders', index, ["Tuesday", "Wednesday", "Friday"], ["12:00", "14:00", "10:00"])}
               {renderRecipientsSelector('approvalReminders', index)}
-            </Box> */}
+            </Box>
           </Grid>
         ))}
       </Grid>
@@ -878,3 +868,4 @@ Timesheet Compliance Team
 };
  
 export default NotificationSettings;
+ 
