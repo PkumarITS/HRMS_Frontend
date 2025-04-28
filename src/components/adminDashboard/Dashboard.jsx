@@ -322,6 +322,13 @@ const Dashboard = () => {
             overflowY: 'auto'
           }}
         >
+          <Box sx={{ backgroundColor: "white", borderRadius: 1, p: 2 }}>
+            {/* Render the child components here */}
+            <Typography variant="h6" sx={{ mb: 2 }}>
+              Welcome to the Admin Dashboard
+            </Typography>
+            {/* This is where the child routes will be rendered */}
+          </Box>
           <Outlet />
         </Box>
       </Box>

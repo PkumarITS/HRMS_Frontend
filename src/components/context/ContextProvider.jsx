@@ -28,7 +28,7 @@ const ContextProvider = ({ children }) => {
 
             try {
                 // Verify token with backend
-                const response = await axios.get(`${UserService.BASE_URL}/adminuser/get-profile`, {
+                const response = await axios.get(`${UserService.BASE_URL}/common/get-profile`, {
                     headers: { Authorization: `Bearer ${token}` },
                     withCredentials: true,
                 });

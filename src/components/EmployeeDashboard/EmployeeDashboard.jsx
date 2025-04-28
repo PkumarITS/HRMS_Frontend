@@ -34,7 +34,7 @@ import {
 } from "@mui/icons-material";
 import Cookies from "js-cookie";
 import UserService from "../service/UserService";
- 
+
 const EmployeeDashboard = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
@@ -45,7 +45,7 @@ const EmployeeDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
- 
+
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -53,9 +53,9 @@ const EmployeeDashboard = () => {
         if (!token) {
           throw new Error("No authentication token found");
         }
- 
+
         const response = await UserService.getCompleteProfile(token);
-       
+
         if (response.employeeData) {
           setProfileData(response.employeeData);
         } else {
@@ -69,17 +69,17 @@ const EmployeeDashboard = () => {
         setLoading(false);
       }
     };
-   
+
     fetchProfile();
   }, []);
- 
+
   const handleCloseSnackbar = (event, reason) => {
     if (reason === 'clickaway') {
       return;
     }
     setSnackbarOpen(false);
   };
- 
+
   const handleLogout = async () => {
     try {
       await UserService.logout();
@@ -91,7 +91,7 @@ const EmployeeDashboard = () => {
       navigate("/", { replace: true });
     }
   };
- 
+
   const menuItems = [
     { text: "Home", icon: <DashboardIcon />, link: "/user/employee-dashboard" },
     {
@@ -127,7 +127,7 @@ const EmployeeDashboard = () => {
     },
     { text: "My Profile", icon: <PersonIcon />, link: "/user/profile" },
   ];
- 
+
   if (loading) {
     return (
       <Box sx={{
@@ -140,11 +140,11 @@ const EmployeeDashboard = () => {
       </Box>
     );
   }
- 
+
   const genderIcon = profileData?.personal?.gender?.toLowerCase() === 'male'
     ? <MaleIcon fontSize="small" color="primary" />
     : <FemaleIcon fontSize="small" color="secondary" />;
- 
+
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100vh" }}>
       {/* Error Snackbar */}
@@ -162,7 +162,7 @@ const EmployeeDashboard = () => {
           {error}
         </Alert>
       </Snackbar>
- 
+
       <AppBar position="static" color="primary">
         <Toolbar sx={{ justifyContent: "space-between" }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
@@ -186,7 +186,7 @@ const EmployeeDashboard = () => {
               </Box>
             </Box>
           </Box>
- 
+
           <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
             <TextField
               variant="outlined"
@@ -207,7 +207,7 @@ const EmployeeDashboard = () => {
           </Box>
         </Toolbar>
       </AppBar>
- 
+
       <Box sx={{ display: "flex", flexGrow: 1 }}>
         <Box sx={{ width: 250, bgcolor: "#1e293b", color: "white", p: 2 }}>
           <List>
@@ -245,13 +245,20 @@ const EmployeeDashboard = () => {
             ))}
           </List>
         </Box>
- 
+
         <Box component="main" sx={{ flexGrow: 1, p: 3, bgcolor: "#f8fafc" }}>
+          <Box sx={{ backgroundColor: "white", borderRadius: 1, p: 2 }}>
+            {/* Render the child components here */}
+            <Typography variant="h6" sx={{ mb: 2 }}>
+              Welcome to the User Dashboard
+            </Typography>
+            {/* This is where the child routes will be rendered */}
+          </Box>
           <Outlet />
         </Box>
       </Box>
     </Box>
   );
 };
- 
+
 export default EmployeeDashboard;

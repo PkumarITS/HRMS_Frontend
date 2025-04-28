@@ -41,14 +41,14 @@ function UpdateUser() {
       try {
         setLoading(true);
         const token = Cookies.get('token');
-        
+
         if (!token) {
           navigate('/login');
           return;
         }
 
         const response = await UserService.getUserById(userId, token);
-        
+
         if (response && response.ourUsers) {
           setUserData({
             name: response.ourUsers.name,
@@ -69,7 +69,7 @@ function UpdateUser() {
         setLoading(false);
       }
     };
-    
+
     fetchUserData();
   }, [userId, navigate]);
 
@@ -99,7 +99,7 @@ function UpdateUser() {
         };
 
         const response = await UserService.updateUser(userId, payload, token);
-        
+
         if (response && response.statusCode === 200) {
           setSuccess('User updated successfully!');
           showNotification('User updated successfully!', 'success');
@@ -145,8 +145,8 @@ function UpdateUser() {
         onClose={handleCloseNotification}
         anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
-        <Alert 
-          onClose={handleCloseNotification} 
+        <Alert
+          onClose={handleCloseNotification}
           severity={notification.severity}
           sx={{ width: '100%' }}
         >
@@ -157,14 +157,14 @@ function UpdateUser() {
       <Typography variant="h4" gutterBottom>
         Update User
       </Typography>
-      
+
       <Paper sx={{ padding: 3, maxWidth: 600 }}>
         {error && !notification.open && (
           <Alert severity="error" sx={{ marginBottom: 2 }}>
             {error}
           </Alert>
         )}
-        
+
         {success && !notification.open && (
           <Alert severity="success" sx={{ marginBottom: 2 }}>
             {success}
@@ -181,7 +181,7 @@ function UpdateUser() {
             margin="normal"
             required
           />
-          
+
           <TextField
             fullWidth
             label="Email"
@@ -192,7 +192,7 @@ function UpdateUser() {
             margin="normal"
             required
           />
-          
+
           <FormControl fullWidth margin="normal" required>
             <InputLabel>Role</InputLabel>
             <Select
@@ -201,11 +201,14 @@ function UpdateUser() {
               onChange={handleInputChange}
               label="Role"
             >
-              <MenuItem value="ADMIN">ADMIN</MenuItem>
-              <MenuItem value="USER">USER</MenuItem>
+              <MenuItem value="admin">ADMIN</MenuItem>
+              <MenuItem value="hr">HR</MenuItem>
+              <MenuItem value="manager">MANAGER</MenuItem>
+              <MenuItem value="supervisor">SUPERVISOR</MenuItem>
+              <MenuItem value="user">USER</MenuItem>
             </Select>
           </FormControl>
-          
+
           <TextField
             fullWidth
             label="City"
@@ -225,7 +228,7 @@ function UpdateUser() {
             margin="normal"
             helperText="Only enter if you want to change the password"
           />
-          
+
           <Box sx={{ marginTop: 2 }}>
             <Button
               type="submit"

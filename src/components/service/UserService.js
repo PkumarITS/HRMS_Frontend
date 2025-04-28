@@ -59,7 +59,7 @@ class UserService {
 
     static async getCompleteProfile(token) {
         try {
-            const response = await axios.get(`${UserService.BASE_URL}/adminuser/get-complete-profile`, {
+            const response = await axios.get(`${UserService.BASE_URL}/common/get-complete-profile`, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                     'Content-Type': 'application/json'
@@ -72,7 +72,7 @@ class UserService {
             throw err.response?.data || { message: "Failed to get complete profile" };
         }
     }
-    
+
     static async getAllUsers(token) {
         try {
             const response = await axios.get(`${UserService.BASE_URL}/admin/get-all-users`, {
@@ -91,7 +91,7 @@ class UserService {
 
     static async getYourProfile(token) {
         try {
-            const response = await axios.get(`${UserService.BASE_URL}/adminuser/get-profile`, {
+            const response = await axios.get(`${UserService.BASE_URL}/common/get-profile`, {
                 headers: { Authorization: `Bearer ${token}` },
                 withCredentials: true,
             });
@@ -187,8 +187,40 @@ class UserService {
         return role === "user";
     }
 
+    // Add role checking methods
+    static isHR() {
+        const role = Cookies.get("role");
+        return role === "hr";
+    }
+
+    static isManager() {
+        const role = Cookies.get("role");
+        return role === "manager";
+    }
+
+    static isSupervisor() {
+        const role = Cookies.get("role");
+        return role === "supervisor";
+    }
+
+    // Update adminOnly to include other privileged roles if needed
     static adminOnly() {
         return this.isAuthenticated() && this.isAdmin();
+    }
+
+    // Add HR only check
+    static hrOnly() {
+        return this.isAuthenticated() && this.isHR();
+    }
+
+    // Add Manager only check
+    static managerOnly() {
+        return this.isAuthenticated() && this.isManager();
+    }
+
+    // Add Supervisor only check
+    static supervisorOnly() {
+        return this.isAuthenticated() && this.isSupervisor();
     }
 
 

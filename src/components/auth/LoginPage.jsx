@@ -1,8 +1,8 @@
 import React, { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import UserService from "../service/UserService";
-import { 
-    Container, Card, CardContent, TextField, Button, Typography, 
+import {
+    Container, Card, CardContent, TextField, Button, Typography,
     Box, Checkbox, FormControlLabel, Link, IconButton, InputAdornment,
     Alert, CircularProgress
 } from "@mui/material";
@@ -18,33 +18,52 @@ function LoginPage() {
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
+    // Update the handleSubmit function to handle all roles
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
         setError('');
-        
+
         if (!email || !password) {
             setError('Please fill in all fields');
             setLoading(false);
             return;
         }
-    
+
         try {
             const response = await UserService.login(email, password);
-            console.log("Login response:", response); // Debug log
-            
+            console.log("Login response:", response);
+
             if (response.token) {
-                // Normalize role to uppercase
                 const normalizedRole = response.role.toLowerCase();
-                
-                // Update authentication state
+
                 updateAuthState({
                     role: normalizedRole,
                     authenticated: true
                 });
-                
-                // Redirect based on normalized role
-                navigate(normalizedRole === 'admin' ? '/admin/dashboard' : '/user/employee-dashboard');
+
+                // Redirect based on role
+                let redirectPath = '/';
+                switch (normalizedRole) {
+                    case 'admin':
+                        redirectPath = '/admin/dashboard';
+                        break;
+                    case 'hr':
+                        redirectPath = '/hr/hr-dashboard';
+                        break;
+                    case 'manager':
+                        redirectPath = '/manager/manager-dashboard';
+                        break;
+                    case 'supervisor':
+                        redirectPath = '/supervisor/supervisor-dashboard';
+                        break;
+                    case 'user':
+                        redirectPath = '/user/employee-dashboard';
+                        break;
+                    default:
+                        redirectPath = '/';
+                }
+                navigate(redirectPath);
             } else {
                 setError(response.message || 'Login failed. Please try again.');
             }
@@ -55,7 +74,7 @@ function LoginPage() {
             setLoading(false);
         }
     };
-    
+
     const handleKeyPress = (e) => {
         if (e.key === 'Enter') {
             handleSubmit(e);
@@ -119,7 +138,7 @@ function LoginPage() {
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
                             <FormControlLabel
                                 control={
-                                    <Checkbox 
+                                    <Checkbox
                                         checked={showPassword}
                                         onChange={() => setShowPassword(!showPassword)}
                                         color="primary"

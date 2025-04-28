@@ -35,6 +35,9 @@ import AdminAttendance from './components/adminDashboard/AdminAttendance';
 import ForgetPassword from './components/ForgetPassword';
 import ResetPassword from './components/ResetPassword';
 import LeaveType from './components/adminDashboard/LeaveType';
+import HrDashboard from './components/hrDashboard/HrDashboard';
+import ManagerDashboard from './components/managerDashboard/ManagerDashboard';
+import SupervisorDashboard from './components/supervisorDashboard/SupervisorDashboard';
 
 function App() {
   return (
@@ -78,6 +81,44 @@ function App() {
             <Route path="profile" element={<Profile isAdmin={true} />} />
           </Route>
 
+          {/* HR Routes */}
+          <Route 
+            path="/hr/*" 
+            element={
+              <ProtectedRoute allowedRoles={['hr']}>
+                <HrDashboard />
+              </ProtectedRoute>
+            }
+          >
+            <Route path="profile" element={<Profile isAdmin={true} />} />
+          </Route>
+
+          {/* Manager Routes */}
+          <Route 
+            path="/manager/*" 
+            element={
+              <ProtectedRoute allowedRoles={['manager']}>
+                <ManagerDashboard />
+              </ProtectedRoute>
+            }
+          >
+            <Route path="profile" element={<Profile />} />
+          </Route>
+
+
+          {/* Supervisor Routes */}
+          <Route 
+            path="/supervisor/*" 
+            element={
+              <ProtectedRoute allowedRoles={['supervisor']}>
+                <SupervisorDashboard />
+              </ProtectedRoute>
+            }
+          >
+            <Route path="profile" element={<Profile />} />
+          </Route>
+
+
           {/* User Routes */}
           <Route 
             path="/user/*" 
@@ -103,6 +144,9 @@ function App() {
             <Route path="mytask" element={<MyTask />} />
 
           </Route>
+
+
+          
 
           {/* Catch-all route */}
           <Route path="*" element={<Navigate to="/" replace />} />

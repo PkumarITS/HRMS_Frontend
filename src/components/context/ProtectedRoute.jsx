@@ -7,7 +7,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     const location = useLocation();
     
     if (loading) {
-        return null; // Return null or loading spinner during initial load
+        return null;
     }
 
     if (!authenticated) {
@@ -15,7 +15,28 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     }
 
     if (allowedRoles && !allowedRoles.includes(role)) {
-        return <Navigate to={role === 'admin' ? '/admin/dashboard' : '/user/employee-dashboard'} replace />;
+        // Redirect to appropriate dashboard based on role
+        let redirectPath = '/';
+        switch(role) {
+            case 'admin':
+                redirectPath = '/admin/dashboard';
+                break;
+            case 'hr':
+                redirectPath = '/hr/hr-dashboard';
+                break;
+            case 'manager':
+                redirectPath = '/manager/manager-dashboard';
+                break;
+            case 'supervisor':
+                redirectPath = '/supervisor/supervisor-dashboard';
+                break;
+            case 'user':
+                redirectPath = '/user/employee-dashboard';
+                break;
+            default:
+                redirectPath = '/';
+        }
+        return <Navigate to={redirectPath} replace />;
     }
 
     return children;
