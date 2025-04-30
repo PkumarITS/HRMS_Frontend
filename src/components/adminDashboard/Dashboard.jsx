@@ -99,6 +99,15 @@ const Dashboard = () => {
       action: () => setSystemOpen(!systemOpen),
       subItems: [
         { text: "User Management", link: "/admin/user-management" },
+        { text: " Actions", link: "/admin/create-action" },
+        { text: "Roles", link: "/admin/create-role" },
+        {text: "List Actions", link: "/admin/list-actions"},
+        {text: "List Roles", link: "/admin/list-roles"},
+       
+
+        
+        
+
       ],
     },
     {
@@ -322,13 +331,7 @@ const Dashboard = () => {
             overflowY: 'auto'
           }}
         >
-          <Box sx={{ backgroundColor: "white", borderRadius: 1, p: 2 }}>
-            {/* Render the child components here */}
-            <Typography variant="h6" sx={{ mb: 2 }}>
-              Welcome to the Admin Dashboard
-            </Typography>
-            {/* This is where the child routes will be rendered */}
-          </Box>
+         
           <Outlet />
         </Box>
       </Box>

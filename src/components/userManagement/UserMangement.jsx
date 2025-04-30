@@ -17,9 +17,14 @@ import {
   Snackbar,
   Alert,
   IconButton,
-  Tooltip
+  Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions
 } from '@mui/material';
-import { Add, Edit, Delete, Refresh } from '@mui/icons-material';
+import { Add, Edit, Delete, Refresh, SettingsInputComponent } from '@mui/icons-material';
 
 function UserManagement() {
   const [users, setUsers] = useState([]);
@@ -30,6 +35,11 @@ function UserManagement() {
     message: '',
     severity: 'success'
   });
+  const [deleteDialog, setDeleteDialog] = useState({
+    open: false,
+    userId: null,
+    userName: ''
+  });
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -38,49 +48,73 @@ function UserManagement() {
 
   const fetchUsers = async () => {
     try {
-        setLoading(true);
-        const token = Cookies.get('token');
-        
-        if (!token) {
-            navigate('/login');
-            return;
-        }
+      setLoading(true);
+      setError(null);
+      const token = Cookies.get('token');
+      
+      if (!token) {
+        navigate('/login');
+        return;
+      }
 
-        // Verify token is valid
-        const response = await UserService.getAllUsers(token);
-        
-        if (response && response.ourUsersList) {
-            setUsers(response.ourUsersList);
-        } else {
-            setError('No users found');
-        }
-    } catch (error) {
-        console.error('Error details:', error.response?.data || error.message);
-        
-        if (error.response?.status === 403) {
-            setError('You are not authorized to view users');
-            showNotification('Access denied: Insufficient permissions', 'error');
-        } else {
-            setError('Failed to load users. Please try again.');
-        }
-    } finally {
-        setLoading(false);
-    }
-};
-
-  const handleDelete = async (userId) => {
-    try {
-      const confirmDelete = window.confirm('Are you sure you want to delete this user?');
-      if (confirmDelete) {
-        const token = Cookies.get('token');
-        await UserService.deleteUser(userId, token);
-        showNotification('User deleted successfully', 'success');
-        fetchUsers();
+      const response = await UserService.getAllUsers(token);
+      
+      if (response && response.ourUsersList) {
+        setUsers(response.ourUsersList);
+      } else {
+        setError('No users found');
+        setUsers([]);
       }
     } catch (error) {
-      console.error('Error deleting user:', error);
-      showNotification('Failed to delete user', 'error');
+      console.error('Error details:', error.response?.data || error.message);
+      
+      if (error.response?.status === 403) {
+        setError('You are not authorized to view users');
+        showNotification('Access denied: Insufficient permissions', 'error');
+      } else {
+        setError('Failed to load users. Please try again.');
+      }
+      setUsers([]);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const handleDeleteClick = (userId, userName) => {
+    setDeleteDialog({
+      open: true,
+      userId,
+      userName
+    });
+  };
+
+  const handleDeleteConfirm = async () => {
+    try {
+      const token = Cookies.get('token');
+      await UserService.deleteUser(deleteDialog.userId, token);
+      
+      // Update local state to remove the deleted user
+      setUsers(prevUsers => prevUsers.filter(user => user.id !== deleteDialog.userId));
+      
+      showNotification(`User "${deleteDialog.userName}" deleted successfully`, 'success');
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      showNotification('Failed to delete user. Please try again.', 'error');
+    } finally {
+      setDeleteDialog({
+        open: false,
+        userId: null,
+        userName: ''
+      });
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteDialog({
+      open: false,
+      userId: null,
+      userName: ''
+    });
   };
 
   const showNotification = (message, severity) => {
@@ -93,6 +127,10 @@ function UserManagement() {
 
   const handleCloseNotification = () => {
     setNotification(prev => ({ ...prev, open: false }));
+  };
+
+  const handleMapping = (userId) => {
+    navigate(`/admin/user-mapping/${userId}`);
   };
 
   if (loading) {
@@ -121,7 +159,36 @@ function UserManagement() {
         </Alert>
       </Snackbar>
 
-      {/* Header and Action Buttons */}
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialog.open}
+        onClose={handleDeleteCancel}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-description"
+      >
+        <DialogTitle id="alert-dialog-title">Confirm User Deletion</DialogTitle>
+        <DialogContent>
+          <DialogContentText id="alert-dialog-description">
+            Are you sure you want to permanently delete user "{deleteDialog.userName}"?
+            This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDeleteCancel} color="primary">
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleDeleteConfirm} 
+            color="error" 
+            autoFocus
+            variant="contained"
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Page Header */}
       <Box sx={{ 
         display: 'flex', 
         justifyContent: 'space-between', 
@@ -162,7 +229,7 @@ function UserManagement() {
               <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Email</TableCell>
               <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Role</TableCell>
               <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>City</TableCell>
-              <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="center">Actions</TableCell>
+              <TableCell sx={{ color: 'white', fontWeight: 'bold', width: '180px' }} align="center">Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -183,15 +250,23 @@ function UserManagement() {
                       <IconButton
                         color="primary"
                         onClick={() => navigate(`/admin/update-user/${user.id}`)}
-                        sx={{ mr: 1 }}
                       >
                         <Edit />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Permissions">
+                      <IconButton
+                        color="secondary"
+                        onClick={() => handleMapping(user.id)}
+                        sx={{ mx: 1 }}
+                      >
+                        <SettingsInputComponent />
                       </IconButton>
                     </Tooltip>
                     <Tooltip title="Delete">
                       <IconButton
                         color="error"
-                        onClick={() => handleDelete(user.id)}
+                        onClick={() => handleDeleteClick(user.id, user.name)}
                       >
                         <Delete />
                       </IconButton>

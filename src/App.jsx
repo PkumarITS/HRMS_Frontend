@@ -5,6 +5,12 @@ import LoginPage from './components/auth/LoginPage';
 import RegistrationPage from './components/auth/RegistrationPage';
 import UserManagement from './components/userManagement/UserMangement';
 import UpdateUser from './components/userManagement/UserUpdate';
+import CreateActionPage from './components/userManagement/CreateActionPage';
+import CreateRolePage from './components/userManagement/CreateRolePage';
+
+import ListActions from './components/userManagement/ListActions';
+import ListRoles from './components/userManagement/ListRoles';
+import RoleActionMapping from './components/userManagement/RoleActionMapping';
 import Dashboard from './components/adminDashboard/Dashboard';
 import EmployeeDashboard from './components/EmployeeDashboard/EmployeeDashboard';
 import Employee from './components/employee/Employee';
@@ -38,6 +44,9 @@ import LeaveType from './components/adminDashboard/LeaveType';
 import HrDashboard from './components/hrDashboard/HrDashboard';
 import ManagerDashboard from './components/managerDashboard/ManagerDashboard';
 import SupervisorDashboard from './components/supervisorDashboard/SupervisorDashboard';
+import UserMapping from './components/userManagement/UserMapping';
+import EditRolePage from './components/userManagement/EditRolePage';
+import EditActionPage from './components/userManagement/EditActionPage';
 
 function App() {
   return (
@@ -68,6 +77,18 @@ function App() {
             <Route path="register" element={<RegistrationPage />} />
             <Route path="user-management" element={<UserManagement />} />
             <Route path="update-user/:userId" element={<UpdateUser />} />
+            <Route path="create-action" element={<CreateActionPage />} />
+            <Route path="create-role" element={<CreateRolePage />} />
+            <Route path="roles" element={<ListRoles />} />
+            <Route path="roles/mapping/:roleId" element={<RoleActionMapping />} />
+            <Route path="list-actions" element={<ListActions />} />
+            <Route path="list-roles" element={<ListRoles />} />
+            {/* <Route path="role-action-mapping" element={<RoleActionMapping />} /> */}
+            <Route path="user-mapping/:userId" element={<UserMapping />} />
+            <Route path="edit-role/:roleId" element={<EditRolePage />} />
+            <Route path="edit-action/:actionId" element={<EditActionPage />} />
+
+
             <Route path="projects" element={<Project />} />
             <Route path="projects/tasks" element={<Task />} />
             <Route path="dashboard/timesheets" element={<AdminTimesheetManagement />} />
@@ -78,7 +99,7 @@ function App() {
             <Route path="leaves-type" element={<LeaveType />} />
             <Route path="leave-balance" element={<AdminLeaveBalance />} />
             <Route path="attendance" element={<AdminAttendance />} />
-            <Route path="profile" element={<Profile isAdmin={true} />} />
+            <Route path="profile" element={<Profile isRole={"admin"} />} />
           </Route>
 
           {/* HR Routes */}
