@@ -34,7 +34,9 @@ import {
   ListItem,
   ListItemAvatar,
   ListItemText,
-  CircularProgress
+  CircularProgress,
+  Tabs,
+  Tab
 } from "@mui/material";
 import {
   Search,
@@ -45,13 +47,21 @@ import {
   FileDownload,
   Email,
   Notifications as NotificationsIcon,
-  Person
+  Person,
+  PictureAsPdf,
+  GridOn
 } from "@mui/icons-material";
 import * as XLSX from 'xlsx';
+import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
 import { useNavigate } from "react-router-dom";
 import { parseISO, format } from 'date-fns';
 import TablePagination from '@mui/material/TablePagination';
 import axios from 'axios';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import autoTable from 'jspdf-autotable';
 
 const API_BASE_URL = "http://localhost:1010";
 
@@ -76,8 +86,15 @@ const AdminTimesheetManagement = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [notificationLoading, setNotificationLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState("");
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [exportFilters, setExportFilters] = useState({
+    status: "",
+    startDate: null,
+    endDate: null,
+    role: ""
+  });
+  const [exportType, setExportType] = useState('excel');
 
-  // Fetch timesheets
   const fetchTimesheets = async () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/admin/timesheets/non-draft`);
@@ -114,7 +131,8 @@ const AdminTimesheetManagement = () => {
                    (ts.sundayHours || 0),
         submittedAt: ts.submitted_at || null,
         comments: ts.comments || "",
-        rejectionReason: ts.status === "REJECTED" ? (ts.rejectionReason || "Rejected by admin") : ""
+        rejectionReason: ts.status === "REJECTED" ? (ts.rejectionReason || "Rejected by admin") : "",
+        role: ts.role || "Employee"
       }));
   
       setTimesheets(data);
@@ -129,7 +147,6 @@ const AdminTimesheetManagement = () => {
     }
   };
 
-  // Fetch notifications
   const fetchNotifications = async () => {
     try {
       setNotificationLoading(true);
@@ -171,12 +188,10 @@ const AdminTimesheetManagement = () => {
     setNotificationAnchorEl(null);
   };
 
-  // Load data on component mount
   useEffect(() => {
     fetchTimesheets();
     fetchNotifications();
     
-    // Poll for new notifications every 30 seconds
     const interval = setInterval(() => {
       fetchNotifications();
     }, 30000);
@@ -184,16 +199,13 @@ const AdminTimesheetManagement = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Filter timesheets when search term or status filter changes
   useEffect(() => {
     const filtered = timesheets.filter(ts => {
-      // Search term filter
       const matchesSearch = Object.values(ts).some(
         value =>
           value &&
           value.toString().toLowerCase().includes(searchTerm.toLowerCase()))
       
-      // Status filter
       const matchesStatus = !statusFilter || 
         (statusFilter === "SUBMITTED" && ts.status === "Pending") ||
         ts.status.toUpperCase().includes(statusFilter.toUpperCase());
@@ -205,7 +217,6 @@ const AdminTimesheetManagement = () => {
     setPage(0);
   }, [searchTerm, statusFilter, timesheets]);
 
-  // Action menu handlers
   const handleMenuOpen = (event, timesheet) => {
     setAnchorEl(event.currentTarget);
     setSelectedTimesheet(timesheet);
@@ -230,7 +241,6 @@ const AdminTimesheetManagement = () => {
     setRejectionReason("");
   };
 
-  // Timesheet actions
   const approveTimesheet = async (timesheetId) => {
     try {
       const response = await axios.put(`${API_BASE_URL}/timesheets/${timesheetId}/status`, null, {
@@ -264,7 +274,6 @@ const AdminTimesheetManagement = () => {
     return { success: true };
   };
 
-  // Action handlers
   const handleApproval = async () => {
     if (!selectedTimesheet?.id) {
       showSnackbar("No valid timesheet selected for approval", "error");
@@ -396,7 +405,6 @@ const AdminTimesheetManagement = () => {
     handleMenuClose();
   };
 
-  // Helper functions
   const showSnackbar = (message, severity) => {
     setSnackbarMessage(message);
     setSnackbarSeverity(severity);
@@ -407,32 +415,188 @@ const AdminTimesheetManagement = () => {
     setSnackbarOpen(false);
   };
 
-  const handleExportToExcel = () => {
-    try {
-      const exportData = timesheets.map(ts => ({
-        "Timesheet ID": ts.id,
-        "Employee ID": ts.employeeId,
-        "Employee Name": ts.employeeName,
-        "Project": ts.project,
-        "Task": ts.task,
-        "Start Date": ts.startDate,
-        "End Date": ts.endDate,
-        "Status": ts.status,
-        "Total Hours": ts.totalHours,
-        "Submitted At": ts.submittedAt ? format(parseISO(ts.submittedAt), "PPpp") : "N/A",
-        "Approved/Rejected At": ts.updatedAt ? format(parseISO(ts.updatedAt), "PPpp") : "N/A",
-        "Comments": ts.comments || "N/A"
-      }));
+  const handleExportModalOpen = () => {
+    setExportModalOpen(true);
+  };
 
-      const ws = XLSX.utils.json_to_sheet(exportData);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Timesheets");
-      XLSX.writeFile(wb, `Timesheets_${format(new Date(), "yyyy-MM-dd")}.xlsx`);
+  const handleExportModalClose = () => {
+    setExportModalOpen(false);
+    setExportFilters({
+      status: "",
+      startDate: null,
+      endDate: null,
+      role: ""
+    });
+  };
+
+  const handleExportFilterChange = (field, value) => {
+    setExportFilters(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleExportTypeChange = (event, newValue) => {
+    setExportType(newValue);
+  };
+
+  const getFilteredData = () => {
+    return timesheets.filter(ts => {
+      if (exportFilters.status && ts.status !== exportFilters.status) {
+        return false;
+      }
       
-      showSnackbar("Export successful", "success");
+      if (exportFilters.startDate && exportFilters.endDate) {
+        const startDate = new Date(exportFilters.startDate);
+        const endDate = new Date(exportFilters.endDate);
+        const tsDate = new Date(ts.startDate);
+        
+        if (tsDate < startDate || tsDate > endDate) {
+          return false;
+        }
+      }
+      
+      if (exportFilters.role && ts.role !== exportFilters.role) {
+        return false;
+      }
+      
+      return true;
+    });
+  };
+
+  const exportToExcel = (filteredData) => {
+    const exportData = filteredData.map(ts => ({
+      "Timesheet ID": ts.id,
+      "Employee ID": ts.employeeId,
+      "Employee Name": ts.employeeName,
+      "Role": ts.role,
+      "Project": ts.project,
+      "Task": ts.task,
+      "Week Start": format(parseISO(ts.startDate), "yyyy-MM-dd"),
+      "Week End": format(parseISO(ts.endDate), "yyyy-MM-dd"),
+      "Status": ts.status,
+      "Total Hours": ts.totalHours,
+      "Monday Hours": ts.hours[0],
+      "Tuesday Hours": ts.hours[1],
+      "Wednesday Hours": ts.hours[2],
+      "Thursday Hours": ts.hours[3],
+      "Friday Hours": ts.hours[4],
+      "Saturday Hours": ts.hours[5],
+      "Sunday Hours": ts.hours[6],
+      "Submitted At": ts.submittedAt ? format(parseISO(ts.submittedAt), "yyyy-MM-dd HH:mm") : "N/A",
+      "Comments": ts.comments || "N/A",
+      "Rejection Reason": ts.rejectionReason || "N/A"
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Timesheets");
+    
+    let fileNameParts = [`Timesheets_${format(new Date(), "yyyy-MM-dd")}`];
+    
+    if (exportFilters.status) fileNameParts.push(exportFilters.status);
+    if (exportFilters.role) fileNameParts.push(exportFilters.role);
+    if (exportFilters.startDate && exportFilters.endDate) {
+      fileNameParts.push(
+        `${format(new Date(exportFilters.startDate), "yyyy-MM-dd")}-${format(new Date(exportFilters.endDate), "yyyy-MM-dd")}`
+      );
+    }
+    
+    const fileName = fileNameParts.join('_');
+    
+    XLSX.writeFile(wb, `${fileName}.xlsx`);
+  };
+
+  const exportToPDF = (filteredData) => {
+    const doc = new jsPDF();
+    
+    // Initialize autoTable plugin
+    autoTable(doc, {
+      head: [
+        ['ID', 'Employee', 'Role', 'Project', 'Task', 'Week', 'Status', 'Hours', 'Submitted At']
+      ],
+      body: filteredData.map(ts => [
+        ts.id,
+        ts.employeeName,
+        ts.role,
+        ts.project,
+        ts.task,
+        `${format(parseISO(ts.startDate), "MMM dd")} - ${format(parseISO(ts.endDate), "MMM dd")}`,
+        ts.status,
+        ts.totalHours,
+        ts.submittedAt ? format(parseISO(ts.submittedAt), "MMM dd, HH:mm") : "N/A"
+      ]),
+      startY: 30,
+      styles: {
+        fontSize: 8,
+        cellPadding: 2,
+        overflow: 'linebreak'
+      },
+      headStyles: {
+        fillColor: [41, 128, 185],
+        textColor: 255,
+        fontStyle: 'bold'
+      },
+      columnStyles: {
+        0: { cellWidth: 15 },
+        1: { cellWidth: 25 },
+        2: { cellWidth: 20 },
+        3: { cellWidth: 25 },
+        4: { cellWidth: 25 },
+        5: { cellWidth: 25 },
+        6: { cellWidth: 15 },
+        7: { cellWidth: 10 },
+        8: { cellWidth: 25 }
+      }
+    });
+  
+    // Add title and metadata
+    doc.setFontSize(18);
+    doc.text('Timesheets Report', 14, 22);
+    
+    doc.setFontSize(10);
+    let filtersText = `Generated on: ${format(new Date(), "yyyy-MM-dd HH:mm")}`;
+    if (exportFilters.status) filtersText += ` | Status: ${exportFilters.status}`;
+    if (exportFilters.role) filtersText += ` | Role: ${exportFilters.role}`;
+    if (exportFilters.startDate && exportFilters.endDate) {
+      filtersText += ` | Date Range: ${format(new Date(exportFilters.startDate), "yyyy-MM-dd")} to ${format(new Date(exportFilters.endDate), "yyyy-MM-dd")}`;
+    }
+    doc.text(filtersText, 14, 28);
+  
+    // Build filename
+    let fileNameParts = [`Timesheets_${format(new Date(), "yyyy-MM-dd")}`];
+    if (exportFilters.status) fileNameParts.push(exportFilters.status);
+    if (exportFilters.role) fileNameParts.push(exportFilters.role);
+    if (exportFilters.startDate && exportFilters.endDate) {
+      fileNameParts.push(
+        `${format(new Date(exportFilters.startDate), "yyyy-MM-dd")}-${format(new Date(exportFilters.endDate), "yyyy-MM-dd")}`
+      );
+    }
+    const fileName = fileNameParts.join('_');
+    
+    doc.save(`${fileName}.pdf`);
+  };
+
+  const handleExport = () => {
+    try {
+      const filteredData = getFilteredData();
+      
+      if (filteredData.length === 0) {
+        showSnackbar("No data to export with current filters", "warning");
+        return;
+      }
+      
+      if (exportType === 'excel') {
+        exportToExcel(filteredData);
+      } else {
+        exportToPDF(filteredData);
+      }
+      
+      showSnackbar(`Exported ${filteredData.length} timesheets as ${exportType.toUpperCase()}`, "success");
+      handleExportModalClose();
     } catch (error) {
-      console.error("Error exporting to Excel:", error);
-      showSnackbar("Failed to export", "error");
+      console.error(`Error exporting to ${exportType}:`, error);
+      showSnackbar(`Failed to export as ${exportType.toUpperCase()}`, "error");
     }
   };
 
@@ -465,345 +629,439 @@ const AdminTimesheetManagement = () => {
   };
 
   if (loading) {
-    return <Typography>Loading timesheets...</Typography>;
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <CircularProgress />
+      </Box>
+    );
   }
 
   return (
-    <Paper elevation={0} sx={{ p: 3, width: "100%", maxWidth: 1600, mx: "auto" }}>
-      {/* Header Section */}
-      <Grid container justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
-        <Grid item>
-          <Typography variant="h5" sx={{ fontWeight: "bold" }}>
-            Timesheet Management
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Review and approve employee timesheets
-          </Typography>
+    <LocalizationProvider dateAdapter={AdapterDateFns}>
+      <Paper elevation={0} sx={{ p: 3, width: "100%", maxWidth: 1600, mx: "auto" }}>
+        {/* Header Section */}
+        <Grid container justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
+          <Grid item>
+            <Typography variant="h5" sx={{ fontWeight: "bold" }}>
+              Timesheet Management
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Review and approve employee timesheets
+            </Typography>
+          </Grid>
+          <Grid item>
+            <Button
+              variant="contained"
+              startIcon={<FileDownload />}
+              onClick={handleExportModalOpen}
+              sx={{ mr: 2 }}
+            >
+              Export
+            </Button>
+            <IconButton 
+              color="inherit" 
+              onClick={handleNotificationClick}
+              sx={{ mr: 2 }}
+            >
+              <Badge badgeContent={unreadCount} color="error">
+                <NotificationsIcon />
+              </Badge>
+            </IconButton>
+            <Button
+              variant="outlined"
+              startIcon={<Email />}
+              onClick={() => navigate("/admin/timesheets/notifications")}
+            >
+              Notification Settings
+            </Button>
+          </Grid>
         </Grid>
-        <Grid item>
-          <Button
-            variant="contained"
-            startIcon={<FileDownload />}
-            onClick={handleExportToExcel}
-            sx={{ mr: 2 }}
-          >
-            Export to Excel
-          </Button>
-          <IconButton 
-            color="inherit" 
-            onClick={handleNotificationClick}
-            sx={{ mr: 2 }}
-          >
-            <Badge badgeContent={unreadCount} color="error">
-              <NotificationsIcon />
-            </Badge>
-          </IconButton>
-          <Button
-            variant="outlined"
-            startIcon={<Email />}
-            onClick={() => navigate("/admin/timesheets/notifications")}
-          >
-            Notification Settings
-          </Button>
-        </Grid>
-      </Grid>
 
-      {/* Notification Menu */}
-      <Menu
-        anchorEl={notificationAnchorEl}
-        open={Boolean(notificationAnchorEl)}
-        onClose={handleNotificationClose}
-        anchorOrigin={{
-          vertical: 'bottom',
-          horizontal: 'right',
-        }}
-        transformOrigin={{
-          vertical: 'top',
-          horizontal: 'right',
-        }}
-        PaperProps={{
-          style: {
-            maxHeight: '400px',
-            width: '400px',
-          },
-        }}
-      >
-        <MenuItem 
-          onClick={() => {
-            markAllAsRead();
-            handleNotificationClose();
-          }}
-          disabled={notifications.length === 0}
-        >
-          Mark all as read
-        </MenuItem>
-        <Divider />
-        {notificationLoading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
-            <CircularProgress size={24} />
-          </Box>
-        ) : notifications.length > 0 ? (
-          <List sx={{ width: '100%', maxWidth: 360 }}>
-            {notifications.map((notification) => (
-              <ListItem 
-                key={notification.id}
-                alignItems="flex-start"
-                onClick={() => {
-                  markAsRead(notification.id);
-                  if (notification.timesheetId) {
-                    navigate(`/admin/timesheets/${notification.timesheetId}`);
-                  }
-                  handleNotificationClose();
-                }}
-                sx={{
-                  cursor: 'pointer',
-                  '&:hover': {
-                    backgroundColor: '#f5f5f5'
-                  }
-                }}
+        {/* Export Filter Modal */}
+        <Dialog open={exportModalOpen} onClose={handleExportModalClose} maxWidth="sm" fullWidth>
+          <DialogTitle>Export Timesheets</DialogTitle>
+          <DialogContent>
+            <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+              <Tabs 
+                value={exportType} 
+                onChange={handleExportTypeChange}
+                aria-label="export type tabs"
               >
-                <ListItemAvatar>
-                  <Avatar>
-                    <Person />
-                  </Avatar>
-                </ListItemAvatar>
-                <ListItemText
-                  primary={notification.message}
-                  secondary={format(new Date(notification.createdAt), "MMM dd, h:mm a")}
+                <Tab 
+                  icon={<GridOn />} 
+                  iconPosition="start" 
+                  label="Excel" 
+                  value="excel" 
+                  sx={{ minWidth: 'auto' }} 
                 />
-              </ListItem>
-            ))}
-          </List>
-        ) : (
-          <MenuItem disabled>
-            No new notifications
-          </MenuItem>
-        )}
-      </Menu>
+                <Tab 
+                  icon={<PictureAsPdf />} 
+                  iconPosition="start" 
+                  label="PDF" 
+                  value="pdf" 
+                  sx={{ minWidth: 'auto' }} 
+                />
+              </Tabs>
+            </Box>
+            
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Status</InputLabel>
+                <Select
+                  value={exportFilters.status}
+                  label="Status"
+                  onChange={(e) => handleExportFilterChange('status', e.target.value)}
+                >
+                  <MenuItem value="">All Statuses</MenuItem>
+                  <MenuItem value="DRAFT">Draft</MenuItem>
+                  <MenuItem value="SUBMITTED">Pending</MenuItem>
+                  <MenuItem value="APPROVED">Approved</MenuItem>
+                  <MenuItem value="REJECTED">Rejected</MenuItem>
+                </Select>
+              </FormControl>
 
-      {/* Search and Filters */}
-      <Box sx={{ display: "flex", gap: 2, mb: 3, flexWrap: "wrap" }}>
-        <TextField
-          size="small"
-          placeholder="Search timesheets..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          sx={{ minWidth: 300 }}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <Search />
-              </InputAdornment>
-            ),
+              <FormControl fullWidth size="small">
+                <InputLabel>Role</InputLabel>
+                <Select
+                  value={exportFilters.role}
+                  label="Role"
+                  onChange={(e) => handleExportFilterChange('role', e.target.value)}
+                >
+                  <MenuItem value="">All Roles</MenuItem>
+                  <MenuItem value="Employee">Employee</MenuItem>
+                  <MenuItem value="Manager">Manager</MenuItem>
+                  <MenuItem value="Admin">Admin</MenuItem>
+                  <MenuItem value="Contractor">Contractor</MenuItem>
+                </Select>
+              </FormControl>
+
+              <DatePicker
+                label="Start Date"
+                value={exportFilters.startDate}
+                onChange={(newValue) => handleExportFilterChange('startDate', newValue)}
+                renderInput={(params) => <TextField {...params} fullWidth size="small" />}
+              />
+
+              <DatePicker
+                label="End Date"
+                value={exportFilters.endDate}
+                onChange={(newValue) => handleExportFilterChange('endDate', newValue)}
+                renderInput={(params) => <TextField {...params} fullWidth size="small" />}
+                minDate={exportFilters.startDate}
+              />
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleExportModalClose}>Cancel</Button>
+            <Button 
+              onClick={handleExport} 
+              variant="contained" 
+              color="primary"
+              disabled={exportFilters.startDate && exportFilters.endDate && exportFilters.startDate > exportFilters.endDate}
+              startIcon={exportType === 'excel' ? <GridOn /> : <PictureAsPdf />}
+            >
+              Export as {exportType.toUpperCase()}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Notification Menu */}
+        <Menu
+          anchorEl={notificationAnchorEl}
+          open={Boolean(notificationAnchorEl)}
+          onClose={handleNotificationClose}
+          anchorOrigin={{
+            vertical: 'bottom',
+            horizontal: 'right',
           }}
-        />
-        <FormControl size="small" sx={{ minWidth: 200 }}>
-          <InputLabel>Status</InputLabel>
-          <Select
-            value={statusFilter}
-            label="Status"
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <MenuItem value="">All Statuses</MenuItem>
-            <MenuItem value="DRAFT">Draft</MenuItem>
-            <MenuItem value="SUBMITTED">Pending</MenuItem>
-            <MenuItem value="APPROVED">Approved</MenuItem>
-            <MenuItem value="REJECTED">Rejected</MenuItem>
-          </Select>
-        </FormControl>
-      </Box>
-
-      {/* Timesheets Table */}
-      <TableContainer component={Paper} elevation={2}>
-        <Table sx={{ minWidth: 1200 }}>
-          <TableHead>
-            <TableRow>
-              <TableCell>Timesheet ID</TableCell>
-              <TableCell>Employee</TableCell>
-              <TableCell>Project</TableCell>
-              <TableCell>Task</TableCell>
-              <TableCell>Week</TableCell>
-              <TableCell align="right">Total Hours</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Submitted At</TableCell>
-              <TableCell>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredTimesheets.length > 0 ? (
-              filteredTimesheets
-                .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                .map((timesheet) => (
-                  <TableRow key={timesheet.id} hover>
-                    <TableCell>{timesheet.id}</TableCell>
-                    <TableCell>
-                      <Typography fontWeight="bold">{timesheet.employeeName}</Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {timesheet.employeeId}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>{timesheet.project}</TableCell>
-                    <TableCell>{timesheet.task}</TableCell>
-                    <TableCell>
-                      {format(parseISO(timesheet.startDate), "MMM dd")} -{" "}
-                      {format(parseISO(timesheet.endDate), "MMM dd, yyyy")}
-                    </TableCell>
-                    <TableCell align="right">{timesheet.totalHours}</TableCell>
-                    <TableCell>{getStatusChip(timesheet.status)}</TableCell>
-                    <TableCell>
-                      {timesheet.submittedAt 
-                        ? format(parseISO(timesheet.submittedAt), "MMM dd, h:mm a") 
-                        : "N/A"}
-                    </TableCell>
-                    <TableCell>
-                      <IconButton
-                        onClick={(e) => handleMenuOpen(e, timesheet)}
-                        size="small"
-                      >
-                        <MoreVert />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={9} align="center">
-                  No timesheets found
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
-
-      <TablePagination
-        rowsPerPageOptions={[5, 10, 25]}
-        component="div"
-        count={filteredTimesheets.length}
-        rowsPerPage={rowsPerPage}
-        page={page}
-        onPageChange={handleChangePage}
-        onRowsPerPageChange={handleChangeRowsPerPage}
-      />
-
-      {/* Action Menu */}
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={handleMenuClose}
-        anchorOrigin={{
-          vertical: 'top',
-          horizontal: 'right',
-        }}
-        transformOrigin={{
-          vertical: 'top',
-          horizontal: 'right',
-        }}
-      >
-        <MenuItem onClick={handleViewDetails}>
-          <Visibility fontSize="small" sx={{ mr: 1 }} /> View Details
-        </MenuItem>
-        {selectedTimesheet?.status === "Pending" && (
-          <>
-            <MenuItem onClick={() => handleDialogOpen("approve")}>
-              <CheckCircle fontSize="small" sx={{ mr: 1 }} /> Approve
-            </MenuItem>
-            <MenuItem onClick={() => handleDialogOpen("reject")}>
-              <Cancel fontSize="small" sx={{ mr: 1 }} /> Reject
-            </MenuItem>
-            <MenuItem onClick={handleSendReminder}>
-              <NotificationsIcon fontSize="small" sx={{ mr: 1 }} /> Send Reminder
-            </MenuItem>
-          </>
-        )}
-      </Menu>
-
-      {/* Approval Dialog */}
-      <Dialog open={openDialog && dialogType === "approve"} onClose={handleDialogClose}>
-        <DialogTitle>Approve Timesheet</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            {selectedTimesheet ? (
-              <>
-                Are you sure you want to approve this timesheet submitted by{" "}
-                <strong>{selectedTimesheet.employeeName}</strong> for the week of{" "}
-                {format(parseISO(selectedTimesheet.startDate), "MMM dd")}?
-              </>
-            ) : (
-              "No timesheet selected"
-            )}
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleDialogClose}>Cancel</Button>
-          <Button 
-            onClick={handleApproval} 
-            color="success" 
-            variant="contained"
-            disabled={!selectedTimesheet}
-          >
-            Approve
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Rejection Dialog */}
-      <Dialog open={openDialog && dialogType === "reject"} onClose={handleDialogClose}>
-        <DialogTitle>Reject Timesheet</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            {selectedTimesheet ? (
-              <>
-                Are you sure you want to reject this timesheet submitted by{" "}
-                <strong>{selectedTimesheet.employeeName}</strong>?
-              </>
-            ) : (
-              "No timesheet selected"
-            )}
-          </DialogContentText>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Reason for rejection"
-            type="text"
-            fullWidth
-            variant="standard"
-            multiline
-            rows={3}
-            value={rejectionReason}
-            onChange={(e) => setRejectionReason(e.target.value)}
-            sx={{ mt: 2 }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleDialogClose}>Cancel</Button>
-          <Button 
-            onClick={handleRejection} 
-            color="error" 
-            variant="contained"
-            disabled={!selectedTimesheet || !rejectionReason}
-          >
-            Reject
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Snackbar for notifications */}
-      <Snackbar
-        open={snackbarOpen}
-        autoHideDuration={6000}
-        onClose={handleSnackbarClose}
-        anchorOrigin={{ vertical: "top", horizontal: "right" }}
-      >
-        <Alert
-          onClose={handleSnackbarClose}
-          severity={snackbarSeverity}
-          sx={{ width: "100%" }}
+          transformOrigin={{
+            vertical: 'top',
+            horizontal: 'right',
+          }}
+          PaperProps={{
+            style: {
+              maxHeight: '400px',
+              width: '400px',
+            },
+          }}
         >
-          {snackbarMessage}
-        </Alert>
-      </Snackbar>
-    </Paper>
+          <MenuItem 
+            onClick={() => {
+              markAllAsRead();
+              handleNotificationClose();
+            }}
+            disabled={notifications.length === 0}
+          >
+            Mark all as read
+          </MenuItem>
+          <Divider />
+          {notificationLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+              <CircularProgress size={24} />
+            </Box>
+          ) : notifications.length > 0 ? (
+            <List sx={{ width: '100%', maxWidth: 360 }}>
+              {notifications.map((notification) => (
+                <ListItem 
+                  key={notification.id}
+                  alignItems="flex-start"
+                  onClick={() => {
+                    markAsRead(notification.id);
+                    if (notification.timesheetId) {
+                      navigate(`/admin/timesheets/${notification.timesheetId}`);
+                    }
+                    handleNotificationClose();
+                  }}
+                  sx={{
+                    cursor: 'pointer',
+                    '&:hover': {
+                      backgroundColor: '#f5f5f5'
+                    }
+                  }}
+                >
+                  <ListItemAvatar>
+                    <Avatar>
+                      <Person />
+                    </Avatar>
+                  </ListItemAvatar>
+                  <ListItemText
+                    primary={notification.message}
+                    secondary={format(new Date(notification.createdAt), "MMM dd, h:mm a")}
+                  />
+                </ListItem>
+              ))}
+            </List>
+          ) : (
+            <MenuItem disabled>
+              No new notifications
+            </MenuItem>
+          )}
+        </Menu>
+
+        {/* Search and Filters */}
+        <Box sx={{ display: "flex", gap: 2, mb: 3, flexWrap: "wrap" }}>
+          <TextField
+            size="small"
+            placeholder="Search timesheets..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            sx={{ minWidth: 300 }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Search />
+                </InputAdornment>
+              ),
+            }}
+          />
+          <FormControl size="small" sx={{ minWidth: 200 }}>
+            <InputLabel>Status</InputLabel>
+            <Select
+              value={statusFilter}
+              label="Status"
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <MenuItem value="">All Statuses</MenuItem>
+              <MenuItem value="DRAFT">Draft</MenuItem>
+              <MenuItem value="SUBMITTED">Pending</MenuItem>
+              <MenuItem value="APPROVED">Approved</MenuItem>
+              <MenuItem value="REJECTED">Rejected</MenuItem>
+            </Select>
+          </FormControl>
+        </Box>
+
+        {/* Timesheets Table */}
+        <TableContainer component={Paper} elevation={2}>
+          <Table sx={{ minWidth: 1200 }}>
+            <TableHead>
+              <TableRow>
+                <TableCell>Timesheet ID</TableCell>
+                <TableCell>Employee</TableCell>
+                <TableCell>Project</TableCell>
+                <TableCell>Task</TableCell>
+                <TableCell>Week</TableCell>
+                <TableCell align="right">Total Hours</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell>Submitted At</TableCell>
+                <TableCell>Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {filteredTimesheets.length > 0 ? (
+                filteredTimesheets
+                  .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                  .map((timesheet) => (
+                    <TableRow key={timesheet.id} hover>
+                      <TableCell>{timesheet.id}</TableCell>
+                      <TableCell>
+                        <Typography fontWeight="bold">{timesheet.employeeName}</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {timesheet.employeeId}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>{timesheet.project}</TableCell>
+                      <TableCell>{timesheet.task}</TableCell>
+                      <TableCell>
+                        {format(parseISO(timesheet.startDate), "MMM dd")} -{" "}
+                        {format(parseISO(timesheet.endDate), "MMM dd, yyyy")}
+                      </TableCell>
+                      <TableCell align="right">{timesheet.totalHours}</TableCell>
+                      <TableCell>{getStatusChip(timesheet.status)}</TableCell>
+                      <TableCell>
+                        {timesheet.submittedAt 
+                          ? format(parseISO(timesheet.submittedAt), "MMM dd, h:mm a") 
+                          : "N/A"}
+                      </TableCell>
+                      <TableCell>
+                        <IconButton
+                          onClick={(e) => handleMenuOpen(e, timesheet)}
+                          size="small"
+                        >
+                          <MoreVert />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={9} align="center">
+                    No timesheets found
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+
+        <TablePagination
+          rowsPerPageOptions={[5, 10, 25]}
+          component="div"
+          count={filteredTimesheets.length}
+          rowsPerPage={rowsPerPage}
+          page={page}
+          onPageChange={handleChangePage}
+          onRowsPerPageChange={handleChangeRowsPerPage}
+        />
+
+        {/* Action Menu */}
+        <Menu
+          anchorEl={anchorEl}
+          open={Boolean(anchorEl)}
+          onClose={handleMenuClose}
+          anchorOrigin={{
+            vertical: 'top',
+            horizontal: 'right',
+          }}
+          transformOrigin={{
+            vertical: 'top',
+            horizontal: 'right',
+          }}
+        >
+          <MenuItem onClick={handleViewDetails}>
+            <Visibility fontSize="small" sx={{ mr: 1 }} /> View Details
+          </MenuItem>
+          {selectedTimesheet?.status === "Pending" && (
+            <>
+              <MenuItem onClick={() => handleDialogOpen("approve")}>
+                <CheckCircle fontSize="small" sx={{ mr: 1 }} /> Approve
+              </MenuItem>
+              <MenuItem onClick={() => handleDialogOpen("reject")}>
+                <Cancel fontSize="small" sx={{ mr: 1 }} /> Reject
+              </MenuItem>
+              <MenuItem onClick={handleSendReminder}>
+                <NotificationsIcon fontSize="small" sx={{ mr: 1 }} /> Send Reminder
+              </MenuItem>
+            </>
+          )}
+        </Menu>
+
+        {/* Approval Dialog */}
+        <Dialog open={openDialog && dialogType === "approve"} onClose={handleDialogClose}>
+          <DialogTitle>Approve Timesheet</DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              {selectedTimesheet ? (
+                <>
+                  Are you sure you want to approve this timesheet submitted by{" "}
+                  <strong>{selectedTimesheet.employeeName}</strong> for the week of{" "}
+                  {format(parseISO(selectedTimesheet.startDate), "MMM dd")}?
+                </>
+              ) : (
+                "No timesheet selected"
+              )}
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleDialogClose}>Cancel</Button>
+            <Button 
+              onClick={handleApproval} 
+              color="success" 
+              variant="contained"
+              disabled={!selectedTimesheet}
+            >
+              Approve
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Rejection Dialog */}
+        <Dialog open={openDialog && dialogType === "reject"} onClose={handleDialogClose}>
+          <DialogTitle>Reject Timesheet</DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              {selectedTimesheet ? (
+                <>
+                  Are you sure you want to reject this timesheet submitted by{" "}
+                  <strong>{selectedTimesheet.employeeName}</strong>?
+                </>
+              ) : (
+                "No timesheet selected"
+              )}
+            </DialogContentText>
+            <TextField
+              autoFocus
+              margin="dense"
+              label="Reason for rejection"
+              type="text"
+              fullWidth
+              variant="standard"
+              multiline
+              rows={3}
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              sx={{ mt: 2 }}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleDialogClose}>Cancel</Button>
+            <Button 
+              onClick={handleRejection} 
+              color="error" 
+              variant="contained"
+              disabled={!selectedTimesheet || !rejectionReason}
+            >
+              Reject
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Snackbar for notifications */}
+        <Snackbar
+          open={snackbarOpen}
+          autoHideDuration={6000}
+          onClose={handleSnackbarClose}
+          anchorOrigin={{ vertical: "top", horizontal: "right" }}
+        >
+          <Alert
+            onClose={handleSnackbarClose}
+            severity={snackbarSeverity}
+            sx={{ width: "100%" }}
+          >
+            {snackbarMessage}
+          </Alert>
+        </Snackbar>
+      </Paper>
+    </LocalizationProvider>
   );
 };
 
