@@ -26,12 +26,11 @@ import {
 import { EditOutlined, DeleteOutlined, AddCircleOutline } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
-
+ 
 const ListActions = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  
-  // Initialize actions as empty array
+ 
   const [actions, setActions] = useState([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -43,66 +42,63 @@ const ListActions = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Fetch actions from backend API
+  const API_BASE_URL = "http://localhost:1010";
+ 
   const fetchActions = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/actions');
-      
-      // Ensure we always set an array, even if response.data is null/undefined
-      setActions(Array.isArray(response?.data) ? response.data : []);
+      const response = await axios.get(`${API_BASE_URL}/auth/actions`);
+     
+      if (response.data && Array.isArray(response.data)) {
+        setActions(response.data);
+      } else {
+        setActions([]);
+      }
       setError(null);
     } catch (err) {
       setError('Failed to fetch actions. Please try again later.');
       console.error('Error fetching actions:', err);
-      // Set empty array on error to prevent rendering issues
       setActions([]);
     } finally {
       setLoading(false);
     }
   };
-
-  // Initial data fetch
+ 
   useEffect(() => {
     fetchActions();
   }, []);
-
-  // Handle success messages from navigation
+ 
   useEffect(() => {
     if (location.state?.success) {
       setSnackbarMessage(location.state.success);
       setSnackbarSeverity('success');
       setOpenSnackbar(true);
-      // Clear the state
       navigate(location.pathname, { replace: true, state: {} });
     }
   }, [location.state, navigate, location.pathname]);
-
-  // Pagination handlers
+ 
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
   };
-
+ 
   const handleChangeRowsPerPage = (event) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   };
-
-  // Action handlers
+ 
   const handleEdit = (id) => {
     navigate(`/admin/edit-action/${id}`);
   };
-
+ 
   const handleDeleteClick = (id) => {
     setActionToDelete(id);
     setDeleteDialogOpen(true);
   };
-
+ 
   const handleDeleteConfirm = async () => {
     try {
-      await axios.delete(`/api/actions/${actionToDelete}`);
-      // Filter out the deleted action
-      setActions(prevActions => prevActions.filter(action => action.id !== actionToDelete));
+      await axios.delete(`${API_BASE_URL}/auth/actions/${actionToDelete}`);
+      await fetchActions(); // Refresh list
       setSnackbarMessage('Action deleted successfully!');
       setSnackbarSeverity('success');
       setOpenSnackbar(true);
@@ -116,26 +112,26 @@ const ListActions = () => {
       setActionToDelete(null);
     }
   };
-
+  
+ 
   const handleDeleteCancel = () => {
     setDeleteDialogOpen(false);
     setActionToDelete(null);
   };
-
+ 
   const handleCreateNew = () => {
     navigate('/admin/create-action');
   };
-
+ 
   const handleCloseSnackbar = () => {
     setOpenSnackbar(false);
   };
-
-  // Safely get the current page's actions
+ 
   const getCurrentPageActions = () => {
     if (!Array.isArray(actions)) return [];
     return actions.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
   };
-
+ 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Paper elevation={3} sx={{ p: 3 }}>
@@ -143,7 +139,7 @@ const ListActions = () => {
           <Typography variant="h5" component="h1" sx={{ fontWeight: 'bold' }}>
             Actions
           </Typography>
-          
+         
           <Button
             variant="contained"
             startIcon={<AddCircleOutline />}
@@ -152,13 +148,13 @@ const ListActions = () => {
             Create New Action
           </Button>
         </Box>
-        
+       
         {error && (
           <Alert severity="error" sx={{ mb: 3 }}>
             {error}
           </Alert>
         )}
-        
+       
         {loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
             <CircularProgress />
@@ -170,6 +166,7 @@ const ListActions = () => {
                 <TableHead>
                   <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
                     <TableCell sx={{ fontWeight: 'bold' }}>Action</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Alias</TableCell>
                     <TableCell sx={{ fontWeight: 'bold' }}>Description</TableCell>
                     <TableCell sx={{ fontWeight: 'bold', width: '120px' }} align="center">Actions</TableCell>
                   </TableRow>
@@ -177,23 +174,24 @@ const ListActions = () => {
                 <TableBody>
                   {getCurrentPageActions().length > 0 ? (
                     getCurrentPageActions().map((action) => (
-                      <TableRow key={action.id} hover>
-                        <TableCell>{action.name}</TableCell>
+                      <TableRow key={action.actionId} hover>
+                        <TableCell>{action.actionName}</TableCell>
+                        <TableCell>{action.alias}</TableCell>
                         <TableCell>{action.description}</TableCell>
                         <TableCell align="center">
                           <Tooltip title="Edit">
-                            <IconButton 
-                              color="primary" 
-                              onClick={() => handleEdit(action.id)}
+                            <IconButton
+                              color="primary"
+                              onClick={() => handleEdit(action.actionId)}
                               sx={{ mr: 1 }}
                             >
                               <EditOutlined />
                             </IconButton>
                           </Tooltip>
                           <Tooltip title="Delete">
-                            <IconButton 
-                              color="error" 
-                              onClick={() => handleDeleteClick(action.id)}
+                            <IconButton
+                              color="error"
+                              onClick={() => handleDeleteClick(action.actionId)}
                             >
                               <DeleteOutlined />
                             </IconButton>
@@ -203,7 +201,7 @@ const ListActions = () => {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={3} align="center" sx={{ py: 4 }}>
+                      <TableCell colSpan={4} align="center" sx={{ py: 4 }}>
                         <Typography variant="body1">No actions found</Typography>
                       </TableCell>
                     </TableRow>
@@ -211,7 +209,7 @@ const ListActions = () => {
                 </TableBody>
               </Table>
             </TableContainer>
-            
+           
             <TablePagination
               rowsPerPageOptions={[5, 10, 25]}
               component="div"
@@ -225,8 +223,7 @@ const ListActions = () => {
           </>
         )}
       </Paper>
-
-      {/* Delete Confirmation Dialog */}
+ 
       <Dialog
         open={deleteDialogOpen}
         onClose={handleDeleteCancel}
@@ -246,8 +243,7 @@ const ListActions = () => {
           </Button>
         </DialogActions>
       </Dialog>
-
-      {/* Success/Error Notification */}
+ 
       <Snackbar
         open={openSnackbar}
         autoHideDuration={6000}
@@ -261,5 +257,5 @@ const ListActions = () => {
     </Container>
   );
 };
-
+ 
 export default ListActions;

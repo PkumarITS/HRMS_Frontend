@@ -12,10 +12,14 @@ import {
   Tooltip,
   Divider,
   Snackbar,
-  Alert
+  Alert,
+  CircularProgress
 } from '@mui/material';
 import { BadgeOutlined, HelpOutline, ArrowBack } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
+import axios from 'axios';
+
+const API_BASE_URL = "http://localhost:1010";
 
 const EditRolePage = () => {
   const navigate = useNavigate();
@@ -28,25 +32,36 @@ const EditRolePage = () => {
     roleName: false,
     description: false
   });
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [notification, setNotification] = useState({
     open: false,
     message: '',
     severity: 'success'
   });
 
-  // Load role data when component mounts
   useEffect(() => {
-    const roles = JSON.parse(localStorage.getItem('roles') || '[]');
-    const roleToEdit = roles.find(role => role.id === parseInt(roleId));
-    
-    if (roleToEdit) {
-      setFormData({
-        roleName: roleToEdit.name,
-        description: roleToEdit.description
-      });
-    } else {
-      navigate('/admin/roles', { state: { error: 'Role not found' } });
-    }
+    const fetchRole = async () => {
+      try {
+        setLoading(true);
+        const response = await axios.get(`${API_BASE_URL}/roles/${roleId}`);
+        if (response.data) {
+          setFormData({
+            roleName: response.data.roleName,
+            description: response.data.description
+          });
+        } else {
+          navigate('/admin/list-roles', { state: { error: 'Role not found' } });
+        }
+      } catch (error) {
+        console.error('Error fetching role:', error);
+        navigate('/admin/list-roles', { state: { error: 'Failed to load role' } });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRole();
   }, [roleId, navigate]);
 
   const handleChange = (e) => {
@@ -55,7 +70,6 @@ const EditRolePage = () => {
       ...prev,
       [name]: value
     }));
-    
     if (errors[name]) {
       setErrors(prev => ({
         ...prev,
@@ -65,49 +79,60 @@ const EditRolePage = () => {
   };
 
   const validateForm = () => {
-    let valid = true;
     const newErrors = {
       roleName: formData.roleName.trim() === '',
-      description: formData.description.trim() === ''
+      description: false
     };
 
     setErrors(newErrors);
-    
-    if (newErrors.roleName || newErrors.description) {
-      valid = false;
-    }
-    
-    return valid;
+    return !newErrors.roleName;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (validateForm()) {
-      const roles = JSON.parse(localStorage.getItem('roles') || '[]');
-      const updatedRoles = roles.map(role => {
-        if (role.id === parseInt(roleId)) {
-          return {
-            ...role,
-            name: formData.roleName,
-            description: formData.description
-          };
-        }
-        return role;
-      });
-      
-      localStorage.setItem('roles', JSON.stringify(updatedRoles));
-      
+    if (!validateForm()) {
       setNotification({
         open: true,
-        message: 'Role updated successfully',
-        severity: 'success'
+        message: 'Role Name is required',
+        severity: 'error'
       });
-      
-      // Navigate back after a short delay
-      setTimeout(() => {
-        navigate('/admin/roles');
-      }, 1500);
+      return;
+    }
+
+    try {
+      setSaving(true);
+      const response = await axios.put(`${API_BASE_URL}/roles/${roleId}`, {
+        roleName: formData.roleName.trim(),
+        description: formData.description.trim()
+      });
+
+      if (response.status === 200) {
+        setNotification({
+          open: true,
+          message: 'Role updated successfully',
+          severity: 'success'
+        });
+        setTimeout(() => {
+          navigate('/admin/list-roles', { state: { success: 'Role updated successfully!' } });
+        }, 1500);
+      }
+    } catch (error) {
+      console.error('Error updating role:', error);
+      let errorMessage = 'Failed to update role';
+      if (error.response) {
+        if (error.response.status === 400) {
+          errorMessage = error.response.data || 'Validation error';
+        } else if (error.response.status === 409) {
+          errorMessage = 'Role with this name already exists';
+        }
+      }
+      setNotification({
+        open: true,
+        message: errorMessage,
+        severity: 'error'
+      });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -115,20 +140,26 @@ const EditRolePage = () => {
     setNotification(prev => ({ ...prev, open: false }));
   };
 
+  if (loading) {
+    return (
+      <Container maxWidth="md" sx={{ mt: 4, mb: 4, display: 'flex', justifyContent: 'center' }}>
+        <CircularProgress />
+      </Container>
+    );
+  }
+
   return (
     <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
       <Paper elevation={3} sx={{ p: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-          <IconButton onClick={() => navigate('/admin/roles')} sx={{ mr: 2 }}>
+          <IconButton onClick={() => navigate('/admin/list-roles')} sx={{ mr: 2 }}>
             <ArrowBack />
           </IconButton>
           <Typography variant="h5" component="h1" sx={{ fontWeight: 'bold' }}>
             Edit Role
           </Typography>
         </Box>
-        
         <Divider sx={{ mb: 3 }} />
-        
         <form onSubmit={handleSubmit}>
           <Grid container spacing={3}>
             <Grid item xs={12}>
@@ -137,11 +168,10 @@ const EditRolePage = () => {
                 Role Details
               </Typography>
             </Grid>
-            
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
-                label="Role name"
+                label="Role name *"
                 name="roleName"
                 value={formData.roleName}
                 onChange={handleChange}
@@ -159,7 +189,6 @@ const EditRolePage = () => {
                 }}
               />
             </Grid>
-            
             <Grid item xs={12}>
               <TextField
                 fullWidth
@@ -167,19 +196,18 @@ const EditRolePage = () => {
                 name="description"
                 value={formData.description}
                 onChange={handleChange}
-                error={errors.description}
-                helperText={errors.description ? 'Description is required' : 'Describe the purpose and permissions of this role'}
                 variant="outlined"
                 multiline
                 rows={4}
+                helperText="Describe the purpose and permissions of this role (optional)"
               />
             </Grid>
-            
             <Grid item xs={12}>
               <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
                 <Button
                   variant="outlined"
-                  onClick={() => navigate('/admin/roles')}
+                  onClick={() => navigate('/admin/list-roles')}
+                  disabled={saving}
                 >
                   Cancel
                 </Button>
@@ -188,8 +216,9 @@ const EditRolePage = () => {
                   variant="contained"
                   size="large"
                   sx={{ px: 4 }}
+                  disabled={saving}
                 >
-                  Update Role
+                  {saving ? <CircularProgress size={24} /> : 'Update Role'}
                 </Button>
               </Box>
             </Grid>

@@ -7,7 +7,6 @@ import UserManagement from './components/userManagement/UserMangement';
 import UpdateUser from './components/userManagement/UserUpdate';
 import CreateActionPage from './components/userManagement/CreateActionPage';
 import CreateRolePage from './components/userManagement/CreateRolePage';
-
 import ListActions from './components/userManagement/ListActions';
 import ListRoles from './components/userManagement/ListRoles';
 import RoleActionMapping from './components/userManagement/RoleActionMapping';
@@ -79,8 +78,7 @@ function App() {
             <Route path="update-user/:userId" element={<UpdateUser />} />
             <Route path="create-action" element={<CreateActionPage />} />
             <Route path="create-role" element={<CreateRolePage />} />
-            <Route path="roles" element={<ListRoles />} />
-            <Route path="roles/mapping/:roleId" element={<RoleActionMapping />} />
+            <Route path="role-mapping/:roleId" element={<RoleActionMapping />} />
             <Route path="list-actions" element={<ListActions />} />
             <Route path="list-roles" element={<ListRoles />} />
             {/* <Route path="role-action-mapping" element={<RoleActionMapping />} /> */}

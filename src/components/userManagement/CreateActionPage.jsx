@@ -16,15 +16,22 @@ import {
 } from '@mui/material';
 import { AddCircleOutline, HelpOutline, ArrowBack } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import Cookies from "js-cookie";
 
+
+const API_BASE_URL = "http://localhost:1010";
+ 
 const CreateActionPage = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    name: '',
+    actionName: '',
+    alias: '',
     description: ''
   });
   const [errors, setErrors] = useState({
-    name: false,
+    actionName: false,
+    alias: false,
     description: false
   });
   const [submitAttempted, setSubmitAttempted] = useState(false);
@@ -33,14 +40,14 @@ const CreateActionPage = () => {
     message: '',
     severity: 'success'
   });
-
+ 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: value
     }));
-    
+   
     // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({
@@ -49,93 +56,86 @@ const CreateActionPage = () => {
       }));
     }
   };
-
+ 
   const validateForm = () => {
     const newErrors = {
-      name: formData.name.trim() === '',
-      description: false // Making description optional
+      actionName: formData.actionName.trim() === '',
+      alias: formData.alias.trim() === '',
+      description: formData.description.trim() === ''
     };
-
+ 
     setErrors(newErrors);
-    return !newErrors.name; // Form is valid if name is not empty
+    return !newErrors.actionName && !newErrors.alias && !newErrors.description;
   };
 
-  const handleSubmit = (e) => {
+  const token = Cookies.get("token");
+ 
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitAttempted(true);
-    
+   
     if (!validateForm()) {
-      // Show error message for required field
       setNotification({
         open: true,
-        message: 'Action Name is required',
+        message: 'Please fill all required fields',
         severity: 'error'
       });
       return;
     }
-
+ 
     try {
-      // Get existing actions from localStorage
-      const existingActions = JSON.parse(localStorage.getItem('actions') || '[]');
-      
-      // Check if action name already exists
-      const actionExists = existingActions.some(
-        action => action.name.toLowerCase() === formData.name.trim().toLowerCase()
-      );
-      
-      if (actionExists) {
+      const response = await axios.post(`${API_BASE_URL}/auth/actions`, {
+        actionName: formData.actionName.trim(),
+        alias: formData.alias.trim(),
+        description: formData.description.trim()
+      },{
+        headers: { Authorization: `Bearer ${token}` },
+        withCredentials: true,
+    });
+ 
+      if (response.status === 201) {
         setNotification({
           open: true,
-          message: 'Action with this name already exists',
-          severity: 'error'
+          message: 'Action created successfully!',
+          severity: 'success'
         });
-        return;
+       
+        // Reset form
+        setFormData({
+          actionName: '',
+          alias: '',
+          description: ''
+        });
+       
+        // Navigate back after a short delay
+        setTimeout(() => {
+          navigate('/admin/list-actions', { state: { success: 'Action created successfully!' } });
+        }, 500);
       }
-      
-      // Create new action with unique ID
-      const newAction = {
-        id: Date.now(), // Simple ID generation
-        name: formData.name.trim(),
-        description: formData.description.trim()
-      };
-      
-      // Update actions list
-      const updatedActions = [...existingActions, newAction];
-      
-      // Save to localStorage
-      localStorage.setItem('actions', JSON.stringify(updatedActions));
-      
-      // Show success notification
-      setNotification({
-        open: true,
-        message: 'Action created successfully!',
-        severity: 'success'
-      });
-      
-      // Reset form
-      setFormData({
-        name: '',
-        description: ''
-      });
-      
-      // Navigate back after a short delay
-      setTimeout(() => {
-        navigate('/admin/list-actions', { state: { success: 'Action created successfully!' } });
-      }, 1500);
     } catch (error) {
       console.error('Error saving action:', error);
+      let errorMessage = 'Failed to create action';
+     
+      if (error.response) {
+        if (error.response.status === 400) {
+          errorMessage = error.response.data || 'Validation error';
+        } else if (error.response.status === 409) {
+          errorMessage = 'Action with this name already exists';
+        }
+      }
+     
       setNotification({
         open: true,
-        message: 'Failed to create action',
+        message: errorMessage,
         severity: 'error'
       });
     }
   };
-
+ 
   const handleCloseNotification = () => {
     setNotification(prev => ({ ...prev, open: false }));
   };
-
+ 
   return (
     <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
       <Paper elevation={3} sx={{ p: 3 }}>
@@ -147,9 +147,9 @@ const CreateActionPage = () => {
             Create Action
           </Typography>
         </Box>
-        
+       
         <Divider sx={{ mb: 3 }} />
-        
+       
         <form onSubmit={handleSubmit}>
           <Grid container spacing={3}>
             <Grid item xs={12}>
@@ -158,20 +158,20 @@ const CreateActionPage = () => {
                 Action Details
               </Typography>
             </Grid>
-            
+           
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
-                label="Action Name "
-                name="name"
+                label="Action Name *"
+                name="actionName"
                 required
                 autoFocus
-                value={formData.name}
+                value={formData.actionName}
                 onChange={handleChange}
-                error={submitAttempted && errors.name}
+                error={submitAttempted && errors.actionName}
                 helperText={
-                  submitAttempted && errors.name 
-                    ? 'Action name is required' 
+                  submitAttempted && errors.actionName
+                    ? 'Action name is required'
                     : 'Enter a unique name for this action'
                 }
                 variant="outlined"
@@ -186,21 +186,44 @@ const CreateActionPage = () => {
                 }}
               />
             </Grid>
-            
+ 
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Alias *"
+                name="alias"
+                required
+                value={formData.alias}
+                onChange={handleChange}
+                error={submitAttempted && errors.alias}
+                helperText={
+                  submitAttempted && errors.alias
+                    ? 'Alias is required'
+                    : 'Enter an alias for this action'
+                }
+                variant="outlined"
+              />
+            </Grid>
+           
             <Grid item xs={12}>
               <TextField
                 fullWidth
-                label="Description"
+                label="Description *"
                 name="description"
                 value={formData.description}
                 onChange={handleChange}
                 variant="outlined"
                 multiline
                 rows={4}
-                helperText="Provide a detailed description of this action (optional)"
+                error={submitAttempted && errors.description}
+                helperText={
+                  submitAttempted && errors.description
+                    ? 'Description is required'
+                    : 'Provide a detailed description of this action'
+                }
               />
             </Grid>
-            
+           
             <Grid item xs={12}>
               <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
                 <Button
@@ -223,16 +246,16 @@ const CreateActionPage = () => {
           </Grid>
         </form>
       </Paper>
-
+ 
       <Snackbar
         open={notification.open}
         autoHideDuration={6000}
         onClose={handleCloseNotification}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       >
-        <Alert 
-          onClose={handleCloseNotification} 
-          severity={notification.severity} 
+        <Alert
+          onClose={handleCloseNotification}
+          severity={notification.severity}
           sx={{ width: '100%' }}
         >
           {notification.message}
@@ -241,5 +264,5 @@ const CreateActionPage = () => {
     </Container>
   );
 };
-
+ 
 export default CreateActionPage;

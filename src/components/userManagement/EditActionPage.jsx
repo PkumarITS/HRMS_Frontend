@@ -16,37 +16,47 @@ import {
 } from '@mui/material';
 import { HelpOutline, ArrowBack } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
+import axios from 'axios';
+
+const API_BASE_URL = "http://localhost:1010";
 
 const EditActionPage = () => {
   const navigate = useNavigate();
   const { actionId } = useParams();
+
   const [formData, setFormData] = useState({
-    name: '',
-    description: ''
+    actionName: '',
+    description: '',
+    alias: ''
   });
+
   const [errors, setErrors] = useState({
-    name: false,
+    actionName: false,
     description: false
   });
+
   const [notification, setNotification] = useState({
     open: false,
     message: '',
     severity: 'success'
   });
 
-  // Load action data when component mounts
   useEffect(() => {
-    const savedActions = JSON.parse(localStorage.getItem('actions') || '[]');
-    const actionToEdit = savedActions.find(action => action.id === parseInt(actionId));
-    
-    if (actionToEdit) {
-      setFormData({
-        name: actionToEdit.name,
-        description: actionToEdit.description
-      });
-    } else {
-      navigate('/admin/list-actions', { state: { error: 'Action not found' } });
-    }
+    const fetchAction = async () => {
+      try {
+        const res = await axios.get(`${API_BASE_URL}/auth/actions/${actionId}`);
+        setFormData({
+          actionName: res.data.actionName || '',
+          alias: res.data.alias || '',
+          description: res.data.description || ''
+        });
+      } catch (err) {
+        console.error('Failed to fetch action:', err);
+        navigate('/admin/list-actions', { state: { error: 'Failed to load action' } });
+      }
+    };
+
+    fetchAction();
   }, [actionId, navigate]);
 
   const handleChange = (e) => {
@@ -55,7 +65,7 @@ const EditActionPage = () => {
       ...prev,
       [name]: value
     }));
-    
+
     if (errors[name]) {
       setErrors(prev => ({
         ...prev,
@@ -67,47 +77,36 @@ const EditActionPage = () => {
   const validateForm = () => {
     let valid = true;
     const newErrors = {
-      name: formData.name.trim() === '',
+      actionName: formData.actionName.trim() === '',
       description: formData.description.trim() === ''
     };
-
     setErrors(newErrors);
-    
-    if (newErrors.name || newErrors.description) {
-      valid = false;
-    }
-    
-    return valid;
+    return !newErrors.actionName && !newErrors.description;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (validateForm()) {
-      const savedActions = JSON.parse(localStorage.getItem('actions') || '[]');
-      const updatedActions = savedActions.map(action => {
-        if (action.id === parseInt(actionId)) {
-          return {
-            ...action,
-            name: formData.name,
-            description: formData.description
-          };
-        }
-        return action;
-      });
-      
-      localStorage.setItem('actions', JSON.stringify(updatedActions));
-      
+    if (!validateForm()) return;
+
+    try {
+      await axios.put(`${API_BASE_URL}/auth/actions/${actionId}`, formData);
       setNotification({
         open: true,
-        message: 'Action updated successfully',
+        message: 'Action updated successfully!',
         severity: 'success'
       });
-      
-      // Navigate back after a short delay
       setTimeout(() => {
-        navigate('/admin/list-actions');
+        navigate('/admin/list-actions', {
+          state: { success: 'Action updated successfully!' }
+        });
       }, 1500);
+    } catch (err) {
+      console.error('Error updating action:', err);
+      setNotification({
+        open: true,
+        message: 'Failed to update action.',
+        severity: 'error'
+      });
     }
   };
 
@@ -119,16 +118,16 @@ const EditActionPage = () => {
     <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
       <Paper elevation={3} sx={{ p: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-          <IconButton onClick={() => navigate('/admin/actions')} sx={{ mr: 2 }}>
+          <IconButton onClick={() => navigate('/admin/list-actions')} sx={{ mr: 2 }}>
             <ArrowBack />
           </IconButton>
           <Typography variant="h5" component="h1" sx={{ fontWeight: 'bold' }}>
             Edit Action
           </Typography>
         </Box>
-        
+
         <Divider sx={{ mb: 3 }} />
-        
+
         <form onSubmit={handleSubmit}>
           <Grid container spacing={3}>
             <Grid item xs={12}>
@@ -136,16 +135,16 @@ const EditActionPage = () => {
                 Action Details
               </Typography>
             </Grid>
-            
+
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
                 label="Action Name"
-                name="name"
-                value={formData.name}
+                name="actionName"
+                value={formData.actionName}
                 onChange={handleChange}
-                error={errors.name}
-                helperText={errors.name ? 'Action name is required' : ''}
+                error={errors.actionName}
+                helperText={errors.actionName ? 'Action name is required' : ''}
                 variant="outlined"
                 InputProps={{
                   endAdornment: (
@@ -158,7 +157,18 @@ const EditActionPage = () => {
                 }}
               />
             </Grid>
-            
+
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Alias"
+                name="alias"
+                value={formData.alias}
+                onChange={handleChange}
+                variant="outlined"
+              />
+            </Grid>
+
             <Grid item xs={12}>
               <TextField
                 fullWidth
@@ -167,29 +177,19 @@ const EditActionPage = () => {
                 value={formData.description}
                 onChange={handleChange}
                 error={errors.description}
-                helperText={errors.description ? 'Description is required' : 'Provide a detailed description of this action'}
+                helperText={errors.description ? 'Description is required' : ''}
                 variant="outlined"
                 multiline
                 rows={4}
               />
             </Grid>
-            
+
             <Grid item xs={12}>
               <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
-                <Button
-                  variant="outlined"
-                  onClick={() => navigate('/admin/list-actions')}
-                >
+                <Button variant="outlined" onClick={() => navigate('/admin/list-actions')}>
                   Cancel
                 </Button>
-                <Button
-                  type="submit"
-                  variant="contained"
-                  onClick={() => navigate('/admin/list-actions')}
-
-                  size="large"
-                  sx={{ px: 4 }}
-                >
+                <Button type="submit" variant="contained" size="large" sx={{ px: 4 }}>
                   Update Action
                 </Button>
               </Box>

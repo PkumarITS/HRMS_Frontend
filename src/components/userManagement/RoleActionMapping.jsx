@@ -14,47 +14,53 @@ import {
   FormControlLabel,
   Switch,
   Alert,
-  Snackbar
+  Snackbar,
+  CircularProgress
 } from '@mui/material';
 import { useNavigate, useParams } from 'react-router-dom';
+import axios from 'axios';
+
+const API_BASE_URL = 'http://localhost:1010';
 
 const RoleActionMapping = () => {
   const navigate = useNavigate();
   const { roleId } = useParams();
-  
-  // Local state for actions
-  const [actions] = useState([
-    { id: 1, name: 'Category Mapping', description: 'Category Mapping' },
-    { id: 2, name: 'Change Password', description: 'Change Passwords' },
-    { id: 3, name: 'Create Action', description: 'for creating action' },
-    { id: 4, name: 'Create Billing Cycle', description: 'Create Billing Cycle' },
-    { id: 5, name: 'Create Category', description: 'for creating category' },
-    { id: 6, name: 'Create Customer', description: 'Create Customer' },
-    { id: 7, name: 'Create Role', description: 'for creating role' },
-    { id: 8, name: 'Create User', description: 'for creating users' },
-  ]);
 
-  // State for role and selected actions
   const [role, setRole] = useState(null);
+  const [actions, setActions] = useState([]);
   const [selectedActions, setSelectedActions] = useState([]);
   const [selectAll, setSelectAll] = useState(false);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '' });
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  // Load role data
   useEffect(() => {
-    const savedRoles = JSON.parse(localStorage.getItem('roles')) || [];
-    const foundRole = savedRoles.find(role => role.id === parseInt(roleId));
-    
-    if (foundRole) {
-      setRole(foundRole);
-      setSelectedActions(foundRole.actions || []);
-      setSelectAll(foundRole.actions?.length === actions.length);
-    } else {
-      navigate('/roles');
-    }
-  }, [roleId, actions.length, navigate]);
+    const fetchRoleAndActions = async () => {
+      try {
+        setLoading(true);
+        const [roleRes, actionsRes] = await Promise.all([
+          axios.get(`${API_BASE_URL}/roles/${roleId}`),
+          axios.get(`${API_BASE_URL}/actions`)
+        ]);
 
-  // Handle individual action selection
+        const fetchedRole = roleRes.data;
+        const fetchedActions = actionsRes.data;
+
+        setRole(fetchedRole);
+        setActions(fetchedActions);
+        setSelectedActions(fetchedRole.actions?.map(a => a.id) || []);
+        setSelectAll(fetchedRole.actions?.length === fetchedActions.length);
+      } catch (error) {
+        console.error('Error fetching role or actions:', error);
+        navigate('/admin/list-roles', { state: { error: 'Failed to load role data' } });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRoleAndActions();
+  }, [roleId, navigate]);
+
   const handleToggle = (actionId) => () => {
     const currentIndex = selectedActions.indexOf(actionId);
     const newSelected = [...selectedActions];
@@ -69,7 +75,6 @@ const RoleActionMapping = () => {
     setSelectAll(newSelected.length === actions.length);
   };
 
-  // Handle select all/deselect all
   const handleSelectAll = () => {
     if (selectAll) {
       setSelectedActions([]);
@@ -79,25 +84,32 @@ const RoleActionMapping = () => {
     setSelectAll(!selectAll);
   };
 
-  // Save the mapping
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!role) return;
 
-    // Update the role in localStorage
-    const savedRoles = JSON.parse(localStorage.getItem('roles')) || [];
-    const updatedRoles = savedRoles.map(r => 
-      r.id === role.id ? { ...r, actions: selectedActions } : r
-    );
-    
-    localStorage.setItem('roles', JSON.stringify(updatedRoles));
-    setSnackbar({ open: true, message: 'Role action mapping saved successfully!' });
+    try {
+      setSaving(true);
+      await axios.put(`${API_BASE_URL}/roles/${role.id}/actions`, selectedActions);
+      setSnackbar({ open: true, message: 'Role action mapping saved successfully!', severity: 'success' });
+    } catch (error) {
+      console.error('Error saving action mapping:', error);
+      setSnackbar({ open: true, message: 'Failed to save mapping', severity: 'error' });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleCloseSnackbar = () => {
-    setSnackbar({ ...snackbar, open: false });
+    setSnackbar(prev => ({ ...prev, open: false }));
   };
 
-  if (!role) return null;
+  if (loading || !role) {
+    return (
+      <Container maxWidth="md" sx={{ mt: 4, mb: 4, display: 'flex', justifyContent: 'center' }}>
+        <CircularProgress />
+      </Container>
+    );
+  }
 
   return (
     <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
@@ -106,21 +118,21 @@ const RoleActionMapping = () => {
           <Typography variant="h5" component="h1" sx={{ fontWeight: 'bold' }}>
             Role Action Mapping
           </Typography>
-          <Chip 
-            label={role.name} 
-            color="primary" 
-            sx={{ ml: 2, fontWeight: 'bold', textTransform: 'uppercase' }} 
+          <Chip
+            label={role.roleName}
+            color="primary"
+            sx={{ ml: 2, fontWeight: 'bold', textTransform: 'uppercase' }}
           />
         </Box>
-        
+
         <Divider sx={{ mb: 3 }} />
-        
+
         <Box sx={{ mb: 3 }}>
           <Typography variant="subtitle1" sx={{ mb: 1 }}>
             <strong>Description:</strong> {role.description}
           </Typography>
         </Box>
-        
+
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
           <FormControlLabel
             control={
@@ -136,7 +148,7 @@ const RoleActionMapping = () => {
             {selectedActions.length} of {actions.length} actions selected
           </Typography>
         </Box>
-        
+
         <Paper elevation={0} sx={{ maxHeight: '500px', overflow: 'auto', border: '1px solid #e0e0e0' }}>
           <List dense>
             {actions.map((action) => (
@@ -163,20 +175,21 @@ const RoleActionMapping = () => {
             ))}
           </List>
         </Paper>
-        
+
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3, gap: 2 }}>
           <Button
             variant="outlined"
-            onClick={() => navigate('/roles')}
+            onClick={() => navigate('/admin/list-roles')}
+            disabled={saving}
           >
             Cancel
           </Button>
           <Button
             variant="contained"
             onClick={handleSave}
-            disabled={selectedActions.length === 0}
+            disabled={saving || selectedActions.length === 0}
           >
-            Save Mapping
+            {saving ? <CircularProgress size={24} /> : 'Save Mapping'}
           </Button>
         </Box>
       </Paper>
@@ -187,7 +200,7 @@ const RoleActionMapping = () => {
         onClose={handleCloseSnackbar}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       >
-        <Alert onClose={handleCloseSnackbar} severity="success" sx={{ width: '100%' }}>
+        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: '100%' }}>
           {snackbar.message}
         </Alert>
       </Snackbar>

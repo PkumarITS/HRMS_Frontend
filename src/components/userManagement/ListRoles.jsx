@@ -28,11 +28,11 @@ import { EditOutlined, DeleteOutlined, AddCircleOutline, SettingsInputComponentO
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 
+const API_BASE_URL = "http://localhost:1010";
+
 const ListRoles = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  
-  // State for roles data
   const [roles, setRoles] = useState([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -43,12 +43,12 @@ const ListRoles = () => {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
+  const [deleting, setDeleting] = useState(false);
 
-  // Fetch roles from backend API
   const fetchRoles = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/roles');
+      const response = await axios.get(`${API_BASE_URL}/roles`);
       setRoles(Array.isArray(response?.data) ? response.data : []);
       setError(null);
     } catch (err) {
@@ -60,18 +60,15 @@ const ListRoles = () => {
     }
   };
 
-  // Initial data fetch
   useEffect(() => {
     fetchRoles();
   }, []);
 
-  // Handle success messages from navigation
   useEffect(() => {
     if (location.state?.success) {
       setSnackbarMessage(location.state.success);
       setSnackbarSeverity('success');
       setSnackbarOpen(true);
-      // Clear the state
       navigate(location.pathname, { replace: true, state: {} });
     }
   }, [location.state, navigate, location.pathname]);
@@ -96,8 +93,9 @@ const ListRoles = () => {
 
   const handleDeleteConfirm = async () => {
     try {
-      await axios.delete(`/api/roles/${roleToDelete}`);
-      setRoles(prevRoles => prevRoles.filter(role => role.id !== roleToDelete));
+      setDeleting(true);
+      await axios.delete(`${API_BASE_URL}/roles/${roleToDelete}`);
+      await fetchRoles(); // Refresh the list
       setSnackbarMessage('Role deleted successfully!');
       setSnackbarSeverity('success');
       setSnackbarOpen(true);
@@ -109,6 +107,7 @@ const ListRoles = () => {
     } finally {
       setDeleteDialogOpen(false);
       setRoleToDelete(null);
+      setDeleting(false);
     }
   };
 
@@ -129,7 +128,6 @@ const ListRoles = () => {
     setSnackbarOpen(false);
   };
 
-  // Safely get the current page's roles
   const getCurrentPageRoles = () => {
     if (!Array.isArray(roles)) return [];
     return roles.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
@@ -142,7 +140,6 @@ const ListRoles = () => {
           <Typography variant="h5" component="h1" sx={{ fontWeight: 'bold' }}>
             Roles
           </Typography>
-          
           <Button
             variant="contained"
             startIcon={<AddCircleOutline />}
@@ -151,15 +148,12 @@ const ListRoles = () => {
             Create New Role
           </Button>
         </Box>
-        
         <Divider sx={{ mb: 3 }} />
-        
         {error && (
           <Alert severity="error" sx={{ mb: 3 }}>
             {error}
           </Alert>
         )}
-        
         {loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
             <CircularProgress />
@@ -178,32 +172,32 @@ const ListRoles = () => {
                 <TableBody>
                   {getCurrentPageRoles().length > 0 ? (
                     getCurrentPageRoles().map((role) => (
-                      <TableRow key={role.id} hover>
+                      <TableRow key={role.roleId} hover>
                         <TableCell>
-                          <Typography fontWeight="medium">{role.name}</Typography>
+                          <Typography fontWeight="medium">{role.roleName}</Typography>
                         </TableCell>
                         <TableCell>{role.description}</TableCell>
                         <TableCell align="center">
                           <Tooltip title="Edit">
-                            <IconButton 
-                              color="primary" 
-                              onClick={() => handleEdit(role.id)}
+                            <IconButton
+                              color="primary"
+                              onClick={() => handleEdit(role.roleId)}
                             >
                               <EditOutlined />
                             </IconButton>
                           </Tooltip>
                           <Tooltip title="Permissions Mapping">
-                            <IconButton 
-                              color="secondary" 
-                              onClick={() => handleMapping(role.id)}
+                            <IconButton
+                              color="secondary"
+                              onClick={() => handleMapping(role.roleId)}
                             >
                               <SettingsInputComponentOutlined />
                             </IconButton>
                           </Tooltip>
                           <Tooltip title="Delete">
-                            <IconButton 
-                              color="error" 
-                              onClick={() => handleDeleteClick(role.id)}
+                            <IconButton
+                              color="error"
+                              onClick={() => handleDeleteClick(role.roleId)}
                             >
                               <DeleteOutlined />
                             </IconButton>
@@ -221,7 +215,6 @@ const ListRoles = () => {
                 </TableBody>
               </Table>
             </TableContainer>
-            
             <TablePagination
               rowsPerPageOptions={[5, 10, 25]}
               component="div"
@@ -236,7 +229,6 @@ const ListRoles = () => {
         )}
       </Paper>
 
-      {/* Delete Confirmation Dialog */}
       <Dialog
         open={deleteDialogOpen}
         onClose={handleDeleteCancel}
@@ -250,14 +242,15 @@ const ListRoles = () => {
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleDeleteCancel}>Cancel</Button>
-          <Button onClick={handleDeleteConfirm} color="error" autoFocus>
-            Delete
+          <Button onClick={handleDeleteCancel} disabled={deleting}>
+            Cancel
+          </Button>
+          <Button onClick={handleDeleteConfirm} color="error" autoFocus disabled={deleting}>
+            {deleting ? <CircularProgress size={24} /> : 'Delete'}
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Snackbar for notifications */}
       <Snackbar
         open={snackbarOpen}
         autoHideDuration={6000}
