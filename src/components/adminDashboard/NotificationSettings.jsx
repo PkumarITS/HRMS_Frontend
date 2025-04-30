@@ -27,29 +27,34 @@ import {
 import { ArrowBack, Send } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
- 
+import { listTimeZones } from 'timezone-support';
+import { getData } from 'country-list';
+
+
+import { getCountries, getCountryName } from "country-list";
+import { getTimezonesForCountry } from 'countries-and-timezones';
+
+
+
+
+
+
 // API endpoints from backend
 const API = {
   GET_EMPLOYEES: "/api/employees/basic-info",
   SEND_EMAILS: "/api/emails/employee-reminders"
 };
- 
+
 const API_BASE_URL = "http://localhost:1010";
- 
-// Country and timezone library
-const COUNTRIES = [
-  { code: "US", name: "United States", timezones: ["America/New_York", "America/Chicago", "America/Denver", "America/Los_Angeles"] },
-  { code: "GB", name: "United Kingdom", timezones: ["Europe/London"] },
-  { code: "IN", name: "India", timezones: ["Asia/Kolkata"] },
-  { code: "JP", name: "Japan", timezones: ["Asia/Tokyo"] },
-  { code: "AU", name: "Australia", timezones: ["Australia/Sydney", "Australia/Melbourne"] },
-  { code: "CA", name: "Canada", timezones: ["America/Toronto", "America/Vancouver"] },
-  { code: "DE", name: "Germany", timezones: ["Europe/Berlin"] },
-  { code: "FR", name: "France", timezones: ["Europe/Paris"] },
-  { code: "BR", name: "Brazil", timezones: ["America/Sao_Paulo"] },
-  { code: "CN", name: "China", timezones: ["Asia/Shanghai"] }
-];
- 
+
+// Get all countries with their codes and names
+const COUNTRIES = getData().map(country => ({
+  code: country.code,
+  name: country.name
+}));
+
+
+
 // Predefined roles with emails
 const ROLES = [
   { name: "HR Manager", email: "hr@infinevocloud.com" },
@@ -57,7 +62,7 @@ const ROLES = [
   { name: "Team Supervisor", email: "supervisor@infinevocloud.com" },
   { name: "CEO", email: "ceo@infinevocloud.com" }
 ];
- 
+
 const NotificationSettings = () => {
   const navigate = useNavigate();
   const [employees, setEmployees] = useState([]);
@@ -69,8 +74,8 @@ const NotificationSettings = () => {
         level: 1,
         day: "Saturday",
         time: "23:59",
-        countries: ["US"],
-        timezone: "America/New_York",
+        country: null, // Changed from countries array to single country
+        timezone: null,
         selectedEmployees: []
       },
       {
@@ -78,9 +83,7 @@ const NotificationSettings = () => {
         level: 2,
         day: "Sunday",
         time: "23:59",
-        countries: ["US"],
-        timezone: "America/New_York",
-        selectedEmployees: []
+        selectedEmployees: [] // Level 2 doesn't need country/timezone
       }
     ],
    
@@ -92,7 +95,7 @@ const NotificationSettings = () => {
         day: "Tuesday",
         time: "14:00",
         recipients: ["supervisor@company.com"],
-        timezone: "America/New_York"
+        timezone: "UTC"
       },
       {
         enabled: true,
@@ -100,7 +103,7 @@ const NotificationSettings = () => {
         day: "Wednesday",
         time: "14:00",
         recipients: ["supervisor@company.com", "hr@company.com"],
-        timezone: "America/New_York"
+        timezone: "UTC"
       }
     ],
    
@@ -112,7 +115,7 @@ const NotificationSettings = () => {
         day: "Tuesday",
         time: "14:00",
         recipients: ["hr@company.com"],
-        timezone: "America/New_York"
+        timezone: "UTC"
       },
       {
         enabled: true,
@@ -120,7 +123,7 @@ const NotificationSettings = () => {
         day: "Wednesday",
         time: "14:00",
         recipients: ["hr@company.com", "manager@company.com"],
-        timezone: "America/New_York"
+        timezone: "UTC"
       }
     ],
    
@@ -129,7 +132,7 @@ const NotificationSettings = () => {
     escalationDay: "Thursday",
     escalationTime: "14:00",
     escalationRecipients: ["ceo@company.com", "hr@company.com"],
-    escalationTimezone: "America/New_York",
+    escalationTimezone: "UTC",
    
     // Approval reminders
     approvalReminders: [
@@ -139,7 +142,7 @@ const NotificationSettings = () => {
         day: "Tuesday",
         time: "12:00",
         recipients: ["supervisor@company.com"],
-        timezone: "America/New_York"
+        timezone: "UTC"
       },
       {
         enabled: true,
@@ -147,7 +150,7 @@ const NotificationSettings = () => {
         day: "Wednesday",
         time: "12:00",
         recipients: ["hr@company.com"],
-        timezone: "America/New_York"
+        timezone: "UTC"
       },
       {
         enabled: true,
@@ -155,11 +158,11 @@ const NotificationSettings = () => {
         day: "Friday",
         time: "12:00",
         recipients: ["ceo@company.com", "hr-director@company.com"],
-        timezone: "America/New_York"
+        timezone: "UTC"
       }
     ]
   });
- 
+
   const [newEscalationEmail, setNewEscalationEmail] = useState("");
   const [selectedRoles, setSelectedRoles] = useState(["ceo@company.com", "hr@company.com"]);
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
@@ -170,12 +173,12 @@ const NotificationSettings = () => {
     message: "",
     severity: "success"
   });
- 
+
   // Fetch employees from backend on component mount
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
-      const response = await axios.get(`${API_BASE_URL}/api/employees/basic-info`);
+        const response = await axios.get(`${API_BASE_URL}${API.GET_EMPLOYEES}`);
         setEmployees(response.data);
         showSnackbar("Employees loaded successfully", "success");
       } catch (error) {
@@ -186,12 +189,51 @@ const NotificationSettings = () => {
    
     fetchEmployees();
   }, []);
- 
+
   // Get employees by country
   const getEmployeesByCountry = (countryCode) => {
     return employees.filter(emp => emp.country === countryCode);
   };
- 
+
+  // Get timezones for a country
+  // const getTimezonesForCountry = (countryCode) => {
+  //   try {
+  //     return findTimezonesForCountry(countryCode) || ["UTC"];
+  //   } catch (error) {
+  //     console.error(`Error getting timezones for country ${countryCode}:`, error);
+  //     return ["UTC"];
+  //   }
+  // };
+
+  // const getTimezonesForCountry = (countryCode) => {
+  //   try {
+  //     return timezoneSupport.findTimezonesForCountry(countryCode) || ["UTC"];
+  //   } catch (error) {
+  //     console.error(`Error getting timezones for country ${countryCode}:`, error);
+  //     return ["UTC"];
+  //   }
+  // };
+
+
+  const getTimezonesForCountry = (countryCode) => {
+    try {
+      return Intl.supportedValuesOf('timeZone').filter(tz => 
+        tz.includes(countryCode) || tz.startsWith(countryCode)
+      ) || ["UTC"];
+    } catch (error) {
+      return ["UTC"];
+    }
+  };
+
+  const findTimezonesForCountry = (countryCode) => {
+    try {
+      return timezoneSupport.findTimezonesForCountry(countryCode) || ["UTC"];
+    } catch (error) {
+      console.error(`Error getting timezones for country ${countryCode}:`, error);
+      return ["UTC"];
+    }
+  };
+
   // Handle settings changes
   const handleSettingChange = (setting) => (event) => {
     setSettings({
@@ -199,24 +241,23 @@ const NotificationSettings = () => {
       [setting]: event.target.checked
     });
   };
- 
+
   const handleTimeChange = (setting, value) => {
     setSettings({
       ...settings,
       [setting]: value
     });
   };
- 
+
   // Update reminder settings
   const updateReminder = (type, index, field, value) => {
     const updatedReminders = [...settings[type]];
     updatedReminders[index][field] = value;
    
     // If country changes in employee reminders, update timezone and reset selected employees
-    if (type === 'employeeReminders' && field === 'countries') {
-      const country = value[0];
-      const timezone = COUNTRIES.find(c => c.code === country)?.timezones[0] || "UTC";
-      updatedReminders[index].timezone = timezone;
+    if (type === 'employeeReminders' && field === 'country') {
+      const timezones = value ? getTimezonesForCountry(value.code) : ["UTC"];
+      updatedReminders[index].timezone = timezones[0];
       updatedReminders[index].selectedEmployees = [];
     }
    
@@ -225,7 +266,7 @@ const NotificationSettings = () => {
       [type]: updatedReminders
     });
   };
- 
+
   // Email recipient management
   const handleAddEscalationEmail = () => {
     if (newEscalationEmail && !settings.escalationRecipients.includes(newEscalationEmail)) {
@@ -236,7 +277,7 @@ const NotificationSettings = () => {
       setNewEscalationEmail("");
     }
   };
- 
+
   const handleRemoveEscalationEmail = (email) => {
     setSettings({
       ...settings,
@@ -244,7 +285,7 @@ const NotificationSettings = () => {
     });
     setSelectedRoles(selectedRoles.filter(e => e !== email));
   };
- 
+
   const handleRoleSelectionChange = (event) => {
     const value = event.target.value;
     setSelectedRoles(typeof value === 'string' ? value.split(',') : value);
@@ -253,18 +294,18 @@ const NotificationSettings = () => {
       escalationRecipients: typeof value === 'string' ? value.split(',') : value
     });
   };
- 
+
   // Email sending functionality
   const handleSendEscalationEmail = () => {
     setSendDialogOpen(true);
   };
- 
+
   const handleCloseSendDialog = () => {
     setSendDialogOpen(false);
     setSelectedEmployees([]);
     setCustomEmail("");
   };
- 
+
   const handleSendEmail = async () => {
     try {
       // Prepare data for backend API
@@ -275,7 +316,7 @@ const NotificationSettings = () => {
           empId: emp.empId,
           name: emp.name
         }));
- 
+
       // Include custom email if provided
       if (customEmail) {
         selectedEmails.push({
@@ -284,21 +325,20 @@ const NotificationSettings = () => {
           name: customEmail.split('@')[0]
         });
       }
- 
+
       if (selectedEmails.length === 0) {
         showSnackbar("Please select at least one recipient", "error");
         return;
       }
- 
+
       // Call backend API to send emails
-const response = await axios.post(`${API_BASE_URL}/api/emails/employee-reminders`, {
-  to: selectedEmails,
-  cc: settings.escalationRecipients,
-  subject: "Timesheet Reminder",
-  messageBody: escalationEmailTemplate(selectedEmails[0].name)
-});
- 
- 
+      const response = await axios.post(`${API_BASE_URL}${API.SEND_EMAILS}`, {
+        to: selectedEmails,
+        cc: settings.escalationRecipients,
+        subject: "Timesheet Reminder",
+        messageBody: escalationEmailTemplate(selectedEmails[0].name)
+      });
+
       if (response.status === 200) {
         showSnackbar(`Escalation emails sent to ${selectedEmails.length} recipient(s)`, "success");
         handleCloseSendDialog();
@@ -310,7 +350,7 @@ const response = await axios.post(`${API_BASE_URL}/api/emails/employee-reminders
       showSnackbar("Failed to send escalation emails", "error");
     }
   };
- 
+
   // Save settings
   const handleSave = async () => {
     try {
@@ -322,76 +362,77 @@ const response = await axios.post(`${API_BASE_URL}/api/emails/employee-reminders
       showSnackbar("Failed to save settings", "error");
     }
   };
- 
+
   // Snackbar helpers
   const showSnackbar = (message, severity) => {
     setSnackbar({ open: true, message, severity });
   };
- 
+
   const handleSnackbarClose = () => {
     setSnackbar(prev => ({ ...prev, open: false }));
   };
- 
+
   // System-generated escalation email template
   const escalationEmailTemplate = (employeeName) => `
 Dear ${employeeName},
- 
+
 This is an urgent notification regarding your overdue timesheet submission.
- 
+
 This matter has been escalated to the following management team members:
 ${settings.escalationRecipients.map(email => `- ${email}`).join('\n')}
- 
+
 Required Actions:
 1. Submit your timesheet immediately through the employee portal
 2. Reply to this email to confirm submission
 3. Contact your supervisor if you encounter any issues
- 
+
 Consequences of non-compliance:
 - Immediate payroll processing delays
 - Formal disciplinary action
 - Further escalation to senior leadership
- 
+
 The deadline for resolution is ${settings.escalationDay} at ${settings.escalationTime} (${settings.escalationTimezone}).
- 
+
 Sincerely,
 Timesheet Compliance Team
 `;
- 
+
   // Approval reminder email template
   const approvalReminderTemplate = (level) => `
 Dear ${level === 1 ? 'Supervisor' : level === 2 ? 'HR Team' : 'Management Team'},
- 
+
 This is a reminder regarding pending timesheet approvals.
- 
+
 Pending Approvals:
 - ${level === 1 ? 'Initial reminder' : level === 2 ? 'Second reminder' : 'Final escalation'}
 - Action required by: ${settings.approvalReminders[level-1].day} at ${settings.approvalReminders[level-1].time} (${settings.approvalReminders[level-1].timezone})
- 
+
 Required Actions:
 1. Review and approve pending timesheets immediately
 2. Contact the employees if additional information is needed
 3. Reply to this email once approvals are completed
- 
+
 ${level === 3 ? `
 Consequences of non-compliance:
 - Payroll processing delays
 - Formal reporting to senior leadership
 ` : ''}
- 
+
 Sincerely,
 Timesheet Compliance Team
 `;
- 
+
   // Render country selector with search for employee reminders
   const renderCountrySelector = (index) => (
     <FormControl size="small" sx={{ minWidth: 200, mb: 2 }}>
       <Autocomplete
         options={COUNTRIES}
         getOptionLabel={(option) => option.name}
-        value={COUNTRIES.find(c => c.code === settings.employeeReminders[index].countries[0]) || null}
+        value={settings.employeeReminders[index].country}
         onChange={(e, newValue) => {
-          updateReminder('employeeReminders', index, 'countries', newValue ? [newValue.code] : []);
+          updateReminder('employeeReminders', index, 'country', newValue);
         }}
+        disabled={!settings.employeeReminders[index].enabled || settings.employeeReminders[index].level === 2}
         renderInput={(params) => (
           <TextField
             {...params}
@@ -403,40 +444,76 @@ Timesheet Compliance Team
       />
     </FormControl>
   );
- 
+
   // Render timezone selector based on selected country for employee reminders
-  const renderTimezoneSelector = (index) => (
-    <FormControl size="small" sx={{ minWidth: 200, mb: 2 }}>
-      <InputLabel>Timezone</InputLabel>
-      <Select
-        value={settings.employeeReminders[index].timezone}
-        onChange={(e) => updateReminder('employeeReminders', index, 'timezone', e.target.value)}
-        disabled={!settings.employeeReminders[index].enabled}
-      >
-        {COUNTRIES.find(c => c.code === settings.employeeReminders[index].countries[0])?.timezones.map(tz => (
-          <MenuItem key={tz} value={tz}>{tz}</MenuItem>
-        ))}
-      </Select>
-    </FormControl>
-  );
- 
- // Render employee selector for employee reminders
+  const renderTimezoneSelector = (index) => {
+    const reminder = settings.employeeReminders[index];
+    const timezones = reminder.country ? getTimezonesForCountry(reminder.country.code) : ["UTC"];
+
+    return (
+      <FormControl size="small" sx={{ minWidth: 200, mb: 2 }}>
+        <InputLabel>Timezone</InputLabel>
+        <Select
+          value={reminder.timezone || timezones[0]}
+          onChange={(e) => updateReminder('employeeReminders', index, 'timezone', e.target.value)}
+          disabled={!reminder.enabled || reminder.level === 2 || !reminder.country}
+        >
+          {timezones.map(tz => (
+            <MenuItem key={tz} value={tz}>{tz}</MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+    );
+  };
+
+  // Render employee selector for employee reminders
   const renderEmployeeSelector = (index) => {
-    const countryCode = settings.employeeReminders[index].countries[0];
+    const reminder = settings.employeeReminders[index];
+    const countryCode = reminder.country?.code;
+
+    if (reminder.level === 2) {
+      // For level 2, show all employees without country filter
+      return (
+        <Box sx={{ mt: 2, mb: 2 }}>
+          <Typography variant="subtitle2" sx={{ mb: 1 }}>
+            Select Employees:
+          </Typography>
+          <Autocomplete
+            multiple
+            options={employees}
+            getOptionLabel={(option) => `${option.name} (${option.email})`}
+            value={employees.filter(emp => reminder.selectedEmployees.includes(emp.empId))}
+            onChange={(e, newValue) => {
+              updateReminder('employeeReminders', index, 'selectedEmployees', newValue.map(emp => emp.empId));
+            }}
+            disabled={!reminder.enabled}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                variant="outlined"
+                size="small"
+                placeholder="Select employees"
+              />
+            )}
+          />
+        </Box>
+      );
+    }
+
     return countryCode ? (
       <Box sx={{ mt: 2, mb: 2 }}>
         <Typography variant="subtitle2" sx={{ mb: 1 }}>
-          Employees in {COUNTRIES.find(c => c.code === countryCode)?.name}:
+          Employees in {reminder.country.name}:
         </Typography>
         <Autocomplete
           multiple
           options={getEmployeesByCountry(countryCode)}
           getOptionLabel={(option) => `${option.name} (${option.email})`}
-          value={employees.filter(emp => settings.employeeReminders[index].selectedEmployees.includes(emp.empId))}
+          value={employees.filter(emp => reminder.selectedEmployees.includes(emp.empId))}
           onChange={(e, newValue) => {
             updateReminder('employeeReminders', index, 'selectedEmployees', newValue.map(emp => emp.empId));
           }}
-          disabled={!settings.employeeReminders[index].enabled}
+          disabled={!reminder.enabled}
           renderInput={(params) => (
             <TextField
               {...params}
@@ -449,7 +526,7 @@ Timesheet Compliance Team
       </Box>
     ) : null;
   };
- 
+
   // Render recipients selector for supervisor/HR/approval reminders
   const renderRecipientsSelector = (type, index) => (
     <Box sx={{ mt: 2, mb: 2 }}>
@@ -476,7 +553,7 @@ Timesheet Compliance Team
       />
     </Box>
   );
- 
+
   // Render day/time selectors with consistent spacing
   const renderDateTimeSelectors = (type, index, days, times) => (
     <Box sx={{ display: "flex", gap: 2, mt: 2, mb: 2, flexWrap: 'wrap' }}>
@@ -506,7 +583,7 @@ Timesheet Compliance Team
       </FormControl>
     </Box>
   );
- 
+
   return (
     <Paper elevation={0} sx={{ p: 4, width: "100%", maxWidth: 1200, mx: "auto", borderRadius: 3 }}>
       <Button
@@ -516,15 +593,15 @@ Timesheet Compliance Team
       >
         Back to Timesheets
       </Button>
- 
+
       <Typography variant="h5" gutterBottom sx={{ fontWeight: "bold" }}>
         Timesheet Notification Settings
       </Typography>
- 
+
       <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
         Configure automatic reminders and escalation emails for timesheet submission and approval
       </Typography>
- 
+
       {/* Employee Reminders Section */}
       <Typography variant="h6" gutterBottom>
         Employee Reminders
@@ -542,17 +619,19 @@ Timesheet Compliance Team
               label={`Reminder Level ${reminder.level}`}
             />
             <Box sx={{ ml: 4 }}>
-              <Box sx={{ display: "flex", gap: 2, flexWrap: 'wrap' }}>
-                {renderCountrySelector(index)}
-                {renderTimezoneSelector(index)}
-              </Box>
+              {reminder.level === 1 && (
+                <Box sx={{ display: "flex", gap: 2, flexWrap: 'wrap' }}>
+                  {renderCountrySelector(index)}
+                  {renderTimezoneSelector(index)}
+                </Box>
+              )}
               {renderDateTimeSelectors('employeeReminders', index, ["Saturday", "Sunday"], ["23:59", "20:00", "18:00"])}
               {renderEmployeeSelector(index)}
             </Box>
           </Grid>
         ))}
       </Grid>
- 
+
       {/* Supervisor Reminders Section */}
       <Typography variant="h6" gutterBottom>
         Supervisor Reminders
@@ -576,7 +655,7 @@ Timesheet Compliance Team
           </Grid>
         ))}
       </Grid>
- 
+
       {/* HR Reminders Section */}
       <Typography variant="h6" gutterBottom>
         HR Reminders
@@ -600,7 +679,7 @@ Timesheet Compliance Team
           </Grid>
         ))}
       </Grid>
- 
+
       {/* Approval Reminders Section */}
       <Typography variant="h6" gutterBottom>
         Timesheet Approval Reminders
@@ -624,7 +703,7 @@ Timesheet Compliance Team
           </Grid>
         ))}
       </Grid>
- 
+
       {/* Escalation Settings Section */}
       <Typography variant="h6" gutterBottom>
         Escalation Settings
@@ -671,11 +750,16 @@ Timesheet Compliance Team
                 onChange={(e) => handleTimeChange("escalationTimezone", e.target.value)}
                 disabled={!settings.escalationEnabled}
               >
-                {COUNTRIES.flatMap(country =>
-                  country.timezones.map(tz => (
-                    <MenuItem key={tz} value={tz}>{tz}</MenuItem>
-                  ))
-                )}
+                {COUNTRIES.flatMap(country => {
+                  try {
+                    const timezones = findTimezonesForCountry(country.code);
+                    return timezones ? timezones.map(tz => (
+                      <MenuItem key={tz} value={tz}>{tz} ({country.name})</MenuItem>
+                    )) : [];
+                  } catch (error) {
+                    return [];
+                  }
+                })}
               </Select>
             </FormControl>
           </Box>
@@ -742,7 +826,7 @@ Timesheet Compliance Team
           </Box>
         </Grid>
       </Grid>
- 
+
       {/* Escalation Email Section */}
       <Typography variant="h6" gutterBottom>
         Send Escalation Email
@@ -757,7 +841,7 @@ Timesheet Compliance Team
           Send Escalation Email
         </Button>
       </Box>
- 
+
       {/* Save Settings Button */}
       <Divider sx={{ my: 3 }} />
       <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
@@ -769,7 +853,7 @@ Timesheet Compliance Team
           Save Settings
         </Button>
       </Box>
- 
+
       {/* Send Escalation Email Dialog */}
       <Dialog open={sendDialogOpen} onClose={handleCloseSendDialog} maxWidth="md" fullWidth>
         <DialogTitle>Send Escalation Email</DialogTitle>
@@ -788,17 +872,17 @@ Timesheet Compliance Team
                 const emp = employees.find(e => e.empId === id);
                 return emp ? emp.name : id;
               }).join(', ')}
-            >{Array.isArray(employees) &&
-              employees.map((employee) => (
-                <MenuItem key={employee.empId} value={employee.empId}>
-                  <Checkbox checked={selectedEmployees.indexOf(employee.empId) > -1} />
-                  <ListItemText primary={`${employee.name} (${employee.email})`} />
-                </MenuItem>
-              ))}
-           
+            >
+              {Array.isArray(employees) &&
+                employees.map((employee) => (
+                  <MenuItem key={employee.empId} value={employee.empId}>
+                    <Checkbox checked={selectedEmployees.indexOf(employee.empId) > -1} />
+                    <ListItemText primary={`${employee.name} (${employee.email})`} />
+                  </MenuItem>
+                ))}
             </Select>
           </FormControl>
- 
+
           <Typography variant="subtitle1" sx={{ mb: 2, mt: 3 }}>
             Or enter custom email:
           </Typography>
@@ -847,7 +931,7 @@ Timesheet Compliance Team
           </Button>
         </DialogActions>
       </Dialog>
- 
+
       {/* Snackbar for notifications */}
       <Snackbar
         open={snackbar.open}
@@ -866,6 +950,5 @@ Timesheet Compliance Team
     </Paper>
   );
 };
- 
+
 export default NotificationSettings;
- 

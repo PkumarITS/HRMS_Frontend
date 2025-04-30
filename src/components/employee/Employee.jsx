@@ -18,7 +18,12 @@ import {
   Snackbar,
   Alert,
   CircularProgress,
-  InputAdornment
+  InputAdornment,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import VisibilityIcon from "@mui/icons-material/Visibility";
@@ -37,6 +42,11 @@ const Employee = () => {
     open: false,
     message: "",
     severity: "info"
+  });
+  const [deleteDialog, setDeleteDialog] = useState({
+    open: false,
+    employeeId: null,
+    employeeName: ""
   });
   const navigate = useNavigate();
 
@@ -80,33 +90,53 @@ const Employee = () => {
     fetchEmployees();
   }, [token, navigate]);
 
-  const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to delete this employee?")) {
-      try {
-        const response = await axios.delete(
-          `http://localhost:1010/admin/employees/${id}`,
-          {
-            headers: {
-              "Authorization": `Bearer ${token}`
-            }
+  const handleDeleteClick = (employeeId, employeeName) => {
+    setDeleteDialog({
+      open: true,
+      employeeId,
+      employeeName
+    });
+  };
+
+  const handleDeleteConfirm = async () => {
+    try {
+      const response = await axios.delete(
+        `http://localhost:1010/admin/employees/${deleteDialog.employeeId}`,
+        {
+          headers: {
+            "Authorization": `Bearer ${token}`
           }
-        );
-        
-        if (response.status === 200) {
-          showNotification("Employee deleted successfully", "success");
-          setEmployees(prev => prev.filter(emp => emp.id !== id));
-          setFilteredEmployees(prev => prev.filter(emp => emp.id !== id));
-        } else {
-          throw new Error(response.data?.message || "Failed to delete employee");
         }
-      } catch (error) {
-        console.error("Error deleting employee:", error);
-        showNotification(
-          error.response?.data?.message || "Failed to delete employee", 
-          "error"
-        );
+      );
+      
+      if (response.status === 200) {
+        showNotification(`Employee "${deleteDialog.employeeName}" deleted successfully`, "success");
+        setEmployees(prev => prev.filter(emp => emp.id !== deleteDialog.employeeId));
+        setFilteredEmployees(prev => prev.filter(emp => emp.id !== deleteDialog.employeeId));
+      } else {
+        throw new Error(response.data?.message || "Failed to delete employee");
       }
+    } catch (error) {
+      console.error("Error deleting employee:", error);
+      showNotification(
+        error.response?.data?.message || "Failed to delete employee", 
+        "error"
+      );
+    } finally {
+      setDeleteDialog({
+        open: false,
+        employeeId: null,
+        employeeName: ""
+      });
     }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteDialog({
+      open: false,
+      employeeId: null,
+      employeeName: ""
+    });
   };
 
   const showNotification = (message, severity = "info") => {
@@ -323,6 +353,36 @@ const Employee = () => {
 
   return (
     <Box sx={{ p: 3 }}>
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialog.open}
+        onClose={handleDeleteCancel}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-description"
+      >
+        <DialogTitle id="alert-dialog-title">Confirm Employee Deletion</DialogTitle>
+        <DialogContent>
+          <DialogContentText id="alert-dialog-description">
+            Are you sure you want to permanently delete employee "{deleteDialog.employeeName}"?
+            This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDeleteCancel} color="primary">
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleDeleteConfirm} 
+            color="error" 
+            autoFocus
+            variant="contained"
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Main Content */}
       <Box sx={{ 
         display: "flex", 
         justifyContent: "space-between", 
@@ -419,7 +479,7 @@ const Employee = () => {
                       </IconButton>
                       <IconButton
                         color="error"
-                        onClick={() => handleDelete(emp.id)}
+                        onClick={() => handleDeleteClick(emp.id, `${emp.personal?.firstName || ''} ${emp.personal?.lastName || ''}`.trim())}
                         title="Delete"
                       >
                         <DeleteIcon />

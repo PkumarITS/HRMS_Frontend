@@ -31,7 +31,7 @@ import {
   Close as CloseIcon
 } from '@mui/icons-material';
 
-const Profile = ({ isAdmin }) => {
+const Profile = ({ isRole }) => {
   const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -768,7 +768,12 @@ const Profile = ({ isAdmin }) => {
                 />
                 <Chip 
                   label={ourUsers.role.toUpperCase()} 
-                  color={ourUsers.role === 'admin' ? 'primary' : 'secondary'} 
+                  color={
+                    ourUsers.role === 'admin' ? 'primary' : 
+                    ourUsers.role === 'hr' ? 'secondary' :
+                    ourUsers.role === 'manager' ? 'success' :
+                    ourUsers.role === 'supervisor' ? 'warning' : 'info'
+                  } 
                 />
               </Box>
             </Box>
