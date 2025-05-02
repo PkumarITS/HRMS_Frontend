@@ -91,9 +91,11 @@ const AdminTimesheetManagement = () => {
     status: "",
     startDate: null,
     endDate: null,
-    role: ""
+    role: "",
+    project: ""
   });
   const [exportType, setExportType] = useState('excel');
+  const [projects, setProjects] = useState([]);
 
   const fetchTimesheets = async () => {
     try {
@@ -147,6 +149,18 @@ const AdminTimesheetManagement = () => {
     }
   };
 
+  const fetchProjects = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/admin/projects`);
+      if (response.data && Array.isArray(response.data)) {
+        setProjects(response.data);
+      }
+    } catch (error) {
+      console.error("Error fetching projects:", error);
+      showSnackbar("Failed to load projects", "error");
+    }
+  };
+
   const fetchNotifications = async () => {
     try {
       setNotificationLoading(true);
@@ -190,6 +204,7 @@ const AdminTimesheetManagement = () => {
 
   useEffect(() => {
     fetchTimesheets();
+    fetchProjects();
     fetchNotifications();
     
     const interval = setInterval(() => {
@@ -425,7 +440,8 @@ const AdminTimesheetManagement = () => {
       status: "",
       startDate: null,
       endDate: null,
-      role: ""
+      role: "",
+      project: ""
     });
   };
 
@@ -457,6 +473,10 @@ const AdminTimesheetManagement = () => {
       }
       
       if (exportFilters.role && ts.role !== exportFilters.role) {
+        return false;
+      }
+      
+      if (exportFilters.project && ts.project !== exportFilters.project) {
         return false;
       }
       
@@ -496,6 +516,7 @@ const AdminTimesheetManagement = () => {
     
     if (exportFilters.status) fileNameParts.push(exportFilters.status);
     if (exportFilters.role) fileNameParts.push(exportFilters.role);
+    if (exportFilters.project) fileNameParts.push(exportFilters.project.replace(/\s+/g, '_'));
     if (exportFilters.startDate && exportFilters.endDate) {
       fileNameParts.push(
         `${format(new Date(exportFilters.startDate), "yyyy-MM-dd")}-${format(new Date(exportFilters.endDate), "yyyy-MM-dd")}`
@@ -510,7 +531,6 @@ const AdminTimesheetManagement = () => {
   const exportToPDF = (filteredData) => {
     const doc = new jsPDF();
     
-    // Initialize autoTable plugin
     autoTable(doc, {
       head: [
         ['ID', 'Employee', 'Role', 'Project', 'Task', 'Week', 'Status', 'Hours', 'Submitted At']
@@ -550,7 +570,6 @@ const AdminTimesheetManagement = () => {
       }
     });
   
-    // Add title and metadata
     doc.setFontSize(18);
     doc.text('Timesheets Report', 14, 22);
     
@@ -558,15 +577,16 @@ const AdminTimesheetManagement = () => {
     let filtersText = `Generated on: ${format(new Date(), "yyyy-MM-dd HH:mm")}`;
     if (exportFilters.status) filtersText += ` | Status: ${exportFilters.status}`;
     if (exportFilters.role) filtersText += ` | Role: ${exportFilters.role}`;
+    if (exportFilters.project) filtersText += ` | Project: ${exportFilters.project}`;
     if (exportFilters.startDate && exportFilters.endDate) {
       filtersText += ` | Date Range: ${format(new Date(exportFilters.startDate), "yyyy-MM-dd")} to ${format(new Date(exportFilters.endDate), "yyyy-MM-dd")}`;
     }
     doc.text(filtersText, 14, 28);
   
-    // Build filename
     let fileNameParts = [`Timesheets_${format(new Date(), "yyyy-MM-dd")}`];
     if (exportFilters.status) fileNameParts.push(exportFilters.status);
     if (exportFilters.role) fileNameParts.push(exportFilters.role);
+    if (exportFilters.project) fileNameParts.push(exportFilters.project.replace(/\s+/g, '_'));
     if (exportFilters.startDate && exportFilters.endDate) {
       fileNameParts.push(
         `${format(new Date(exportFilters.startDate), "yyyy-MM-dd")}-${format(new Date(exportFilters.endDate), "yyyy-MM-dd")}`
@@ -732,6 +752,22 @@ const AdminTimesheetManagement = () => {
                   <MenuItem value="Manager">Manager</MenuItem>
                   <MenuItem value="Admin">Admin</MenuItem>
                   <MenuItem value="Contractor">Contractor</MenuItem>
+                </Select>
+              </FormControl>
+
+              <FormControl fullWidth size="small">
+                <InputLabel>Project</InputLabel>
+                <Select
+                  value={exportFilters.project}
+                  label="Project"
+                  onChange={(e) => handleExportFilterChange('project', e.target.value)}
+                >
+                  <MenuItem value="">All Projects</MenuItem>
+                  {projects.map((project) => (
+                    <MenuItem key={project.id} value={project.name}>
+                      {project.name}
+                    </MenuItem>
+                  ))}
                 </Select>
               </FormControl>
 
