@@ -26,12 +26,10 @@ const CreateActionPage = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     actionName: '',
-    alias: '',
     description: ''
   });
   const [errors, setErrors] = useState({
     actionName: false,
-    alias: false,
     description: false
   });
   const [submitAttempted, setSubmitAttempted] = useState(false);
@@ -60,12 +58,11 @@ const CreateActionPage = () => {
   const validateForm = () => {
     const newErrors = {
       actionName: formData.actionName.trim() === '',
-      alias: formData.alias.trim() === '',
       description: formData.description.trim() === ''
     };
  
     setErrors(newErrors);
-    return !newErrors.actionName && !newErrors.alias && !newErrors.description;
+    return !newErrors.actionName && !newErrors.description;
   };
 
   const token = Cookies.get("token");
@@ -86,7 +83,6 @@ const CreateActionPage = () => {
     try {
       const response = await axios.post(`${API_BASE_URL}/auth/actions`, {
         actionName: formData.actionName.trim(),
-        alias: formData.alias.trim(),
         description: formData.description.trim()
       },{
         headers: { Authorization: `Bearer ${token}` },
@@ -103,7 +99,6 @@ const CreateActionPage = () => {
         // Reset form
         setFormData({
           actionName: '',
-          alias: '',
           description: ''
         });
        
@@ -159,10 +154,10 @@ const CreateActionPage = () => {
               </Typography>
             </Grid>
            
-            <Grid item xs={12} md={6}>
+            <Grid item xs={12}>
               <TextField
                 fullWidth
-                label="Action Name *"
+                label="Action Name "
                 name="actionName"
                 required
                 autoFocus
@@ -186,42 +181,19 @@ const CreateActionPage = () => {
                 }}
               />
             </Grid>
- 
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Alias *"
-                name="alias"
-                required
-                value={formData.alias}
-                onChange={handleChange}
-                error={submitAttempted && errors.alias}
-                helperText={
-                  submitAttempted && errors.alias
-                    ? 'Alias is required'
-                    : 'Enter an alias for this action'
-                }
-                variant="outlined"
-              />
-            </Grid>
            
             <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Description *"
-                name="description"
-                value={formData.description}
-                onChange={handleChange}
-                variant="outlined"
-                multiline
-                rows={4}
-                error={submitAttempted && errors.description}
-                helperText={
-                  submitAttempted && errors.description
-                    ? 'Description is required'
-                    : 'Provide a detailed description of this action'
-                }
-              />
+            <TextField
+  fullWidth
+  label="Description"
+  name="description"
+  value={formData.description}
+  onChange={handleChange}
+  variant="outlined"
+  multiline
+  rows={4}
+  helperText="Provide a detailed description of this action (optional)"
+/>
             </Grid>
            
             <Grid item xs={12}>
@@ -264,5 +236,5 @@ const CreateActionPage = () => {
     </Container>
   );
 };
- 
+   
 export default CreateActionPage;

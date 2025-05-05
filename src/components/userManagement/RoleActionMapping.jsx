@@ -2,100 +2,123 @@ import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
+  Button,
   Paper,
   Container,
+  Checkbox,
+  FormControlLabel,
   List,
   ListItem,
-  ListItemText,
-  Checkbox,
-  Button,
   Divider,
-  Chip,
-  FormControlLabel,
-  Switch,
-  Alert,
+  Tooltip,
+  IconButton,
+  CircularProgress,
   Snackbar,
-  CircularProgress
+  Alert
 } from '@mui/material';
+import { ArrowBack, Save, SelectAll } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:1010';
 
 const RoleActionMapping = () => {
-  const navigate = useNavigate();
   const { roleId } = useParams();
-
+  const navigate = useNavigate();
+  
   const [role, setRole] = useState(null);
-  const [actions, setActions] = useState([]);
+  const [allActions, setAllActions] = useState([]);
   const [selectedActions, setSelectedActions] = useState([]);
   const [selectAll, setSelectAll] = useState(false);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
 
   useEffect(() => {
     const fetchRoleAndActions = async () => {
       try {
         setLoading(true);
-        const [roleRes, actionsRes] = await Promise.all([
-          axios.get(`${API_BASE_URL}/roles/${roleId}`),
-          axios.get(`${API_BASE_URL}/actions`)
-        ]);
+        // Fetch role details and its mapped actions
+        const roleResponse = await axios.get(`${API_BASE_URL}/roles/${roleId}`);
+        const actionsResponse = await axios.get(`${API_BASE_URL}/auth/actions`);
+        
+        // Get the IDs of actions already mapped to this role
+        const mappedActionsResponse = await axios.get(`${API_BASE_URL}/roles/getActions/${roleId}`);
+        const mappedActionIds = mappedActionsResponse.data.map(action => action.actionId);
 
-        const fetchedRole = roleRes.data;
-        const fetchedActions = actionsRes.data;
-
-        setRole(fetchedRole);
-        setActions(fetchedActions);
-        setSelectedActions(fetchedRole.actions?.map(a => a.id) || []);
-        setSelectAll(fetchedRole.actions?.length === fetchedActions.length);
+        setRole(roleResponse.data);
+        setAllActions(actionsResponse.data);
+        setSelectedActions(mappedActionIds);
+        setSelectAll(mappedActionIds.length === actionsResponse.data.length);
       } catch (error) {
-        console.error('Error fetching role or actions:', error);
-        navigate('/admin/list-roles', { state: { error: 'Failed to load role data' } });
+        console.error('Error fetching data:', error);
+        setSnackbar({
+          open: true,
+          message: 'Failed to load role and action data',
+          severity: 'error'
+        });
       } finally {
         setLoading(false);
       }
     };
 
     fetchRoleAndActions();
-  }, [roleId, navigate]);
+  }, [roleId]);
 
-  const handleToggle = (actionId) => () => {
+  const handleActionToggle = (actionId) => {
     const currentIndex = selectedActions.indexOf(actionId);
-    const newSelected = [...selectedActions];
+    const newSelectedActions = [...selectedActions];
 
     if (currentIndex === -1) {
-      newSelected.push(actionId);
+      newSelectedActions.push(actionId);
     } else {
-      newSelected.splice(currentIndex, 1);
+      newSelectedActions.splice(currentIndex, 1);
     }
 
-    setSelectedActions(newSelected);
-    setSelectAll(newSelected.length === actions.length);
+    setSelectedActions(newSelectedActions);
+    setSelectAll(newSelectedActions.length === allActions.length);
   };
 
   const handleSelectAll = () => {
     if (selectAll) {
       setSelectedActions([]);
     } else {
-      setSelectedActions(actions.map(action => action.id));
+      setSelectedActions(allActions.map(action => action.actionId));
     }
     setSelectAll(!selectAll);
   };
 
-  const handleSave = async () => {
-    if (!role) return;
-
+  const handleSubmit = async () => {
     try {
-      setSaving(true);
-      await axios.put(`${API_BASE_URL}/roles/${role.id}/actions`, selectedActions);
-      setSnackbar({ open: true, message: 'Role action mapping saved successfully!', severity: 'success' });
+      setSubmitting(true);
+      
+      const response = await axios.post(`${API_BASE_URL}/roles/mapActions`, {
+        roleId: Number(roleId),
+        actionList: selectedActions
+      });
+
+      if (response.status === 200) {
+        setSnackbar({
+          open: true,
+          message: 'Action mapping updated successfully!',
+          severity: 'success'
+        });
+        // Optionally navigate back after success
+        setTimeout(() => navigate('/admin/list-roles'), 1000);
+      }
     } catch (error) {
-      console.error('Error saving action mapping:', error);
-      setSnackbar({ open: true, message: 'Failed to save mapping', severity: 'error' });
+      console.error('Error updating action mapping:', error);
+      setSnackbar({
+        open: true,
+        message: error.response?.data || 'Failed to update action mapping',
+        severity: 'error'
+      });
     } finally {
-      setSaving(false);
+      setSubmitting(false);
     }
   };
 
@@ -103,95 +126,96 @@ const RoleActionMapping = () => {
     setSnackbar(prev => ({ ...prev, open: false }));
   };
 
-  if (loading || !role) {
-    return (
-      <Container maxWidth="md" sx={{ mt: 4, mb: 4, display: 'flex', justifyContent: 'center' }}>
-        <CircularProgress />
-      </Container>
-    );
-  }
-
   return (
     <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
       <Paper elevation={3} sx={{ p: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+          <IconButton onClick={() => navigate('/admin/list-roles')} sx={{ mr: 2 }}>
+            <ArrowBack />
+          </IconButton>
           <Typography variant="h5" component="h1" sx={{ fontWeight: 'bold' }}>
             Role Action Mapping
           </Typography>
-          <Chip
-            label={role.roleName}
-            color="primary"
-            sx={{ ml: 2, fontWeight: 'bold', textTransform: 'uppercase' }}
-          />
         </Box>
 
         <Divider sx={{ mb: 3 }} />
 
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="subtitle1" sx={{ mb: 1 }}>
-            <strong>Description:</strong> {role.description}
-          </Typography>
-        </Box>
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+            <CircularProgress />
+          </Box>
+        ) : (
+          <>
+            <Typography variant="h6" sx={{ mb: 2 }}>
+              Role: <strong>{role?.roleName}</strong>
+            </Typography>
 
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={selectAll}
-                onChange={handleSelectAll}
-                color="primary"
-              />
-            }
-            label={selectAll ? 'Deselect All' : 'Select All'}
-          />
-          <Typography variant="body2" color="text.secondary">
-            {selectedActions.length} of {actions.length} actions selected
-          </Typography>
-        </Box>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+              <Typography variant="subtitle1">Available Actions:</Typography>
+              <Box>
+                <Tooltip title={selectAll ? "Deselect All" : "Select All"}>
+                  <IconButton 
+                    onClick={handleSelectAll} 
+                    size="small" 
+                    sx={{ mr: 1, color: selectAll ? 'primary.main' : 'inherit' }}
+                  >
+                    <SelectAll />
+                  </IconButton>
+                </Tooltip>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => setSelectedActions([])}
+                >
+                  Clear Selection
+                </Button>
+              </Box>
+            </Box>
 
-        <Paper elevation={0} sx={{ maxHeight: '500px', overflow: 'auto', border: '1px solid #e0e0e0' }}>
-          <List dense>
-            {actions.map((action) => (
-              <ListItem
-                key={action.id}
-                secondaryAction={
-                  <Checkbox
-                    edge="end"
-                    onChange={handleToggle(action.id)}
-                    checked={selectedActions.includes(action.id)}
+            <List sx={{ maxHeight: '400px', overflow: 'auto', border: '1px solid #e0e0e0', borderRadius: 1 }}>
+              {allActions.map((action) => (
+                <ListItem key={action.actionId} dense>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={selectedActions.includes(action.actionId)}
+                        onChange={() => handleActionToggle(action.actionId)}
+                      />
+                    }
+                    label={
+                      <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                        <Typography>{action.actionName}</Typography>
+                        {action.description && (
+                          <Typography variant="body2" color="text.secondary">
+                            {action.description}
+                          </Typography>
+                        )}
+                      </Box>
+                    }
                   />
-                }
-                sx={{
-                  '&:hover': {
-                    backgroundColor: 'action.hover',
-                  },
-                }}
-              >
-                <ListItemText
-                  primary={action.name}
-                  secondary={action.description}
-                />
-              </ListItem>
-            ))}
-          </List>
-        </Paper>
+                </ListItem>
+              ))}
+            </List>
 
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3, gap: 2 }}>
-          <Button
-            variant="outlined"
-            onClick={() => navigate('/admin/list-roles')}
-            disabled={saving}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="contained"
-            onClick={handleSave}
-            disabled={saving || selectedActions.length === 0}
-          >
-            {saving ? <CircularProgress size={24} /> : 'Save Mapping'}
-          </Button>
-        </Box>
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3, gap: 2 }}>
+              <Button
+                variant="outlined"
+                onClick={() => navigate('/admin/list-roles')}
+                disabled={submitting}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="contained"
+                startIcon={submitting ? <CircularProgress size={20} /> : <Save />}
+                onClick={handleSubmit}
+                disabled={submitting}
+              >
+                {submitting ? 'Saving...' : 'Save Mapping'}
+              </Button>
+            </Box>
+          </>
+        )}
       </Paper>
 
       <Snackbar

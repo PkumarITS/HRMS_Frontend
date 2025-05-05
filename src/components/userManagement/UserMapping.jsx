@@ -24,284 +24,22 @@ import {
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ArrowBack from '@mui/icons-material/ArrowBack';
 
+const API_BASE_URL = "http://localhost:1010";
+
 const UserMapping = () => {
   const { userId } = useParams();
+  const username = Cookies.get('username');
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [roles, setRoles] = useState([]);
+  const [actions, setActions] = useState([]);
   const [selectedPermissions, setSelectedPermissions] = useState({});
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [notification, setNotification] = useState({
     open: false,
     message: '',
     severity: 'success'
   });
-
-  // Structure to match the image example
-  const mockRoles = [
-    {
-      name: "ADMIN",
-      description: "Full system access with all privileges",
-      subRoles: [
-        {
-          name: "System Administrator",
-          actions: [
-            // User Management
-            "Create User",
-            "Edit User",
-            "Delete User",
-            "View All Users",
-            
-            // Role Management
-            "Create Role",
-            "Edit Role",
-            "Delete Role",
-            "View Roles",
-            "Assign Roles",
-            
-            // Employee Management
-            "Add Employee",
-            "Edit Employee",
-            "Delete Employee",
-            "View All Employees",
-            
-            // Timesheet
-            "Create Timesheet",
-            "Approve Timesheet",
-            "Reject Timesheet",
-            "View All Timesheets",
-            
-            // Project Management
-            "Create Project",
-            "Edit Project",
-            "Delete Project",
-            "View All Projects",
-            
-            // Task Management
-            "Create Task",
-            "Assign Task",
-            "Edit Task",
-            "Delete Task",
-            "View All Tasks",
-            
-            // Attendance
-            "Mark Attendance",
-            "Edit Attendance",
-            "View All Attendance",
-            "Generate Attendance Reports",
-            
-            // Leave Management
-            "Apply Leave",
-            "Approve Leave",
-            "Reject Leave",
-            "View All Leaves",
-            "Manage Leave Types",
-            
-            // Holiday Calendar
-            "Add Holiday",
-            "Edit Holiday",
-            "Delete Holiday",
-            "View Holiday Calendar",
-            
-            // My Profile
-            "View Profile",
-            "Edit Profile",
-            "Change Password"
-          ]
-        }
-      ]
-    },
-    {
-      name: "HR",
-      description: "Human Resources department access",
-      subRoles: [
-        {
-          name: "HR Manager",
-          actions: [
-            // Employee Management
-            "Add Employee",
-            "Edit Employee",
-            "View All Employees",
-            
-            // Timesheet
-            "View All Timesheets",
-            "Approve Timesheet",
-            "Reject Timesheet",
-            
-            // Attendance
-            "View All Attendance",
-            "Generate Attendance Reports",
-            
-            // Leave Management
-            "Apply Leave",
-            "Approve Leave",
-            "Reject Leave",
-            "View All Leaves",
-            
-            // Holiday Calendar
-            "Add Holiday",
-            "Edit Holiday",
-            "View Holiday Calendar",
-            
-            // My Profile
-            "View Profile",
-            "Edit Profile",
-            "Change Password"
-          ]
-        },
-        {
-          name: "HR Executive",
-          actions: [
-            // Employee Management
-            "Add Employee",
-            "Edit Employee",
-            "View All Employees",
-            
-            // Attendance
-            "View All Attendance",
-            
-            // Leave Management
-            "View All Leaves",
-            
-            // Holiday Calendar
-            "View Holiday Calendar",
-            
-            // My Profile
-            "View Profile",
-            "Edit Profile",
-            "Change Password"
-          ]
-        }
-      ]
-    },
-    {
-      name: "MANAGER",
-      description: "Department/Team manager access",
-      subRoles: [
-        {
-          name: "Project Manager",
-          actions: [
-            // Project Management
-            "Create Project",
-            "Edit Project",
-            "View All Projects",
-            
-            // Task Management
-            "Create Task",
-            "Assign Task",
-            "Edit Task",
-            "View All Tasks",
-            
-            // Timesheet
-            "View Team Timesheets",
-            "Approve Timesheet",
-            "Reject Timesheet",
-            
-            // Attendance
-            "View Team Attendance",
-            
-            // Leave Management
-            "Apply Leave",
-            "Approve Team Leave",
-            "View Team Leaves",
-            
-            // My Profile
-            "View Profile",
-            "Edit Profile",
-            "Change Password"
-          ]
-        },
-        {
-          name: "Department Manager",
-          actions: [
-            // Employee Management
-            "View Team Employees",
-            
-            // Timesheet
-            "View Team Timesheets",
-            "Approve Timesheet",
-            "Reject Timesheet",
-            
-            // Attendance
-            "View Team Attendance",
-            
-            // Leave Management
-            "Apply Leave",
-            "Approve Team Leave",
-            "View Team Leaves",
-            
-            // My Profile
-            "View Profile",
-            "Edit Profile",
-            "Change Password"
-          ]
-        }
-      ]
-    },
-    {
-      name: "SUPERVISOR",
-      description: "Team supervisor access",
-      subRoles: [
-        {
-          name: "Team Lead",
-          actions: [
-            // Task Management
-            "Assign Task",
-            "Edit Task",
-            "View Team Tasks",
-            
-            // Timesheet
-            "View Team Timesheets",
-            "Approve Timesheet",
-            "Reject Timesheet",
-            
-            // Attendance
-            "View Team Attendance",
-            
-            // Leave Management
-            "Apply Leave",
-            "View Team Leaves",
-            
-            // My Profile
-            "View Profile",
-            "Edit Profile",
-            "Change Password"
-          ]
-        }
-      ]
-    },
-    {
-      name: "EMPLOYEE",
-      description: "Regular employee access",
-      subRoles: [
-        {
-          name: "Staff Member",
-          actions: [
-            // Timesheet
-            "Create Timesheet",
-            "View My Timesheets",
-            
-            // Task Management
-            "View My Tasks",
-            "Update Task Status",
-            
-            // Attendance
-            "Mark Attendance",
-            "View My Attendance",
-            
-            // Leave Management
-            "Apply Leave",
-            "View My Leaves",
-            
-            // My Profile
-            "View Profile",
-            "Edit Profile",
-            "Change Password"
-          ]
-        }
-      ]
-    }
-  ];
 
   useEffect(() => {
     const fetchData = async () => {
@@ -312,39 +50,52 @@ const UserMapping = () => {
           return;
         }
 
-        // Fetch user data
-        const userResponse = await axios.get(`/api/users/${userId}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setUser(userResponse.data);
-
-        // In a real app, you would fetch roles from the API
-        // const rolesResponse = await axios.get('/api/roles', {
+         // Fetch user data first
+        // const userResponse = await axios.get(`${API_BASE_URL}/common/get-complete-profile`, {
         //   headers: { Authorization: `Bearer ${token}` }
         // });
-        // setRoles(rolesResponse.data);
-        
-        // Using mock data for now to match the image
-        setRoles(mockRoles);
 
-        // Fetch user's current permissions
-        const userPermissionsResponse = await axios.get(`/api/users/${userId}/permissions`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        
-        // Initialize selected permissions
+        // console.log('User profile response:', userResponse.data);
+
+        // setUser(userResponse.data.user || userResponse.data);
+
+        // Fetch all data in parallel
+        const [rolesResponse, actionsResponse, userPermissionsResponse] = await Promise.all([
+          axios.get(`${API_BASE_URL}/roles`, {
+            headers: { Authorization: `Bearer ${token}` }
+          }),
+          axios.get(`${API_BASE_URL}/auth/actions`, {
+            headers: { Authorization: `Bearer ${token}` }
+          }),
+          axios.get(`${API_BASE_URL}/users/${userId}/actions`, {
+            headers: { Authorization: `Bearer ${token}` }
+          }),
+        ]);
+
+        setRoles(rolesResponse.data);
+        setActions(actionsResponse.data);
+
+        // Initialize selected permissions structure
         const initialPermissions = {};
-        mockRoles.forEach(role => {
-          initialPermissions[role.name] = {};
-          role.subRoles.forEach(subRole => {
-            initialPermissions[role.name][subRole.name] = 
-              userPermissionsResponse.data[role.name]?.[subRole.name] || [];
+        
+        // Fetch actions for each role and initialize permissions
+        const roleActionsPromises = rolesResponse.data.map(async (role) => {
+          const roleActionsResponse = await axios.get(
+            `${API_BASE_URL}/roles/getActions/${role.roleId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          
+          initialPermissions[role.roleId] = {};
+          roleActionsResponse.data.forEach(action => {
+            const isAssigned = userPermissionsResponse.data.some(
+              perm => perm.roleId === role.roleId && perm.actionId === action.actionId
+            );
+            initialPermissions[role.roleId][action.actionId] = isAssigned;
           });
         });
-        
-        setSelectedPermissions(initialPermissions);
 
-        setLoading(false);
+        await Promise.all(roleActionsPromises);
+        setSelectedPermissions(initialPermissions);
       } catch (error) {
         console.error('Failed to fetch data', error);
         setNotification({
@@ -352,60 +103,38 @@ const UserMapping = () => {
           message: 'Failed to load data',
           severity: 'error'
         });
-        setLoading(false);
       }
     };
 
     fetchData();
   }, [userId, navigate]);
 
-  const handleCheckboxChange = (roleName, subRoleName, action) => {
-    setSelectedPermissions(prev => {
-      const updated = { ...prev };
-      
-      // Initialize role if it doesn't exist
-      if (!updated[roleName]) {
-        updated[roleName] = {};
+  const handleCheckboxChange = (roleId, actionId) => {
+    setSelectedPermissions(prev => ({
+      ...prev,
+      [roleId]: {
+        ...prev[roleId],
+        [actionId]: !prev[roleId]?.[actionId]
       }
-      
-      // Initialize subRole if it doesn't exist
-      if (!updated[roleName][subRoleName]) {
-        updated[roleName][subRoleName] = [];
-      }
-      
-      // Toggle the action
-      if (updated[roleName][subRoleName].includes(action)) {
-        updated[roleName][subRoleName] = updated[roleName][subRoleName].filter(
-          a => a !== action
-        );
-      } else {
-        updated[roleName][subRoleName] = [...updated[roleName][subRoleName], action];
-      }
-      
-      return updated;
-    });
+    }));
   };
 
-  const handleRoleToggle = (roleName, isSelected) => {
+  const handleRoleToggle = (roleId, isSelected) => {
     setSelectedPermissions(prev => {
       const updated = { ...prev };
-      const role = roles.find(r => r.name === roleName);
+      const role = roles.find(r => r.roleId === roleId);
       
       if (!role) return prev;
       
-      if (isSelected) {
-        // Select all actions for all subRoles
-        updated[roleName] = {};
-        role.subRoles.forEach(subRole => {
-          updated[roleName][subRole.name] = [...subRole.actions];
-        });
-      } else {
-        // Deselect all actions for all subRoles
-        updated[roleName] = {};
-        role.subRoles.forEach(subRole => {
-          updated[roleName][subRole.name] = [];
-        });
-      }
+      // Get all actions for this role
+      const roleActions = actions.filter(action => 
+        selectedPermissions[roleId]?.[action.actionId] !== undefined
+      );
+      
+      updated[roleId] = {};
+      roleActions.forEach(action => {
+        updated[roleId][action.actionId] = isSelected;
+      });
       
       return updated;
     });
@@ -415,9 +144,11 @@ const UserMapping = () => {
     const allSelected = {};
     
     roles.forEach(role => {
-      allSelected[role.name] = {};
-      role.subRoles.forEach(subRole => {
-        allSelected[role.name][subRole.name] = [...subRole.actions];
+      allSelected[role.roleId] = {};
+      actions.forEach(action => {
+        if (selectedPermissions[role.roleId]?.[action.actionId] !== undefined) {
+          allSelected[role.roleId][action.actionId] = true;
+        }
       });
     });
     
@@ -428,9 +159,11 @@ const UserMapping = () => {
     const noneSelected = {};
     
     roles.forEach(role => {
-      noneSelected[role.name] = {};
-      role.subRoles.forEach(subRole => {
-        noneSelected[role.name][subRole.name] = [];
+      noneSelected[role.roleId] = {};
+      actions.forEach(action => {
+        if (selectedPermissions[role.roleId]?.[action.actionId] !== undefined) {
+          noneSelected[role.roleId][action.actionId] = false;
+        }
       });
     });
     
@@ -442,9 +175,24 @@ const UserMapping = () => {
       setLoading(true);
       const token = Cookies.get('token');
 
+      // Prepare the request data according to backend requirements
+      const requestData = {
+        userId: parseInt(userId),
+        roleActionIds: []
+      };
+
+      // Convert selectedPermissions to the required format: "roleId_actionId"
+      Object.keys(selectedPermissions).forEach(roleId => {
+        Object.keys(selectedPermissions[roleId]).forEach(actionId => {
+          if (selectedPermissions[roleId][actionId]) {
+            requestData.roleActionIds.push(`${roleId}_${actionId}`);
+          }
+        });
+      });
+
       await axios.post(
-        `/api/users/${userId}/permissions`,
-        { permissions: selectedPermissions },
+        `${API_BASE_URL}/users/mapActionsToUser`,
+        requestData,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -469,38 +217,21 @@ const UserMapping = () => {
     setNotification(prev => ({ ...prev, open: false }));
   };
 
-  const isRoleChecked = (roleName) => {
-    const role = roles.find(r => r.name === roleName);
-    if (!role) return false;
-    
-    return role.subRoles.every(subRole => {
-      const selectedActions = selectedPermissions[roleName]?.[subRole.name] || [];
-      return selectedActions.length === subRole.actions.length;
-    });
-  };
-
-  const isSubRoleChecked = (roleName, subRoleName) => {
-    const role = roles.find(r => r.name === roleName);
-    if (!role) return false;
-    
-    const subRole = role.subRoles.find(sr => sr.name === subRoleName);
-    if (!subRole) return false;
-    
-    const selectedActions = selectedPermissions[roleName]?.[subRoleName] || [];
-    return selectedActions.length === subRole.actions.length;
-  };
-
-  const isActionChecked = (roleName, subRoleName, action) => {
-    return selectedPermissions[roleName]?.[subRoleName]?.includes(action) || false;
-  };
-
-  if (loading && !user) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
-        <CircularProgress size={60} />
-      </Box>
+  const isRoleChecked = (roleId) => {
+    const roleActions = actions.filter(action => 
+      selectedPermissions[roleId]?.[action.actionId] !== undefined
     );
-  }
+    
+    if (roleActions.length === 0) return false;
+    
+    return roleActions.every(action => 
+      selectedPermissions[roleId]?.[action.actionId]
+    );
+  };
+
+  const isActionChecked = (roleId, actionId) => {
+    return selectedPermissions[roleId]?.[actionId] || false;
+  };
 
   return (
     <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
@@ -512,9 +243,9 @@ const UserMapping = () => {
           <Typography variant="h5" component="h1" sx={{ fontWeight: 'bold' }}>
             User Mapping
           </Typography>
-          {user && (
+          {username && (
             <Chip 
-              label={user.username} 
+              label={username} 
               color="primary" 
               sx={{ ml: 2, fontWeight: 'bold' }} 
             />
@@ -524,9 +255,11 @@ const UserMapping = () => {
         <Divider sx={{ mb: 3 }} />
 
         <Box sx={{ mb: 3 }}>
-          
           <Typography variant="subtitle1" sx={{ mb: 1 }}>
-            <strong>Username:</strong> {user?.username || 'Loading...'}
+            <strong>Username:</strong> {username || 'Not available'}
+          </Typography>
+          <Typography variant="subtitle1" sx={{ mb: 1 }}>
+            <strong>User ID:</strong> {userId}
           </Typography>
         </Box>
 
@@ -546,92 +279,49 @@ const UserMapping = () => {
         </Box>
 
         {roles.map(role => (
-          <Accordion key={role.name} defaultExpanded sx={{ mb: 2 }}>
+          <Accordion key={role.roleId} defaultExpanded sx={{ mb: 2 }}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
               <FormControlLabel
                 control={
                   <Checkbox
-                    checked={isRoleChecked(role.name)}
+                    checked={isRoleChecked(role.roleId)}
                     indeterminate={
-                      !isRoleChecked(role.name) && 
-                      role.subRoles.some(subRole => 
-                        (selectedPermissions[role.name]?.[subRole.name]?.length || 0) > 0
-                      )
+                      !isRoleChecked(role.roleId) && 
+                      Object.values(selectedPermissions[role.roleId] || {}).some(val => val)
                     }
-                    onChange={(e) => handleRoleToggle(role.name, e.target.checked)}
+                    onChange={(e) => handleRoleToggle(role.roleId, e.target.checked)}
                     onClick={(e) => e.stopPropagation()}
                     color="primary"
                   />
                 }
                 label={
                   <Typography sx={{ fontWeight: 600 }}>
-                    {role.name}
+                    {role.roleName}
                   </Typography>
                 }
               />
             </AccordionSummary>
             <AccordionDetails>
-              {role.subRoles.map(subRole => (
-                <Box key={`${role.name}-${subRole.name}`} sx={{ ml: 4, mb: 3 }}>
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={isSubRoleChecked(role.name, subRole.name)}
-                        indeterminate={
-                          !isSubRoleChecked(role.name, subRole.name) && 
-                          (selectedPermissions[role.name]?.[subRole.name]?.length || 0) > 0
-                        }
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            // Select all actions
-                            setSelectedPermissions(prev => ({
-                              ...prev,
-                              [role.name]: {
-                                ...prev[role.name],
-                                [subRole.name]: [...subRole.actions]
-                              }
-                            }));
-                          } else {
-                            // Deselect all actions
-                            setSelectedPermissions(prev => ({
-                              ...prev,
-                              [role.name]: {
-                                ...prev[role.name],
-                                [subRole.name]: []
-                              }
-                            }));
+              <Box sx={{ ml: 4 }}>
+                {actions
+                  .filter(action => selectedPermissions[role.roleId]?.[action.actionId] !== undefined)
+                  .map(action => (
+                    <FormControlLabel
+                      key={`${role.roleId}-${action.actionId}`}
+                      control={
+                        <Checkbox
+                          checked={isActionChecked(role.roleId, action.actionId)}
+                          onChange={() => 
+                            handleCheckboxChange(role.roleId, action.actionId)
                           }
-                        }}
-                        color="primary"
-                      />
-                    }
-                    label={
-                      <Typography variant="subtitle1">
-                        {subRole.name}
-                      </Typography>
-                    }
-                    sx={{ mb: 1 }}
-                  />
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', ml: 4 }}>
-                    {subRole.actions.map(action => (
-                      <FormControlLabel
-                        key={`${role.name}-${subRole.name}-${action}`}
-                        control={
-                          <Checkbox
-                            checked={isActionChecked(role.name, subRole.name, action)}
-                            onChange={() => 
-                              handleCheckboxChange(role.name, subRole.name, action)
-                            }
-                            color="primary"
-                          />
-                        }
-                        label={action}
-                        sx={{ mr: 2, minWidth: '200px' }}
-                      />
-                    ))}
-                  </Box>
-                </Box>
-              ))}
+                          color="primary"
+                        />
+                      }
+                      label={action.actionName}
+                      sx={{ display: 'block', mb: 1 }}
+                    />
+                  ))}
+              </Box>
             </AccordionDetails>
           </Accordion>
         ))}
