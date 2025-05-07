@@ -37,6 +37,9 @@ import {
 } from "@mui/icons-material";
 import Cookies from "js-cookie";
 import UserService from "../service/UserService";
+import { useContext } from "react";
+import { userContext } from "../context/ContextProvider";
+
 
 const Dashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -47,6 +50,8 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const { actions } = useContext(userContext);
+
 
 
   useEffect(() => {
@@ -102,7 +107,9 @@ const Dashboard = () => {
         { text: " Actions", link: "/admin/create-action" },
         { text: "Roles", link: "/admin/create-role" },
         {text: "List Actions", link: "/admin/list-actions"},
-        {text: "List Roles", link: "/admin/list-roles"},
+    //   {text: "List Roles", link: "/admin/list-roles"},
+      actions.includes("VIEW_LIST_ROLES") && { text: "List Roles", link: "/admin/list-roles" },
+
        
 
         

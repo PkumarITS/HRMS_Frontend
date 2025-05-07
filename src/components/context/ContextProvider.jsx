@@ -9,7 +9,8 @@ const ContextProvider = ({ children }) => {
     const [authState, setAuthState] = useState({
         role: null,
         authenticated: false,
-        loading: true
+        loading: true,
+        actions: []
     });
 
     useEffect(() => {
@@ -21,7 +22,8 @@ const ContextProvider = ({ children }) => {
                 setAuthState({
                     role: null,
                     authenticated: false,
-                    loading: false
+                    loading: false,
+                    actions: [] 
                 });
                 return;
             }
@@ -37,7 +39,8 @@ const ContextProvider = ({ children }) => {
                     setAuthState({
                         role: role || response.data.role, // Use role from cookie or response
                         authenticated: true,
-                        loading: false
+                        loading: false,
+                        actions: response.data.actions || [] 
                     });
                     return;
                 }
@@ -51,7 +54,8 @@ const ContextProvider = ({ children }) => {
             setAuthState({
                 role: null,
                 authenticated: false,
-                loading: false
+                loading: false,
+                actions: [] 
             });
         };
 

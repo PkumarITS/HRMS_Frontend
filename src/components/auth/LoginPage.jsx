@@ -39,7 +39,8 @@ function LoginPage() {
 
                 updateAuthState({
                     role: normalizedRole,
-                    authenticated: true
+                    authenticated: true,
+                    actions: response.actions || []
                 });
 
                 // Redirect based on role
