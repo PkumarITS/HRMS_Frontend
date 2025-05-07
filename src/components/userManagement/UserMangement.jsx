@@ -240,7 +240,7 @@ function UserManagement() {
                   hover
                   sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
                 >
-                  <TableCell>{user.id}</TableCell>
+                  <TableCell>{user.userId}</TableCell>
                   <TableCell>{user.name}</TableCell>
                   <TableCell>{user.email}</TableCell>
                   <TableCell>{user.role}</TableCell>
@@ -249,7 +249,7 @@ function UserManagement() {
                     <Tooltip title="Edit">
                       <IconButton
                         color="primary"
-                        onClick={() => navigate(`/admin/update-user/${user.id}`)}
+                        onClick={() => navigate(`/admin/update-user/${user.userId}`)}
                       >
                         <Edit />
                       </IconButton>
@@ -257,7 +257,7 @@ function UserManagement() {
                     <Tooltip title="Permissions">
                       <IconButton
                         color="secondary"
-                        onClick={() => handleMapping(user.id)}
+                        onClick={() => handleMapping(user.userId)}
                         sx={{ mx: 1 }}
                       >
                         <SettingsInputComponent />
@@ -266,7 +266,7 @@ function UserManagement() {
                     <Tooltip title="Delete">
                       <IconButton
                         color="error"
-                        onClick={() => handleDeleteClick(user.id, user.name)}
+                        onClick={() => handleDeleteClick(user.userId, user.name)}
                       >
                         <Delete />
                       </IconButton>
