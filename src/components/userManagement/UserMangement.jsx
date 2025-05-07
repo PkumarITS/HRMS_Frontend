@@ -59,8 +59,8 @@ function UserManagement() {
 
       const response = await UserService.getAllUsers(token);
       
-      if (response && response.ourUsersList) {
-        setUsers(response.ourUsersList);
+      if (response && response.userDTOList) {
+        setUsers(response.userDTOList);
       } else {
         setError('No users found');
         setUsers([]);
