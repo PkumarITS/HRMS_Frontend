@@ -129,9 +129,10 @@ function UserManagement() {
     setNotification(prev => ({ ...prev, open: false }));
   };
 
-  const handleMapping = (userId) => {
-    navigate(`/admin/user-mapping/${userId}`);
+  const handleMapping = (userId, name) => {
+    navigate(`/admin/user-mapping/${userId}/${encodeURIComponent(name)}`);
   };
+  
 
   if (loading) {
     return (
@@ -257,7 +258,7 @@ function UserManagement() {
                     <Tooltip title="Permissions">
                       <IconButton
                         color="secondary"
-                        onClick={() => handleMapping(user.userId)}
+                        onClick={() => handleMapping(user.userId, user.name)}
                         sx={{ mx: 1 }}
                       >
                         <SettingsInputComponent />

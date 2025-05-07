@@ -27,7 +27,7 @@ import ArrowBack from '@mui/icons-material/ArrowBack';
 const API_BASE_URL = "http://localhost:1010";
 
 const UserMapping = () => {
-  const { userId } = useParams();
+  const { userId, name } = useParams();
   const username = Cookies.get('username');
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
@@ -243,9 +243,9 @@ const UserMapping = () => {
           <Typography variant="h5" component="h1" sx={{ fontWeight: 'bold' }}>
             User Mapping
           </Typography>
-          {username && (
+          {name && (
             <Chip 
-              label={username} 
+              label={name} 
               color="primary" 
               sx={{ ml: 2, fontWeight: 'bold' }} 
             />
@@ -256,7 +256,7 @@ const UserMapping = () => {
 
         <Box sx={{ mb: 3 }}>
           <Typography variant="subtitle1" sx={{ mb: 1 }}>
-            <strong>Username:</strong> {username || 'Not available'}
+            <strong>Username:</strong> {name || 'Not available'}
           </Typography>
           <Typography variant="subtitle1" sx={{ mb: 1 }}>
             <strong>User ID:</strong> {userId}

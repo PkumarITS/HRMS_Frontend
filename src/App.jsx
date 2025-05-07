@@ -82,7 +82,8 @@ function App() {
             <Route path="list-actions" element={<ListActions />} />
             <Route path="list-roles" element={<ListRoles />} />
             {/* <Route path="role-action-mapping" element={<RoleActionMapping />} /> */}
-            <Route path="user-mapping/:userId" element={<UserMapping />} />
+            <Route path="user-mapping/:userId/:name" element={<UserMapping />} />
+
             <Route path="edit-role/:roleId" element={<EditRolePage />} />
             <Route path="edit-action/:actionId" element={<EditActionPage />} />
 
