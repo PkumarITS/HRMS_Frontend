@@ -27,6 +27,12 @@ import {
   CircularProgress,
   Snackbar,
   Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Tabs,
+  Tab,
 } from "@mui/material";
 import {
   MoreVert,
@@ -43,13 +49,15 @@ import {
   Pending,
   Drafts,
   Visibility,
+  FilterList,
 } from "@mui/icons-material";
 import { format, startOfWeek, addDays, parseISO, isWeekend } from "date-fns";
 import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import Cookies from "js-cookie";
-
-
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 
 const API_BASE_URL = "http://localhost:1010";
 
@@ -62,8 +70,7 @@ const TimesheetDetailPage = () => {
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [notificationAnchor, setNotificationAnchor] = useState(null);
-
-
+  const [statusFilter, setStatusFilter] = useState(null);
   const [notificationAnchorEl, setNotificationAnchorEl] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -76,6 +83,14 @@ const TimesheetDetailPage = () => {
     severity: "success",
   });
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [filterModalOpen, setFilterModalOpen] = useState(false);
+  const [projects, setProjects] = useState([]);
+  const [filters, setFilters] = useState({
+    status: "All Statuses",
+    project: "All Projects",
+    startDate: null,
+    endDate: new Date(),
+  });
 
   const daysOfWeek = Array.from({ length: 7 }).map((_, index) => {
     const dayDate = addDays(weekStart, index);
@@ -106,6 +121,7 @@ const TimesheetDetailPage = () => {
           ],
           weekStart: entry.createdAt,
           weekEnd: format(addDays(parseISO(entry.createdAt), 6), "yyyy-MM-dd"),
+          createdAtFormatted: format(parseISO(entry.createdAt), "dd MMM yyyy, h:mm a"),
         }));
         setEntries(formattedEntries);
       } else {
@@ -130,8 +146,20 @@ const TimesheetDetailPage = () => {
     }
   };
 
+  const fetchProjects = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/user/projects/by-emp`);
+      if (response.data && Array.isArray(response.data)) {
+        setProjects(response.data);
+      }
+    } catch (error) {
+      console.error("Error fetching projects:", error);
+    }
+  };
+
   useEffect(() => {
     fetchTimesheetEntries();
+    fetchProjects();
   }, [location.state, refreshTrigger]);
 
   const handleWeekNavigation = (direction) => {
@@ -296,41 +324,67 @@ const TimesheetDetailPage = () => {
     });
   };
 
+  const handleStatusFilter = (status) => {
+    if (statusFilter === status) {
+      setStatusFilter(null);
+    } else {
+      setStatusFilter(status);
+    }
+    setPage(0);
+  };
+
+  const handleFilterModalOpen = () => {
+    setFilterModalOpen(true);
+  };
+
+  const handleFilterModalClose = () => {
+    setFilterModalOpen(false);
+  };
+
+  const handleFilterChange = (field, value) => {
+    setFilters(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const applyFilters = () => {
+    setStatusFilter(filters.status === "All Statuses" ? null : filters.status);
+    setFilterModalOpen(false);
+  };
+
+  const resetFilters = () => {
+    setFilters({
+      status: "All Statuses",
+      project: "All Projects",
+      startDate: null,
+      endDate: new Date(),
+    });
+    setStatusFilter(null);
+    setFilterModalOpen(false);
+  };
+
   const filteredEntries = entries.filter(
     (entry) =>
-      entry.taskName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (entry.taskName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       entry.projectName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       entry.timeCategory.toLowerCase().includes(searchTerm.toLowerCase()) ||
       entry.resourcePlan.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      entry.status.toLowerCase().includes(searchTerm.toLowerCase())
+      entry.status.toLowerCase().includes(searchTerm.toLowerCase())) &&
+      (statusFilter ? entry.status === statusFilter : true) &&
+      (filters.project !== "All Projects" ? entry.projectName === filters.project : true) &&
+      (filters.startDate && filters.endDate ? 
+        new Date(entry.weekStart) >= new Date(filters.startDate) && 
+        new Date(entry.weekStart) <= new Date(filters.endDate) : true)
   );
 
   const totalHours = entries.reduce((total, entry) => {
     return total + entry.hours.reduce((sum, hour) => sum + hour, 0);
   }, 0);
 
-  // const handleNotificationClick = (event) => {
-  //   setNotificationAnchor(event.currentTarget);
-  // };
-
-  // const handleNotificationClose = () => {
-  //   setNotificationAnchor(null);
-  // };
-
-  const handleChangePage = (event, newPage) => {
-    setPage(newPage);
-  };
-
-  const handleChangeRowsPerPage = (event) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  };
-
-  // Add this useEffect to load notifications on component mount
   useEffect(() => {
     fetchNotifications();
 
-    // Poll for new notifications every 30 seconds
     const interval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(interval);
   }, []);
@@ -352,8 +406,6 @@ const TimesheetDetailPage = () => {
     }
   };
 
-
-  // Add these functions
   const fetchNotifications = async () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/api/notifications/unread`);
@@ -375,7 +427,7 @@ const TimesheetDetailPage = () => {
   const markAsRead = async (notificationId) => {
     try {
       await axios.post(`${API_BASE_URL}/api/notifications/mark-as-read/${notificationId}`);
-      fetchNotifications(); // Refresh notifications
+      fetchNotifications();
     } catch (error) {
       console.error("Error marking notification as read:", error);
     }
@@ -384,19 +436,27 @@ const TimesheetDetailPage = () => {
   const markAllAsRead = async () => {
     try {
       await axios.post(`${API_BASE_URL}/api/notifications/mark-all-read`);
-      fetchNotifications(); // Refresh notifications
+      fetchNotifications();
     } catch (error) {
       console.error("Error marking all notifications as read:", error);
     }
   };
 
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
 
   const handleCloseSnackbar = () => {
     setSnackbar({ ...snackbar, open: false });
   };
 
   return (
-    <>
+    <LocalizationProvider dateAdapter={AdapterDateFns}>
       <Paper elevation={0} sx={{ p: 3, width: "100%", maxWidth: 1400, mx: "auto" }}>
         <Grid container justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
           <Grid item>
@@ -435,32 +495,35 @@ const TimesheetDetailPage = () => {
                   } Submitted`}
                 color="success"
                 size="small"
-                variant="outlined"
+                variant={statusFilter === "SUBMITTED" ? "filled" : "outlined"}
+                onClick={() => handleStatusFilter("SUBMITTED")}
+                clickable
               />
               <Chip
                 label={`${entries.filter((e) => e.status === "DRAFT").length} Draft`}
                 color="info"
                 size="small"
-                variant="outlined"
+                variant={statusFilter === "DRAFT" ? "filled" : "outlined"}
+                onClick={() => handleStatusFilter("DRAFT")}
+                clickable
               />
               <Chip
                 label={`${entries.filter((e) => e.status === "APPROVED").length} Approved`}
                 color="success"
                 size="small"
-                variant="outlined"
+                variant={statusFilter === "APPROVED" ? "filled" : "outlined"}
+                onClick={() => handleStatusFilter("APPROVED")}
+                clickable
               />
               <Chip
                 label={`${entries.filter((e) => e.status === "REJECTED").length} Rejected`}
                 color="error"
                 size="small"
-                variant="outlined"
+                variant={statusFilter === "REJECTED" ? "filled" : "outlined"}
+                onClick={() => handleStatusFilter("REJECTED")}
+                clickable
               />
 
-              {/* <IconButton onClick={handleNotificationClick} disabled={loading}>
-                <Badge badgeContent={notifications.length} color="error">
-                  <Notifications />
-                </Badge>
-              </IconButton> */}
               <IconButton
                 onClick={handleNotificationClick}
                 disabled={loading}
@@ -480,21 +543,69 @@ const TimesheetDetailPage = () => {
           </Grid>
         </Grid>
 
-        {/* <Menu
-          anchorEl={notificationAnchor}
-          open={Boolean(notificationAnchor)}
-          onClose={handleNotificationClose}
-        >
-          {notifications.length > 0 ? (
-            notifications.map((notification, index) => (
-              <MenuItem key={index} onClick={handleNotificationClose}>
-                {notification}
-              </MenuItem>
-            ))
-          ) : (
-            <MenuItem onClick={handleNotificationClose}>No notifications</MenuItem>
-          )}
-        </Menu> */}
+        {/* Filter Modal */}
+        <Dialog open={filterModalOpen} onClose={handleFilterModalClose} maxWidth="sm" fullWidth>
+          <DialogTitle>Filter Timesheets</DialogTitle>
+          <DialogContent>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 2 }}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Status</InputLabel>
+                <Select
+                  value={filters.status}
+                  label="Status"
+                  onChange={(e) => handleFilterChange('status', e.target.value)}
+                >
+                  <MenuItem value="All Statuses">All Statuses</MenuItem>
+                  <MenuItem value="DRAFT">Draft</MenuItem>
+                  <MenuItem value="SUBMITTED">Submitted</MenuItem>
+                  <MenuItem value="APPROVED">Approved</MenuItem>
+                  <MenuItem value="REJECTED">Rejected</MenuItem>
+                </Select>
+              </FormControl>
+
+              <FormControl fullWidth size="small">
+                <InputLabel>Project</InputLabel>
+                <Select
+                  value={filters.project}
+                  label="Project"
+                  onChange={(e) => handleFilterChange('project', e.target.value)}
+                >
+                  <MenuItem value="All Projects">All Projects</MenuItem>
+                  {projects.map((project) => (
+                    <MenuItem key={project.id} value={project.name}>
+                      {project.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <DatePicker
+                label="Start Date"
+                value={filters.startDate}
+                onChange={(newValue) => handleFilterChange('startDate', newValue)}
+                renderInput={(params) => <TextField {...params} fullWidth size="small" />}
+                maxDate={filters.endDate}
+              />
+
+              <DatePicker
+                label="End Date"
+                value={filters.endDate}
+                onChange={(newValue) => handleFilterChange('endDate', newValue)}
+                renderInput={(params) => <TextField {...params} fullWidth size="small" />}
+                minDate={filters.startDate}
+              />
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={resetFilters} color="error">
+              Reset
+            </Button>
+            <Button onClick={applyFilters} variant="contained" color="primary">
+              Apply Filters
+            </Button>
+          </DialogActions>
+        </Dialog>
+
         <Menu
           anchorEl={notificationAnchorEl}
           open={Boolean(notificationAnchorEl)}
@@ -516,7 +627,6 @@ const TimesheetDetailPage = () => {
                 key={notification.id}
                 onClick={() => {
                   markAsRead(notification.id);
-                  // Optionally navigate to relevant timesheet
                   if (notification.timesheetId) {
                     navigate(`/user/employee-dashboard/timesheet-view`, {
                       state: { entry: { timesheetId: notification.timesheetId } }
@@ -581,16 +691,13 @@ const TimesheetDetailPage = () => {
             }}
           />
 
-          {/* <FormControl size="small" sx={{ minWidth: 200 }}>
-            <InputLabel>All Tasks</InputLabel>
-            <Select value="" label="All Tasks" disabled={loading || entries.length === 0}>
-              {entries.map((entry, index) => (
-                <MenuItem key={index} value={entry.id}>
-                  {entry.taskName}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl> */}
+          <IconButton
+            onClick={handleFilterModalOpen}
+            color={filters.status !== "All Statuses" || filters.project !== "All Projects" || filters.startDate ? "primary" : "default"}
+            disabled={loading}
+          >
+            <FilterList />
+          </IconButton>
         </Box>
 
         {loading && entries.length === 0 ? (
@@ -652,6 +759,9 @@ const TimesheetDetailPage = () => {
                         Status: {selectedEntry.status}
                       </Typography>
                       <Typography variant="caption" display="block">
+                        Created At: {selectedEntry.createdAtFormatted}
+                      </Typography>
+                      <Typography variant="caption" display="block">
                         Comments: {selectedEntry.comments}
                       </Typography>
                       <Typography variant="caption" display="block">
@@ -678,10 +788,11 @@ const TimesheetDetailPage = () => {
                     <Table size="small" sx={{ minWidth: 800 }}>
                       <TableHead>
                         <TableRow>
-                          <TableCell sx={{ width: "20%" }}>Task</TableCell>
-                          <TableCell sx={{ width: "15%" }}>Project</TableCell>
-                          <TableCell sx={{ width: "12%" }}>Time Category</TableCell>
-                          <TableCell sx={{ width: "12%" }}>Resource Plan</TableCell>
+                          <TableCell sx={{ width: "15%" }}>Task</TableCell>
+                          <TableCell sx={{ width: "12%" }}>Project</TableCell>
+                          <TableCell sx={{ width: "10%" }}>Time Category</TableCell>
+                          <TableCell sx={{ width: "10%" }}>Resource Plan</TableCell>
+                          <TableCell sx={{ width: "10%" }}>Created At</TableCell>
                           {daysOfWeek.map((day, idx) => (
                             <TableCell
                               key={idx}
@@ -689,7 +800,7 @@ const TimesheetDetailPage = () => {
                               sx={{
                                 color: day.isWeekend ? "#f44336" : "inherit",
                                 fontWeight: "bold",
-                                width: "6%",
+                                width: "5%",
                               }}
                             >
                               {day.dayName}
@@ -697,11 +808,11 @@ const TimesheetDetailPage = () => {
                           ))}
                           <TableCell
                             align="center"
-                            sx={{ width: "6%", fontWeight: "bold" }}
+                            sx={{ width: "5%", fontWeight: "bold" }}
                           >
                             Total
                           </TableCell>
-                          <TableCell sx={{ width: "10%" }}>Status</TableCell>
+                          <TableCell sx={{ width: "8%" }}>Status</TableCell>
                           <TableCell sx={{ width: "5%" }}>Actions</TableCell>
                         </TableRow>
                       </TableHead>
@@ -744,6 +855,7 @@ const TimesheetDetailPage = () => {
                                 <TableCell>{entry.projectName}</TableCell>
                                 <TableCell>{entry.timeCategory}</TableCell>
                                 <TableCell>{entry.resourcePlan}</TableCell>
+                                <TableCell>{entry.createdAtFormatted}</TableCell>
                                 {entry.hours.map((hour, dayIdx) => (
                                   <TableCell
                                     key={dayIdx}
@@ -810,6 +922,7 @@ const TimesheetDetailPage = () => {
                   >
                     <Typography variant="body2" color="text.secondary">
                       Showing {filteredEntries.length} of {entries.length} entries
+                      {statusFilter && ` (Filtered by ${statusFilter})`}
                     </Typography>
 
                     <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
@@ -843,24 +956,20 @@ const TimesheetDetailPage = () => {
           <Visibility fontSize="small" sx={{ mr: 1 }} /> View
         </MenuItem>
 
-        {/* Only show other actions if status is not SUBMITTED */}
         {selectedEntry?.status !== "SUBMITTED" && (
           <>
-            {/* Show Edit only for DRAFT or REJECTED status */}
             {(selectedEntry?.status === "DRAFT" || selectedEntry?.status === "REJECTED") && (
               <MenuItem onClick={handleEdit}>
                 <Edit fontSize="small" sx={{ mr: 1 }} /> Edit
               </MenuItem>
             )}
 
-            {/* Show Delete for all statuses except APPROVED */}
             {selectedEntry?.status !== "APPROVED" && (
               <MenuItem onClick={handleDelete}>
                 <Delete fontSize="small" sx={{ mr: 1 }} /> Delete
               </MenuItem>
             )}
 
-            {/* Show Submit only for DRAFT or REJECTED status */}
             {(selectedEntry?.status === "DRAFT" || selectedEntry?.status === "REJECTED") && (
               <MenuItem
                 onClick={handleSubmitEntry}
@@ -887,7 +996,7 @@ const TimesheetDetailPage = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
-    </>
+    </LocalizationProvider>
   );
 };
 

@@ -49,7 +49,8 @@ import {
   Notifications as NotificationsIcon,
   Person,
   PictureAsPdf,
-  GridOn
+  GridOn,
+  FilterAlt
 } from "@mui/icons-material";
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
@@ -62,6 +63,9 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import autoTable from 'jspdf-autotable';
+
+// Import the logo image
+import logo from '../images/logo.png';
 
 const API_BASE_URL = "http://localhost:1010";
 
@@ -87,12 +91,19 @@ const AdminTimesheetManagement = () => {
   const [notificationLoading, setNotificationLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState("");
   const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [exportFilters, setExportFilters] = useState({
-    status: "",
+    status: "All Statuses",
     startDate: null,
-    endDate: null,
-    role: "",
-    project: ""
+    endDate: new Date(),
+    role: "All Roles",
+    project: "All Projects"
+  });
+  const [appliedFilters, setAppliedFilters] = useState({
+    status: "All Statuses",
+    project: "All Projects",
+    startDate: null,
+    endDate: new Date()
   });
   const [exportType, setExportType] = useState('excel');
   const [projects, setProjects] = useState([]);
@@ -214,23 +225,64 @@ const AdminTimesheetManagement = () => {
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    const filtered = timesheets.filter(ts => {
-      const matchesSearch = Object.values(ts).some(
-        value =>
-          value &&
-          value.toString().toLowerCase().includes(searchTerm.toLowerCase()))
+  const applyFilters = () => {
+    let filtered = timesheets;
+    
+    if (searchTerm) {
+      filtered = filtered.filter(ts => 
+        Object.values(ts).some(
+          value => value && value.toString().toLowerCase().includes(searchTerm.toLowerCase())
+        )
+      );
+    }
+    
+    if (appliedFilters.status && appliedFilters.status !== "All Statuses") {
+      filtered = filtered.filter(ts => 
+        appliedFilters.status === "SUBMITTED" 
+          ? ts.status === "Pending" 
+          : ts.status.toUpperCase().includes(appliedFilters.status.toUpperCase())
+      );
+    }
+    
+    if (appliedFilters.project && appliedFilters.project !== "All Projects") {
+      filtered = filtered.filter(ts => 
+        ts.project === appliedFilters.project
+      );
+    }
+    
+    if (appliedFilters.startDate && appliedFilters.endDate) {
+      const startDate = new Date(appliedFilters.startDate);
+      const endDate = new Date(appliedFilters.endDate);
       
-      const matchesStatus = !statusFilter || 
-        (statusFilter === "SUBMITTED" && ts.status === "Pending") ||
-        ts.status.toUpperCase().includes(statusFilter.toUpperCase());
-      
-      return matchesSearch && matchesStatus;
-    });
+      filtered = filtered.filter(ts => {
+        const tsDate = new Date(ts.startDate);
+        return tsDate >= startDate && tsDate <= endDate;
+      });
+    }
     
     setFilteredTimesheets(filtered);
     setPage(0);
-  }, [searchTerm, statusFilter, timesheets]);
+    setFilterModalOpen(false);
+  };
+
+  const resetFilters = () => {
+    setAppliedFilters({
+      status: "All Statuses",
+      project: "All Projects",
+      startDate: null,
+      endDate: new Date()
+    });
+    setFilteredTimesheets(timesheets);
+    setPage(0);
+    setFilterModalOpen(false);
+  };
+
+  const handleFilterChange = (field, value) => {
+    setAppliedFilters(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
 
   const handleMenuOpen = (event, timesheet) => {
     setAnchorEl(event.currentTarget);
@@ -431,18 +483,30 @@ const AdminTimesheetManagement = () => {
   };
 
   const handleExportModalOpen = () => {
+    setExportFilters(prev => ({
+      ...prev,
+      endDate: new Date()
+    }));
     setExportModalOpen(true);
   };
 
   const handleExportModalClose = () => {
     setExportModalOpen(false);
     setExportFilters({
-      status: "",
+      status: "All Statuses",
       startDate: null,
-      endDate: null,
-      role: "",
-      project: ""
+      endDate: new Date(),
+      role: "All Roles",
+      project: "All Projects"
     });
+  };
+
+  const handleFilterModalOpen = () => {
+    setFilterModalOpen(true);
+  };
+
+  const handleFilterModalClose = () => {
+    setFilterModalOpen(false);
   };
 
   const handleExportFilterChange = (field, value) => {
@@ -458,8 +522,13 @@ const AdminTimesheetManagement = () => {
 
   const getFilteredData = () => {
     return timesheets.filter(ts => {
-      if (exportFilters.status && ts.status !== exportFilters.status) {
-        return false;
+      if (exportFilters.status && exportFilters.status !== "All Statuses") {
+        if (exportFilters.status === "SUBMITTED" && ts.status !== "Pending") {
+          return false;
+        }
+        if (!ts.status.toUpperCase().includes(exportFilters.status.toUpperCase())) {
+          return false;
+        }
       }
       
       if (exportFilters.startDate && exportFilters.endDate) {
@@ -472,11 +541,11 @@ const AdminTimesheetManagement = () => {
         }
       }
       
-      if (exportFilters.role && ts.role !== exportFilters.role) {
+      if (exportFilters.role && exportFilters.role !== "All Roles" && ts.role !== exportFilters.role) {
         return false;
       }
       
-      if (exportFilters.project && ts.project !== exportFilters.project) {
+      if (exportFilters.project && exportFilters.project !== "All Projects" && ts.project !== exportFilters.project) {
         return false;
       }
       
@@ -485,6 +554,18 @@ const AdminTimesheetManagement = () => {
   };
 
   const exportToExcel = (filteredData) => {
+    // Create a new workbook
+    const wb = XLSX.utils.book_new();
+    
+    // Create a worksheet with header and logo
+    const ws = XLSX.utils.aoa_to_sheet([
+      // ["Company Name"], // Replace with your company name
+      ["Timesheet Report"],
+      ["Generated on: " + format(new Date(), "yyyy-MM-dd HH:mm")],
+      [""], // Empty row for spacing
+    ]);
+
+    // Add the data
     const exportData = filteredData.map(ts => ({
       "Timesheet ID": ts.id,
       "Employee ID": ts.employeeId,
@@ -508,15 +589,19 @@ const AdminTimesheetManagement = () => {
       "Rejection Reason": ts.rejectionReason || "N/A"
     }));
 
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
+    // Add headers and data to worksheet
+    XLSX.utils.sheet_add_json(ws, exportData, { origin: "A5", skipHeader: true });
+    const headers = Object.keys(exportData[0]);
+    XLSX.utils.sheet_add_aoa(ws, [headers], { origin: "A4" });
+
+    // Add worksheet to workbook
     XLSX.utils.book_append_sheet(wb, ws, "Timesheets");
-    
+
+    // Generate file name
     let fileNameParts = [`Timesheets_${format(new Date(), "yyyy-MM-dd")}`];
-    
-    if (exportFilters.status) fileNameParts.push(exportFilters.status);
-    if (exportFilters.role) fileNameParts.push(exportFilters.role);
-    if (exportFilters.project) fileNameParts.push(exportFilters.project.replace(/\s+/g, '_'));
+    if (exportFilters.status && exportFilters.status !== "All Statuses") fileNameParts.push(exportFilters.status);
+    if (exportFilters.role && exportFilters.role !== "All Roles") fileNameParts.push(exportFilters.role);
+    if (exportFilters.project && exportFilters.project !== "All Projects") fileNameParts.push(exportFilters.project.replace(/\s+/g, '_'));
     if (exportFilters.startDate && exportFilters.endDate) {
       fileNameParts.push(
         `${format(new Date(exportFilters.startDate), "yyyy-MM-dd")}-${format(new Date(exportFilters.endDate), "yyyy-MM-dd")}`
@@ -531,6 +616,30 @@ const AdminTimesheetManagement = () => {
   const exportToPDF = (filteredData) => {
     const doc = new jsPDF();
     
+    // Add logo to PDF
+    doc.addImage(logo, 'PNG', 15, 10, 40, 15);
+    
+    // Add title and company name
+    doc.setFontSize(16);
+    doc.text('Timesheet Report', 70, 20);
+    doc.setFontSize(12);
+    // doc.text('Company Name', 70, 27); // Replace with your company name
+    
+    // Add filters information
+    doc.setFontSize(10);
+    let filtersText = `Generated on: ${format(new Date(), "yyyy-MM-dd HH:mm")}`;
+    if (exportFilters.status && exportFilters.status !== "All Statuses") filtersText += ` | Status: ${exportFilters.status}`;
+    if (exportFilters.role && exportFilters.role !== "All Roles") filtersText += ` | Role: ${exportFilters.role}`;
+    if (exportFilters.project && exportFilters.project !== "All Projects") filtersText += ` | Project: ${exportFilters.project}`;
+    if (exportFilters.startDate && exportFilters.endDate) {
+      filtersText += ` | Date Range: ${format(new Date(exportFilters.startDate), "yyyy-MM-dd")} to ${format(new Date(exportFilters.endDate), "yyyy-MM-dd")}`;
+    }
+    
+    // Split long text into multiple lines
+    const splitText = doc.splitTextToSize(filtersText, 180);
+    doc.text(splitText, 15, 35);
+    
+    // Add table
     autoTable(doc, {
       head: [
         ['ID', 'Employee', 'Role', 'Project', 'Task', 'Week', 'Status', 'Hours', 'Submitted At']
@@ -546,7 +655,7 @@ const AdminTimesheetManagement = () => {
         ts.totalHours,
         ts.submittedAt ? format(parseISO(ts.submittedAt), "MMM dd, HH:mm") : "N/A"
       ]),
-      startY: 30,
+      startY: 45, // Start table below logo and header
       styles: {
         fontSize: 8,
         cellPadding: 2,
@@ -570,23 +679,21 @@ const AdminTimesheetManagement = () => {
       }
     });
   
-    doc.setFontSize(18);
-    doc.text('Timesheets Report', 14, 22);
-    
-    doc.setFontSize(10);
-    let filtersText = `Generated on: ${format(new Date(), "yyyy-MM-dd HH:mm")}`;
-    if (exportFilters.status) filtersText += ` | Status: ${exportFilters.status}`;
-    if (exportFilters.role) filtersText += ` | Role: ${exportFilters.role}`;
-    if (exportFilters.project) filtersText += ` | Project: ${exportFilters.project}`;
-    if (exportFilters.startDate && exportFilters.endDate) {
-      filtersText += ` | Date Range: ${format(new Date(exportFilters.startDate), "yyyy-MM-dd")} to ${format(new Date(exportFilters.endDate), "yyyy-MM-dd")}`;
+    // Add footer with logo and page numbers
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(150);
+      doc.text(`Page ${i} of ${pageCount}`, 105, doc.internal.pageSize.height - 10);
+      doc.addImage(logo, 'PNG', 15, doc.internal.pageSize.height - 15, 30, 10);
     }
-    doc.text(filtersText, 14, 28);
   
+    // Generate file name
     let fileNameParts = [`Timesheets_${format(new Date(), "yyyy-MM-dd")}`];
-    if (exportFilters.status) fileNameParts.push(exportFilters.status);
-    if (exportFilters.role) fileNameParts.push(exportFilters.role);
-    if (exportFilters.project) fileNameParts.push(exportFilters.project.replace(/\s+/g, '_'));
+    if (exportFilters.status && exportFilters.status !== "All Statuses") fileNameParts.push(exportFilters.status);
+    if (exportFilters.role && exportFilters.role !== "All Roles") fileNameParts.push(exportFilters.role);
+    if (exportFilters.project && exportFilters.project !== "All Projects") fileNameParts.push(exportFilters.project.replace(/\s+/g, '_'));
     if (exportFilters.startDate && exportFilters.endDate) {
       fileNameParts.push(
         `${format(new Date(exportFilters.startDate), "yyyy-MM-dd")}-${format(new Date(exportFilters.endDate), "yyyy-MM-dd")}`
@@ -697,6 +804,99 @@ const AdminTimesheetManagement = () => {
           </Grid>
         </Grid>
 
+        {/* Search and Filters */}
+        <Box sx={{ display: "flex", gap: 2, mb: 3, flexWrap: "wrap" }}>
+          <TextField
+            size="small"
+            placeholder="Search timesheets..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            sx={{ minWidth: 300 }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Search />
+                </InputAdornment>
+              ),
+            }}
+          />
+          <Button
+            variant="outlined"
+            startIcon={<FilterAlt />}
+            onClick={handleFilterModalOpen}
+          >
+            Filters
+          </Button>
+        </Box>
+
+        {/* Filter Modal */}
+        <Dialog open={filterModalOpen} onClose={handleFilterModalClose} maxWidth="sm" fullWidth>
+          <DialogTitle>Filter Timesheets</DialogTitle>
+          <DialogContent>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 2 }}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Status</InputLabel>
+                <Select
+                  value={appliedFilters.status}
+                  label="Status"
+                  onChange={(e) => handleFilterChange('status', e.target.value)}
+                >
+                  <MenuItem value="All Statuses">All Statuses</MenuItem>
+                  <MenuItem value="DRAFT">Draft</MenuItem>
+                  <MenuItem value="SUBMITTED">Pending</MenuItem>
+                  <MenuItem value="APPROVED">Approved</MenuItem>
+                  <MenuItem value="REJECTED">Rejected</MenuItem>
+                </Select>
+              </FormControl>
+
+              <FormControl fullWidth size="small">
+                <InputLabel>Project</InputLabel>
+                <Select
+                  value={appliedFilters.project}
+                  label="Project"
+                  onChange={(e) => handleFilterChange('project', e.target.value)}
+                >
+                  <MenuItem value="All Projects">All Projects</MenuItem>
+                  {projects.map((project) => (
+                    <MenuItem key={project.id} value={project.name}>
+                      {project.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <DatePicker
+                label="Start Date"
+                value={appliedFilters.startDate}
+                onChange={(newValue) => handleFilterChange('startDate', newValue)}
+                renderInput={(params) => <TextField {...params} fullWidth size="small" />}
+                maxDate={appliedFilters.endDate}
+              />
+
+              <DatePicker
+                label="End Date"
+                value={appliedFilters.endDate}
+                onChange={(newValue) => handleFilterChange('endDate', newValue)}
+                renderInput={(params) => <TextField {...params} fullWidth size="small" />}
+                minDate={appliedFilters.startDate}
+              />
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={resetFilters} color="error">
+              Reset
+            </Button>
+            <Button 
+              onClick={applyFilters} 
+              variant="contained" 
+              color="primary"
+              disabled={appliedFilters.startDate && appliedFilters.endDate && appliedFilters.startDate > appliedFilters.endDate}
+            >
+              Apply Filters
+            </Button>
+          </DialogActions>
+        </Dialog>
+
         {/* Export Filter Modal */}
         <Dialog open={exportModalOpen} onClose={handleExportModalClose} maxWidth="sm" fullWidth>
           <DialogTitle>Export Timesheets</DialogTitle>
@@ -732,7 +932,7 @@ const AdminTimesheetManagement = () => {
                   label="Status"
                   onChange={(e) => handleExportFilterChange('status', e.target.value)}
                 >
-                  <MenuItem value="">All Statuses</MenuItem>
+                  <MenuItem value="All Statuses">All Statuses</MenuItem>
                   <MenuItem value="DRAFT">Draft</MenuItem>
                   <MenuItem value="SUBMITTED">Pending</MenuItem>
                   <MenuItem value="APPROVED">Approved</MenuItem>
@@ -747,7 +947,7 @@ const AdminTimesheetManagement = () => {
                   label="Role"
                   onChange={(e) => handleExportFilterChange('role', e.target.value)}
                 >
-                  <MenuItem value="">All Roles</MenuItem>
+                  <MenuItem value="All Roles">All Roles</MenuItem>
                   <MenuItem value="Employee">Employee</MenuItem>
                   <MenuItem value="Manager">Manager</MenuItem>
                   <MenuItem value="Admin">Admin</MenuItem>
@@ -762,7 +962,7 @@ const AdminTimesheetManagement = () => {
                   label="Project"
                   onChange={(e) => handleExportFilterChange('project', e.target.value)}
                 >
-                  <MenuItem value="">All Projects</MenuItem>
+                  <MenuItem value="All Projects">All Projects</MenuItem>
                   {projects.map((project) => (
                     <MenuItem key={project.id} value={project.name}>
                       {project.name}
@@ -776,6 +976,7 @@ const AdminTimesheetManagement = () => {
                 value={exportFilters.startDate}
                 onChange={(newValue) => handleExportFilterChange('startDate', newValue)}
                 renderInput={(params) => <TextField {...params} fullWidth size="small" />}
+                maxDate={exportFilters.endDate}
               />
 
               <DatePicker
@@ -873,38 +1074,6 @@ const AdminTimesheetManagement = () => {
             </MenuItem>
           )}
         </Menu>
-
-        {/* Search and Filters */}
-        <Box sx={{ display: "flex", gap: 2, mb: 3, flexWrap: "wrap" }}>
-          <TextField
-            size="small"
-            placeholder="Search timesheets..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            sx={{ minWidth: 300 }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Search />
-                </InputAdornment>
-              ),
-            }}
-          />
-          <FormControl size="small" sx={{ minWidth: 200 }}>
-            <InputLabel>Status</InputLabel>
-            <Select
-              value={statusFilter}
-              label="Status"
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              <MenuItem value="">All Statuses</MenuItem>
-              <MenuItem value="DRAFT">Draft</MenuItem>
-              <MenuItem value="SUBMITTED">Pending</MenuItem>
-              <MenuItem value="APPROVED">Approved</MenuItem>
-              <MenuItem value="REJECTED">Rejected</MenuItem>
-            </Select>
-          </FormControl>
-        </Box>
 
         {/* Timesheets Table */}
         <TableContainer component={Paper} elevation={2}>
