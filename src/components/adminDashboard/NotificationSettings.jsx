@@ -27,33 +27,15 @@ import {
 import { ArrowBack, Send } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { listTimeZones } from 'timezone-support';
-import { getData } from 'country-list';
-
-
-import { getCountries, getCountryName } from "country-list";
-import { getTimezonesForCountry } from 'countries-and-timezones';
-
-
-
-
-
 
 // API endpoints from backend
 const API = {
   GET_EMPLOYEES: "/api/employees/basic-info",
-  SEND_EMAILS: "/api/emails/employee-reminders"
+  SEND_EMAILS: "/api/emails/employee-reminders",
+  SAVE_SETTINGS: "/api/settings/timesheet-notifications" // New endpoint for saving settings
 };
 
 const API_BASE_URL = "http://localhost:1010";
-
-// Get all countries with their codes and names
-const COUNTRIES = getData().map(country => ({
-  code: country.code,
-  name: country.name
-}));
-
-
 
 // Predefined roles with emails
 const ROLES = [
@@ -63,19 +45,20 @@ const ROLES = [
   { name: "CEO", email: "ceo@infinevocloud.com" }
 ];
 
+// All days of the week
+const DAYS_OF_WEEK = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
 const NotificationSettings = () => {
   const navigate = useNavigate();
   const [employees, setEmployees] = useState([]);
   const [settings, setSettings] = useState({
-    // Employee reminders with country/timezone support
+    // Employee reminders
     employeeReminders: [
       {
         enabled: true,
         level: 1,
         day: "Saturday",
         time: "23:59",
-        country: null, // Changed from countries array to single country
-        timezone: null,
         selectedEmployees: []
       },
       {
@@ -83,7 +66,7 @@ const NotificationSettings = () => {
         level: 2,
         day: "Sunday",
         time: "23:59",
-        selectedEmployees: [] // Level 2 doesn't need country/timezone
+        selectedEmployees: []
       }
     ],
    
@@ -94,16 +77,14 @@ const NotificationSettings = () => {
         level: 1,
         day: "Tuesday",
         time: "14:00",
-        recipients: ["supervisor@company.com"],
-        timezone: "UTC"
+        recipients: ["supervisor@infinevocloud.com"]
       },
       {
         enabled: true,
         level: 2,
         day: "Wednesday",
         time: "14:00",
-        recipients: ["supervisor@company.com", "hr@company.com"],
-        timezone: "UTC"
+        recipients: ["supervisor@infinevocloud.com"]
       }
     ],
    
@@ -114,16 +95,14 @@ const NotificationSettings = () => {
         level: 1,
         day: "Tuesday",
         time: "14:00",
-        recipients: ["hr@company.com"],
-        timezone: "UTC"
+        recipients: ["hr@infinevocloud.com"]
       },
       {
         enabled: true,
         level: 2,
         day: "Wednesday",
         time: "14:00",
-        recipients: ["hr@company.com", "manager@company.com"],
-        timezone: "UTC"
+        recipients: ["hr@infinevocloud.com"]
       }
     ],
    
@@ -131,8 +110,7 @@ const NotificationSettings = () => {
     escalationEnabled: true,
     escalationDay: "Thursday",
     escalationTime: "14:00",
-    escalationRecipients: ["ceo@company.com", "hr@company.com"],
-    escalationTimezone: "UTC",
+    escalationRecipients: ["ceo@infinevocloud.com", "hr@infinevocloud.com"],
    
     // Approval reminders
     approvalReminders: [
@@ -141,30 +119,27 @@ const NotificationSettings = () => {
         level: 1,
         day: "Tuesday",
         time: "12:00",
-        recipients: ["supervisor@company.com"],
-        timezone: "UTC"
+        recipients: ["supervisor@infinevocloud.com"]
       },
       {
         enabled: true,
         level: 2,
         day: "Wednesday",
         time: "12:00",
-        recipients: ["hr@company.com"],
-        timezone: "UTC"
+        recipients: ["hr@infinevocloud.com"]
       },
       {
         enabled: true,
         level: 3,
         day: "Friday",
         time: "12:00",
-        recipients: ["ceo@company.com", "hr-director@company.com"],
-        timezone: "UTC"
+        recipients: ["ceo@infinevocloud.com"]
       }
     ]
   });
 
   const [newEscalationEmail, setNewEscalationEmail] = useState("");
-  const [selectedRoles, setSelectedRoles] = useState(["ceo@company.com", "hr@company.com"]);
+  const [selectedRoles, setSelectedRoles] = useState(["ceo@infinevocloud.com", "hr@infinevocloud.com"]);
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
   const [selectedEmployees, setSelectedEmployees] = useState([]);
   const [customEmail, setCustomEmail] = useState("");
@@ -190,50 +165,6 @@ const NotificationSettings = () => {
     fetchEmployees();
   }, []);
 
-  // Get employees by country
-  const getEmployeesByCountry = (countryCode) => {
-    return employees.filter(emp => emp.country === countryCode);
-  };
-
-  // Get timezones for a country
-  // const getTimezonesForCountry = (countryCode) => {
-  //   try {
-  //     return findTimezonesForCountry(countryCode) || ["UTC"];
-  //   } catch (error) {
-  //     console.error(`Error getting timezones for country ${countryCode}:`, error);
-  //     return ["UTC"];
-  //   }
-  // };
-
-  // const getTimezonesForCountry = (countryCode) => {
-  //   try {
-  //     return timezoneSupport.findTimezonesForCountry(countryCode) || ["UTC"];
-  //   } catch (error) {
-  //     console.error(`Error getting timezones for country ${countryCode}:`, error);
-  //     return ["UTC"];
-  //   }
-  // };
-
-
-  const getTimezonesForCountry = (countryCode) => {
-    try {
-      return Intl.supportedValuesOf('timeZone').filter(tz => 
-        tz.includes(countryCode) || tz.startsWith(countryCode)
-      ) || ["UTC"];
-    } catch (error) {
-      return ["UTC"];
-    }
-  };
-
-  const findTimezonesForCountry = (countryCode) => {
-    try {
-      return timezoneSupport.findTimezonesForCountry(countryCode) || ["UTC"];
-    } catch (error) {
-      console.error(`Error getting timezones for country ${countryCode}:`, error);
-      return ["UTC"];
-    }
-  };
-
   // Handle settings changes
   const handleSettingChange = (setting) => (event) => {
     setSettings({
@@ -253,13 +184,6 @@ const NotificationSettings = () => {
   const updateReminder = (type, index, field, value) => {
     const updatedReminders = [...settings[type]];
     updatedReminders[index][field] = value;
-   
-    // If country changes in employee reminders, update timezone and reset selected employees
-    if (type === 'employeeReminders' && field === 'country') {
-      const timezones = value ? getTimezonesForCountry(value.code) : ["UTC"];
-      updatedReminders[index].timezone = timezones[0];
-      updatedReminders[index].selectedEmployees = [];
-    }
    
     setSettings({
       ...settings,
@@ -354,9 +278,30 @@ const NotificationSettings = () => {
   // Save settings
   const handleSave = async () => {
     try {
-      // In a real app, you would save settings to backend here
-      console.log("Saved settings:", settings);
-      showSnackbar("Settings saved successfully", "success");
+      // Prepare the payload with all settings data
+      const payload = {
+        employeeReminders: settings.employeeReminders,
+        supervisorReminders: settings.supervisorReminders,
+        hrReminders: settings.hrReminders,
+        approvalReminders: settings.approvalReminders,
+        escalationSettings: {
+          enabled: settings.escalationEnabled,
+          day: settings.escalationDay,
+          time: settings.escalationTime,
+          recipients: settings.escalationRecipients
+        },
+        lastUpdated: new Date().toISOString()
+      };
+
+      // Call backend API to save settings
+      const response = await axios.post(`${API_BASE_URL}${API.SAVE_SETTINGS}`, payload);
+
+      if (response.status === 200) {
+        showSnackbar("Settings saved successfully", "success");
+        console.log("Settings payload:", payload); // For debugging
+      } else {
+        throw new Error("Failed to save settings");
+      }
     } catch (error) {
       console.error("Error saving settings:", error);
       showSnackbar("Failed to save settings", "error");
@@ -391,7 +336,7 @@ Consequences of non-compliance:
 - Formal disciplinary action
 - Further escalation to senior leadership
 
-The deadline for resolution is ${settings.escalationDay} at ${settings.escalationTime} (${settings.escalationTimezone}).
+The deadline for resolution is ${settings.escalationDay} at ${settings.escalationTime}.
 
 Sincerely,
 Timesheet Compliance Team
@@ -405,7 +350,7 @@ This is a reminder regarding pending timesheet approvals.
 
 Pending Approvals:
 - ${level === 1 ? 'Initial reminder' : level === 2 ? 'Second reminder' : 'Final escalation'}
-- Action required by: ${settings.approvalReminders[level-1].day} at ${settings.approvalReminders[level-1].time} (${settings.approvalReminders[level-1].timezone})
+- Action required by: ${settings.approvalReminders[level-1].day} at ${settings.approvalReminders[level-1].time}
 
 Required Actions:
 1. Review and approve pending timesheets immediately
@@ -422,140 +367,66 @@ Sincerely,
 Timesheet Compliance Team
 `;
 
-  // Render country selector with search for employee reminders
-  const renderCountrySelector = (index) => (
-    <FormControl size="small" sx={{ minWidth: 200, mb: 2 }}>
-      <Autocomplete
-        options={COUNTRIES}
-        getOptionLabel={(option) => option.name}
-        value={settings.employeeReminders[index].country}
-        onChange={(e, newValue) => {
-          updateReminder('employeeReminders', index, 'country', newValue);
-        }}
-        disabled={!settings.employeeReminders[index].enabled || settings.employeeReminders[index].level === 2}
-        renderInput={(params) => (
-          <TextField
-            {...params}
-            label="Country"
-            variant="outlined"
-            size="small"
-          />
-        )}
-      />
-    </FormControl>
-  );
+  // Render recipients selector with custom email option
+  const renderRecipientsSelector = (type, index) => {
+    const [newEmail, setNewEmail] = useState("");
 
-  // Render timezone selector based on selected country for employee reminders
-  const renderTimezoneSelector = (index) => {
-    const reminder = settings.employeeReminders[index];
-    const timezones = reminder.country ? getTimezonesForCountry(reminder.country.code) : ["UTC"];
+    const handleAddEmail = () => {
+      if (newEmail && !settings[type][index].recipients.includes(newEmail)) {
+        updateReminder(type, index, 'recipients', [...settings[type][index].recipients, newEmail]);
+        setNewEmail("");
+      }
+    };
+
+    const handleRemoveEmail = (email) => {
+      updateReminder(
+        type, 
+        index, 
+        'recipients', 
+        settings[type][index].recipients.filter(e => e !== email)
+      );
+    };
 
     return (
-      <FormControl size="small" sx={{ minWidth: 200, mb: 2 }}>
-        <InputLabel>Timezone</InputLabel>
-        <Select
-          value={reminder.timezone || timezones[0]}
-          onChange={(e) => updateReminder('employeeReminders', index, 'timezone', e.target.value)}
-          disabled={!reminder.enabled || reminder.level === 2 || !reminder.country}
-        >
-          {timezones.map(tz => (
-            <MenuItem key={tz} value={tz}>{tz}</MenuItem>
+      <Box sx={{ mt: 2, mb: 2 }}>
+        <Typography variant="subtitle2" sx={{ mb: 1 }}>
+          Recipients:
+        </Typography>
+        
+        <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mb: 2 }}>
+          {settings[type][index].recipients.map((email) => (
+            <Chip
+              key={email}
+              label={email}
+              onDelete={() => handleRemoveEmail(email)}
+              disabled={!settings[type][index].enabled}
+            />
           ))}
-        </Select>
-      </FormControl>
+        </Box>
+        
+        <Box sx={{ display: "flex", gap: 2 }}>
+          <TextField
+            size="small"
+            placeholder="Add custom email address"
+            value={newEmail}
+            onChange={(e) => setNewEmail(e.target.value)}
+            disabled={!settings[type][index].enabled}
+            sx={{ flexGrow: 1 }}
+          />
+          <Button
+            variant="outlined"
+            onClick={handleAddEmail}
+            disabled={!settings[type][index].enabled || !newEmail}
+          >
+            Add
+          </Button>
+        </Box>
+      </Box>
     );
   };
 
-  // Render employee selector for employee reminders
-  const renderEmployeeSelector = (index) => {
-    const reminder = settings.employeeReminders[index];
-    const countryCode = reminder.country?.code;
-
-    if (reminder.level === 2) {
-      // For level 2, show all employees without country filter
-      return (
-        <Box sx={{ mt: 2, mb: 2 }}>
-          <Typography variant="subtitle2" sx={{ mb: 1 }}>
-            Select Employees:
-          </Typography>
-          <Autocomplete
-            multiple
-            options={employees}
-            getOptionLabel={(option) => `${option.name} (${option.email})`}
-            value={employees.filter(emp => reminder.selectedEmployees.includes(emp.empId))}
-            onChange={(e, newValue) => {
-              updateReminder('employeeReminders', index, 'selectedEmployees', newValue.map(emp => emp.empId));
-            }}
-            disabled={!reminder.enabled}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                variant="outlined"
-                size="small"
-                placeholder="Select employees"
-              />
-            )}
-          />
-        </Box>
-      );
-    }
-
-    return countryCode ? (
-      <Box sx={{ mt: 2, mb: 2 }}>
-        <Typography variant="subtitle2" sx={{ mb: 1 }}>
-          Employees in {reminder.country.name}:
-        </Typography>
-        <Autocomplete
-          multiple
-          options={getEmployeesByCountry(countryCode)}
-          getOptionLabel={(option) => `${option.name} (${option.email})`}
-          value={employees.filter(emp => reminder.selectedEmployees.includes(emp.empId))}
-          onChange={(e, newValue) => {
-            updateReminder('employeeReminders', index, 'selectedEmployees', newValue.map(emp => emp.empId));
-          }}
-          disabled={!reminder.enabled}
-          renderInput={(params) => (
-            <TextField
-              {...params}
-              variant="outlined"
-              size="small"
-              placeholder="Select employees"
-            />
-          )}
-        />
-      </Box>
-    ) : null;
-  };
-
-  // Render recipients selector for supervisor/HR/approval reminders
-  const renderRecipientsSelector = (type, index) => (
-    <Box sx={{ mt: 2, mb: 2 }}>
-      <Typography variant="subtitle2" sx={{ mb: 1 }}>
-        Recipients:
-      </Typography>
-      <Autocomplete
-        multiple
-        freeSolo
-        options={ROLES.map(role => role.email)}
-        value={settings[type][index].recipients}
-        onChange={(e, newValue) => {
-          updateReminder(type, index, 'recipients', newValue);
-        }}
-        disabled={!settings[type][index].enabled}
-        renderInput={(params) => (
-          <TextField
-            {...params}
-            variant="outlined"
-            size="small"
-            placeholder="Add recipients"
-          />
-        )}
-      />
-    </Box>
-  );
-
-  // Render day/time selectors with consistent spacing
-  const renderDateTimeSelectors = (type, index, days, times) => (
+  // Render day/time selectors with manual time input
+  const renderDateTimeSelectors = (type, index, defaultDay, defaultTime) => (
     <Box sx={{ display: "flex", gap: 2, mt: 2, mb: 2, flexWrap: 'wrap' }}>
       <FormControl size="small" sx={{ minWidth: 120 }}>
         <InputLabel>Day</InputLabel>
@@ -564,23 +435,20 @@ Timesheet Compliance Team
           onChange={(e) => updateReminder(type, index, 'day', e.target.value)}
           disabled={!settings[type][index].enabled}
         >
-          {days.map(day => (
+          {DAYS_OF_WEEK.map(day => (
             <MenuItem key={day} value={day}>{day}</MenuItem>
           ))}
         </Select>
       </FormControl>
-      <FormControl size="small" sx={{ minWidth: 120 }}>
-        <InputLabel>Time</InputLabel>
-        <Select
-          value={settings[type][index].time}
-          onChange={(e) => updateReminder(type, index, 'time', e.target.value)}
-          disabled={!settings[type][index].enabled}
-        >
-          {times.map(time => (
-            <MenuItem key={time} value={time}>{time}</MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+      <TextField
+        size="small"
+        label="Time"
+        value={settings[type][index].time}
+        onChange={(e) => updateReminder(type, index, 'time', e.target.value)}
+        disabled={!settings[type][index].enabled}
+        sx={{ minWidth: 120 }}
+        placeholder="HH:mm"
+      />
     </Box>
   );
 
@@ -619,14 +487,12 @@ Timesheet Compliance Team
               label={`Reminder Level ${reminder.level}`}
             />
             <Box sx={{ ml: 4 }}>
-              {reminder.level === 1 && (
-                <Box sx={{ display: "flex", gap: 2, flexWrap: 'wrap' }}>
-                  {renderCountrySelector(index)}
-                  {renderTimezoneSelector(index)}
-                </Box>
+              {renderDateTimeSelectors(
+                'employeeReminders', 
+                index, 
+                index === 0 ? "Saturday" : "Sunday",
+                "23:59"
               )}
-              {renderDateTimeSelectors('employeeReminders', index, ["Saturday", "Sunday"], ["23:59", "20:00", "18:00"])}
-              {renderEmployeeSelector(index)}
             </Box>
           </Grid>
         ))}
@@ -649,7 +515,12 @@ Timesheet Compliance Team
               label={`Supervisor Reminder Level ${reminder.level}`}
             />
             <Box sx={{ ml: 4 }}>
-              {renderDateTimeSelectors('supervisorReminders', index, ["Monday", "Tuesday", "Wednesday"], ["14:00", "12:00", "10:00"])}
+              {renderDateTimeSelectors(
+                'supervisorReminders', 
+                index, 
+                index === 0 ? "Tuesday" : "Wednesday",
+                "14:00"
+              )}
               {renderRecipientsSelector('supervisorReminders', index)}
             </Box>
           </Grid>
@@ -673,7 +544,12 @@ Timesheet Compliance Team
               label={`HR Reminder Level ${reminder.level}`}
             />
             <Box sx={{ ml: 4 }}>
-              {renderDateTimeSelectors('hrReminders', index, ["Tuesday", "Wednesday", "Thursday"], ["14:00", "12:00", "10:00"])}
+              {renderDateTimeSelectors(
+                'hrReminders', 
+                index, 
+                index === 0 ? "Tuesday" : "Wednesday",
+                "14:00"
+              )}
               {renderRecipientsSelector('hrReminders', index)}
             </Box>
           </Grid>
@@ -697,7 +573,12 @@ Timesheet Compliance Team
               label={`Approval Level ${reminder.level}`}
             />
             <Box sx={{ ml: 4 }}>
-              {renderDateTimeSelectors('approvalReminders', index, ["Tuesday", "Wednesday", "Friday"], ["12:00", "14:00", "10:00"])}
+              {renderDateTimeSelectors(
+                'approvalReminders', 
+                index, 
+                index === 0 ? "Tuesday" : index === 1 ? "Wednesday" : "Friday",
+                "12:00"
+              )}
               {renderRecipientsSelector('approvalReminders', index)}
             </Box>
           </Grid>
@@ -727,41 +608,20 @@ Timesheet Compliance Team
                 onChange={(e) => handleTimeChange("escalationDay", e.target.value)}
                 disabled={!settings.escalationEnabled}
               >
-                <MenuItem value="Thursday">Thursday</MenuItem>
-                <MenuItem value="Friday">Friday</MenuItem>
+                {DAYS_OF_WEEK.map(day => (
+                  <MenuItem key={day} value={day}>{day}</MenuItem>
+                ))}
               </Select>
             </FormControl>
-            <FormControl size="small" sx={{ minWidth: 120, mb: 2 }}>
-              <InputLabel>Time</InputLabel>
-              <Select
-                value={settings.escalationTime}
-                onChange={(e) => handleTimeChange("escalationTime", e.target.value)}
-                disabled={!settings.escalationEnabled}
-              >
-                <MenuItem value="14:00">2:00 PM</MenuItem>
-                <MenuItem value="12:00">12:00 PM</MenuItem>
-                <MenuItem value="10:00">10:00 AM</MenuItem>
-              </Select>
-            </FormControl>
-            <FormControl size="small" sx={{ minWidth: 180, mb: 2 }}>
-              <InputLabel>Timezone</InputLabel>
-              <Select
-                value={settings.escalationTimezone}
-                onChange={(e) => handleTimeChange("escalationTimezone", e.target.value)}
-                disabled={!settings.escalationEnabled}
-              >
-                {COUNTRIES.flatMap(country => {
-                  try {
-                    const timezones = findTimezonesForCountry(country.code);
-                    return timezones ? timezones.map(tz => (
-                      <MenuItem key={tz} value={tz}>{tz} ({country.name})</MenuItem>
-                    )) : [];
-                  } catch (error) {
-                    return [];
-                  }
-                })}
-              </Select>
-            </FormControl>
+            <TextField
+              size="small"
+              label="Time"
+              value={settings.escalationTime}
+              onChange={(e) => handleTimeChange("escalationTime", e.target.value)}
+              disabled={!settings.escalationEnabled}
+              sx={{ minWidth: 120, mb: 2 }}
+              placeholder="HH:mm"
+            />
           </Box>
         </Grid>
         <Grid item xs={12}>

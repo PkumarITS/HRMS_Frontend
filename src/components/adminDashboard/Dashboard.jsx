@@ -52,8 +52,6 @@ const Dashboard = () => {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const { actions } = useContext(userContext);
 
-
-
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -96,51 +94,59 @@ const Dashboard = () => {
   };
 
   const menuItems = [
-    { text: "Dashboard", icon: <DashboardIcon />, link: "/admin/dashboard" },
-    { text: "Employees", icon: <PeopleIcon />, link: "/admin/employees" },
-    {
+    // Dashboard
+    actions.includes("VIEW_ADMIN_DASHBOARD") && { text: "Dashboard", icon: <DashboardIcon />, link: "/admin/dashboard" },
+    // Employees
+    actions.includes("MANAGE_EMPLOYEE") && { text: "Employees", icon: <PeopleIcon />, link: "/admin/employees" },
+    // System
+    (actions.includes("VIEW_USER_MANAGEMENT") || 
+     actions.includes("CREATE_ACTIONS") || 
+     actions.includes("CREATE_ROLE") ||
+     actions.includes("VIEW_LIST_ACTIONS") || 
+     actions.includes("VIEW_LIST_ROLES")) && {
       text: "System",
       icon: <SettingsIcon />,
       action: () => setSystemOpen(!systemOpen),
       subItems: [
-        { text: "User Management", link: "/admin/user-management" },
-        { text: " Actions", link: "/admin/create-action" },
-        { text: "Roles", link: "/admin/create-role" },
-        {text: "List Actions", link: "/admin/list-actions"},
-    //   {text: "List Roles", link: "/admin/list-roles"},
-      actions.includes("VIEW_LIST_ROLES") && { text: "List Roles", link: "/admin/list-roles" },
-
-       
-
-        
-        
-
-      ],
+        actions.includes("VIEW_USER_MANAGEMENT") && { text: "User Management", link: "/admin/user-management" },
+        actions.includes("CREATE_ACTIONS") && { text: "Actions", link: "/admin/create-action" },
+        actions.includes("CREATE_ROLE") && { text: "Roles", link: "/admin/create-role" },
+        actions.includes("VIEW_LIST_ACTIONS") && { text: "List Actions", link: "/admin/list-actions" },
+        actions.includes("VIEW_LIST_ROLES") && { text: "List Roles", link: "/admin/list-roles" },
+      ].filter(Boolean),
     },
-    {
+    // Projects
+    (actions.includes("MANAGE_PROJECT") || actions.includes("MANAGE_TASK")) && {
       text: "Projects",
       icon: <WorkIcon />,
       action: () => setProjectOpen(!projectOpen),
       subItems: [
-        { text: "Projects", link: "/admin/projects" },
-        { text: "Tasks", link: "/admin/projects/tasks" },
-      ],
+        actions.includes("MANAGE_PROJECT") && { text: " Projects", link: "/admin/projects" },
+        actions.includes("MANAGE_TASK") && { text: "Tasks", link: "/admin/projects/tasks" },
+      ].filter(Boolean),
     },
-    { text: "Timesheets", icon: <AccessTimeIcon />, link: "/admin/dashboard/timesheets" },
-    {
+    // Timesheets
+    actions.includes("MANAGE_TIMESHEET") && { text: "Timesheets", icon: <AccessTimeIcon />, link: "/admin/dashboard/timesheets" },
+    // Leave Management
+    (actions.includes("MANAGE_LEAVE") || 
+     actions.includes("MANAGE_LEAVE_TYPE") || 
+     actions.includes("MANAGE_LEAVE_BALANCE") || 
+     actions.includes("MANAGE_HOLIDAY")) && {
       text: "Leave Management",
       icon: <CalendarTodayIcon />,
       action: () => setLeaveOpen(!leaveOpen),
       subItems: [
-        { text: "Leaves", link: "/admin/leaves" },
-        { text: "Leave Type", link: "/admin/leaves-type" },
-        { text: "Leave Balance", link: "/admin/leave-balance" },
-        { text: "Holiday", link: "/admin/holiday" }
-      ],
+        actions.includes("MANAGE_LEAVE") && { text: "Leaves", link: "/admin/leaves" },
+        actions.includes("MANAGE_LEAVE_TYPE") && { text: "Leave Type", link: "/admin/leaves-type" },
+        actions.includes("MANAGE_LEAVE_BALANCE") && { text: "Leave Balance", link: "/admin/leave-balance" },
+        actions.includes("MANAGE_HOLIDAY") && { text: "Holiday", link: "/admin/holiday" },
+      ].filter(Boolean),
     },
-    { text: "Attendance", icon: <CheckCircleIcon />, link: "/admin/attendance" },
-    { text: "Profile", icon: <PersonIcon />, link: "/admin/profile" },
-  ];
+    // Attendance
+    actions.includes("MANAGE_ATTENDANCE") && { text: "Attendance", icon: <CheckCircleIcon />, link: "/admin/attendance" },
+    // Profile
+    actions.includes("VIEW_PROFILE") && { text: "Profile", icon: <PersonIcon />, link: "/admin/profile" }, 
+  ].filter(Boolean);
 
   if (loading) {
     return (
@@ -278,7 +284,6 @@ const Dashboard = () => {
                       primary={item.text}
                       primaryTypographyProps={{ fontSize: '0.95rem' }}
                     />
-                    {/* Show collapse icon only if there are sub-items */}
                     {item.subItems && (
                       (item.text === "Leave Management" ? leaveOpen
                         : item.text === "Projects" ? projectOpen
@@ -325,7 +330,6 @@ const Dashboard = () => {
               </React.Fragment>
             ))}
           </List>
-
         </Box>
 
         {/* Main Content */}
@@ -338,7 +342,6 @@ const Dashboard = () => {
             overflowY: 'auto'
           }}
         >
-         
           <Outlet />
         </Box>
       </Box>
