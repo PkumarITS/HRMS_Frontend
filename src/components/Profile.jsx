@@ -49,7 +49,7 @@ const Profile = ({ isRole }) => {
         
         const token = Cookies.get('token');
         const response = await axios.get(
-          `${UserService.BASE_URL}/adminuser/get-complete-profile`, 
+          `${UserService.BASE_URL}/common/get-complete-profile`, 
           {
             headers: { Authorization: `Bearer ${token}` },
             withCredentials: true,
@@ -60,7 +60,7 @@ const Profile = ({ isRole }) => {
           throw new Error(response.data.message || 'Failed to fetch profile data');
         }
 
-        if (response.data.ourUsers?.empId !== response.data.employeeData?.personal?.empId) {
+        if (response.data.user?.empId !== response.data.employeeData?.personal?.empId) {
           throw new Error('Employee data mismatch detected');
         }
 
@@ -133,20 +133,20 @@ const Profile = ({ isRole }) => {
                 color: theme.palette.primary.contrastText
               }}
             >
-              {profileData.ourUsers.name?.split(' ').map(n => n[0]).join('')}
+              {profileData.user.name?.split(' ').map(n => n[0]).join('')}
             </Avatar>
             <Box>
               <Typography variant="h5" fontWeight="bold">
-                {profileData.ourUsers.name}
+                {profileData.user.name}
               </Typography>
               <Typography variant="body1" sx={{ mt: 1 }}>
-                <strong>Employee ID:</strong> {profileData.ourUsers.empId || '-'}
+                <strong>Employee ID:</strong> {profileData.user.empId || '-'}
               </Typography>
               <Typography variant="body1">
-                <strong>Email:</strong> {profileData.ourUsers.email || '-'}
+                <strong>Email:</strong> {profileData.user.email || '-'}
               </Typography>
               <Typography variant="body1">
-                <strong>Role:</strong> {profileData.ourUsers.role || '-'}
+                <strong>Role:</strong> {profileData.user.role || '-'}
               </Typography>
             </Box>
           </Box>
@@ -296,7 +296,7 @@ const Profile = ({ isRole }) => {
     );
   }
 
-  const { ourUsers, employeeData } = profileData;
+  const { user, employeeData } = profileData;
   const { personal, identification, contact, work, report } = employeeData || {};
 
   const renderPersonalInfo = () => (
@@ -728,7 +728,7 @@ const Profile = ({ isRole }) => {
           </Box>
           <Box sx={{ display: "flex", alignItems: "center", flexDirection: { xs: 'column', sm: 'row' } }}>
             <Avatar
-              alt={ourUsers.name}
+              alt={user.name}
               sx={{ 
                 width: 120, 
                 height: 120, 
@@ -738,16 +738,16 @@ const Profile = ({ isRole }) => {
                 bgcolor: theme.palette.primary.main
               }}
             >
-              {ourUsers.name?.split(' ').map(n => n[0]).join('')}
+              {user.name?.split(' ').map(n => n[0]).join('')}
             </Avatar>
             <Box sx={{ textAlign: { xs: 'center', sm: 'left' } }}>
               <Typography variant="h3" fontWeight="bold" gutterBottom>
-                {ourUsers.name}
+                {user.name}
               </Typography>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: { xs: 'center', sm: 'flex-start' }, gap: 2 }}>
                 <Chip 
                   icon={<BadgeIcon />} 
-                  label={ourUsers.empId} 
+                  label={user.empId} 
                   color="primary" 
                   variant="outlined" 
                 />
@@ -763,16 +763,16 @@ const Profile = ({ isRole }) => {
                 />
                 <Chip 
                   icon={<EmailIcon />} 
-                  label={ourUsers.email} 
+                  label={user.email} 
                   sx={{ backgroundColor: theme.palette.warning.light }} 
                 />
                 <Chip 
-                  label={ourUsers.role.toUpperCase()} 
+                  label={user.role.toUpperCase()} 
                   color={
-                    ourUsers.role === 'admin' ? 'primary' : 
-                    ourUsers.role === 'hr' ? 'secondary' :
-                    ourUsers.role === 'manager' ? 'success' :
-                    ourUsers.role === 'supervisor' ? 'warning' : 'info'
+                    user.role === 'admin' ? 'primary' : 
+                    user.role === 'hr' ? 'secondary' :
+                    user.role === 'manager' ? 'success' :
+                    user.role === 'supervisor' ? 'warning' : 'info'
                   } 
                 />
               </Box>
@@ -828,7 +828,7 @@ const Profile = ({ isRole }) => {
         <DialogContent dividers>
           <Box sx={{ p: 2 }}>
             <Typography variant="body1" gutterBottom>
-              You are about to print the profile details of <strong>{ourUsers.name}</strong>.
+              You are about to print the profile details of <strong>{user.name}</strong>.
             </Typography>
             <Typography variant="body1">
               Please ensure your printer is ready and configured properly.
