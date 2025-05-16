@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Container, Card, CardContent, TextField, Button, Typography,
@@ -8,6 +8,9 @@ import {
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import UserService from '../service/UserService';
 import Cookies from "js-cookie";
+import axios from 'axios';
+
+const API_BASE_URL = "http://localhost:1010";
 
 function RegistrationPage() {
   const navigate = useNavigate();
@@ -22,6 +25,25 @@ function RegistrationPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [roles, setRoles] = useState([]);
+  const [rolesLoading, setRolesLoading] = useState(true);
+
+  // Fetch roles from API
+  useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        const response = await axios.get(`${API_BASE_URL}/roles`);
+        setRoles(response.data);
+      } catch (err) {
+        console.error('Error fetching roles:', err);
+        setError('Failed to load roles. Please try again later.');
+      } finally {
+        setRolesLoading(false);
+      }
+    };
+
+    fetchRoles();
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -145,14 +167,19 @@ function RegistrationPage() {
                 value={formData.role}
                 label="Role"
                 onChange={handleInputChange}
-                disabled={loading}
+                disabled={loading || rolesLoading}
               >
-                <MenuItem value="admin">ADMIN</MenuItem>
-                <MenuItem value="hr">HR</MenuItem>
-                <MenuItem value="manager">MANAGER</MenuItem>
-                <MenuItem value="supervisor">SUPERVISOR</MenuItem>
-                <MenuItem value="user">USER</MenuItem>
-
+                {rolesLoading ? (
+                  <MenuItem disabled>
+                    <CircularProgress size={24} />
+                  </MenuItem>
+                ) : (
+                  roles.map((role) => (
+                    <MenuItem key={role.roleId} value={role.roleName}>
+                      {role.roleName.toUpperCase()}
+                    </MenuItem>
+                  ))
+                )}
               </Select>
             </FormControl>
             <TextField
@@ -203,7 +230,7 @@ function RegistrationPage() {
                 borderRadius: 2 
               }}
               type="submit"
-              disabled={loading}
+              disabled={loading || rolesLoading}
             >
               {loading ? <CircularProgress size={24} color="inherit" /> : 'Register'}
             </Button>
