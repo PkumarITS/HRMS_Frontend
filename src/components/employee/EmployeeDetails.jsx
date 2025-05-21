@@ -413,12 +413,16 @@ const EmployeeDetails = () => {
                   </TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell sx={{ fontWeight: "bold" }}>Personal Tax ID</TableCell>
-                  <TableCell>{employee.identification?.personalTaxId || "-"}</TableCell>
+                  <TableCell sx={{ fontWeight: "bold", width: '40%' }}>Address Proof</TableCell>
+                  <TableCell>{employee.identification?.addressProof || "-"}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell sx={{ fontWeight: "bold" }}>Social Insurance</TableCell>
-                  <TableCell>{employee.identification?.socialInsurance || "-"}</TableCell>
+                  <TableCell sx={{ fontWeight: "bold" }}>Address Document Name</TableCell>
+                  <TableCell>{employee.identification?.addressDocumentName || "-"}</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: "bold" }}>Address Document Number</TableCell>
+                  <TableCell>{employee.identification?.addressDocumentNumber || "-"}</TableCell>
                 </TableRow>
               </TableBody>
             </Table>
@@ -426,6 +430,10 @@ const EmployeeDetails = () => {
           <Grid item xs={12} md={6}>
             <Table>
               <TableBody>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: "bold" }}>Pan Card</TableCell>
+                  <TableCell>{employee.identification?.panCardNumber || "-"}</TableCell>
+                </TableRow>
                 <TableRow>
                   <TableCell sx={{ fontWeight: "bold", width: '40%' }}>ID Proof</TableCell>
                   <TableCell>{employee.identification?.idProof || "-"}</TableCell>

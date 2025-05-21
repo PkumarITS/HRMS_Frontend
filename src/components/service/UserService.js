@@ -14,8 +14,8 @@ class UserService {
             });
 
             if (response.data.token) {
-                Cookies.set("token", response.data.token, { expires: 1, secure: true, sameSite: 'strict' });
-                Cookies.set("role", response.data.role, { expires: 1, secure: true, sameSite: 'strict' });
+                Cookies.set("token", response.data.token, { expires: 1, secure: true, sameSite: 'None' });
+                Cookies.set("role", response.data.role, { expires: 1, secure: true, sameSite: 'None' });
             }
 
             return response.data;
