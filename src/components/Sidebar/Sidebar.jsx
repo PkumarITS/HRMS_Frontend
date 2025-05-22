@@ -120,6 +120,7 @@ const Sidebar = ({
         actions?.includes("MANAGE_LEAVE") || 
         actions?.includes("MANAGE_LEAVE_TYPE") || 
         actions?.includes("MANAGE_LEAVE_BALANCE") || 
+        actions?.includes("MANAGE_OVERTIME_REQUEST") ||
         actions?.includes("MANAGE_HOLIDAY")
       ),
       roles: ['admin'],
@@ -127,6 +128,7 @@ const Sidebar = ({
         { text: "Leaves", link: "/admin/leaves", visible: actions?.includes("MANAGE_LEAVE") },
         { text: "Leave Type", link: "/admin/leaves-type", visible: actions?.includes("MANAGE_LEAVE_TYPE") },
         { text: "Leave Balance", link: "/admin/leave-balance", visible: actions?.includes("MANAGE_LEAVE_BALANCE") },
+        {text: "OvertimeRequest", link: "/admin/overtime-request", visible: actions?.includes("MANAGE_OVERTIME_REQUEST")},
         { text: "Holiday", link: "/admin/holiday", visible: actions?.includes("MANAGE_HOLIDAY") },
       ].filter(item => item?.visible)
     },
@@ -152,7 +154,7 @@ const Sidebar = ({
     { 
       text: "Employees", 
       icon: <PeopleIcon />, 
-      link: "/hr/employees",
+      link: "/admin/employees",
       visible: actions?.includes("MANAGE_EMPLOYEE"),
       roles: ['hr']
     },
@@ -240,6 +242,7 @@ const Sidebar = ({
       subItems: [
         { text: "Leave Request", link: "/user/leaves", visible: actions?.includes("VIEW_LEAVE") },
         { text: "Leave Balance", link: "/user/leave-balance", visible: actions?.includes("VIEW_LEAVE_BALANCE") },
+        { text: "Overtime", link: "/user/overtime-form", visible: actions?.includes("VIEW_OVERTIME_REQUEST") },
         { text: "Holiday Calendar", link: "/user/holiday", visible: actions?.includes("VIEW_HOLIDAY") },
       ].filter(item => item?.visible)
     }

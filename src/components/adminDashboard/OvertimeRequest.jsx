@@ -26,9 +26,7 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogContentText,
   DialogActions,
-  Snackbar,
   TextareaAutosize
 } from '@mui/material';
 import {
@@ -44,8 +42,8 @@ import {
 
 const API_URL = "http://localhost:1010";
 
-const LeaveRequest = () => {
-  const [leaveRequests, setLeaveRequests] = useState([]);
+const OvertimeRequest = () => {
+  const [overtimeRequests, setOvertimeRequests] = useState([]);
   const [searchId, setSearchId] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
   const [loading, setLoading] = useState(false);
@@ -61,56 +59,69 @@ const LeaveRequest = () => {
   const recordsPerPage = 5;
 
   useEffect(() => {
-    fetchLeaveRequests();
+    fetchOvertimeRequests();
   }, []);
 
-  const fetchLeaveRequests = async () => {
+  const fetchOvertimeRequests = async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get(`${API_URL}/admin/leaves/all`);
+      const response = await axios.get(`${API_URL}/admin/overtime/all`);
       const processedData = response.data.map(request => ({
         id: request.id,
         employeeId: request.employeeId || 'N/A',
         employeeName: request.employeeName || 'N/A',
-        leaveType: request.leaveType || 'N/A',
-        fromDate: request.fromDate || request.startDate,
-        toDate: request.toDate || request.endDate,
-        reason: request.reason || 'N/A',
+        category: request.category || 'N/A',
+        startTime: request.startTime,
+        endTime: request.endTime,
+        project: request.project || 'N/A',
+        notes: request.notes || 'N/A',
         status: request.status || 'Pending',
         createdAt: request.createdAt
       })).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-      setLeaveRequests(processedData);
+      setOvertimeRequests(processedData);
     } catch (error) {
-      console.error('Error fetching leave requests:', error);
-      setError('Failed to load leave requests. Please check the console for details.');
+      console.error('Error fetching overtime requests:', error);
+      setError('Failed to load overtime requests. Please try again later.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleStatusUpdate = async (id, newStatus) => {
+  const handleViewRequest = async (id) => {
     try {
-      await axios.put(`${API_URL}/admin/leaves/${id}/status`, null, {
-        params: { status: newStatus }
-      });
-      setSuccess(`Status updated to ${newStatus} successfully!`);
-      fetchLeaveRequests();
+      const response = await axios.get(`${API_URL}/admin/overtime/${id}`);
+      const requestData = response.data;
+      
+      const formattedRequest = {
+        ...requestData,
+        employeeId: requestData.employeeId || 'N/A',
+        employeeName: requestData.employeeName || 'N/A',
+        category: requestData.category || 'N/A',
+        project: requestData.project || 'N/A',
+        notes: requestData.notes || 'No notes provided',
+        status: requestData.status || 'Pending'
+      };
+      
+      setSelectedRequest(formattedRequest);
+      setViewDialogOpen(true);
     } catch (error) {
-      console.error('Error updating status:', error);
-      setError('Failed to update status. Please try again.');
+      console.error('Error fetching overtime request:', error);
+      setError('Failed to load request details. Please try again.');
     }
   };
 
-  const handleViewRequest = async (id) => {
+  const handleStatusUpdate = async (id, newStatus) => {
     try {
-      const response = await axios.get(`${API_URL}/admin/leaves/${id}`);
-      setSelectedRequest(response.data);
-      setViewDialogOpen(true);
+      await axios.put(`${API_URL}/admin/overtime/${id}/status`, null, {
+        params: { status: newStatus }
+      });
+      setSuccess(`Status updated to ${newStatus} successfully!`);
+      fetchOvertimeRequests();
     } catch (error) {
-      console.error('Error fetching leave request:', error);
-      setError('Failed to fetch leave request details.');
+      console.error('Error updating status:', error);
+      setError('Failed to update status. Please try again.');
     }
   };
 
@@ -124,19 +135,20 @@ const LeaveRequest = () => {
 
   const handleEditSubmit = async () => {
     try {
-      await axios.put(`${API_URL}/admin/leaves/${selectedRequest.id}/status`, null, {
-        params: { status: editFormData.status }
+      await axios.put(`${API_URL}/admin/overtime/${selectedRequest.id}`, {
+        ...selectedRequest,
+        status: editFormData.status
       });
-      setSuccess('Leave request status updated successfully!');
-      fetchLeaveRequests();
+      setSuccess('Overtime request updated successfully!');
+      fetchOvertimeRequests();
       setEditDialogOpen(false);
     } catch (error) {
-      console.error('Error updating leave request status:', error);
-      setError('Failed to update leave request status. Please try again.');
+      console.error('Error updating overtime request:', error);
+      setError('Failed to update overtime request.');
     }
   };
 
-  const filteredRequests = leaveRequests.filter(req => {
+  const filteredRequests = overtimeRequests.filter(req => {
     const matchesId = req.employeeId?.toString().toLowerCase().includes(searchId.toLowerCase());
     const matchesStatus = filterStatus === 'All' || req.status.toLowerCase() === filterStatus.toLowerCase();
     return matchesId && matchesStatus;
@@ -165,11 +177,31 @@ const LeaveRequest = () => {
     }
   };
 
+  const formatDateTime = (dateString) => {
+    if (!dateString) return 'N/A';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleString('en-US', { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch {
+      return 'Invalid Date';
+    }
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     try {
       const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+      return date.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric' 
+      });
     } catch {
       return 'Invalid Date';
     }
@@ -184,12 +216,12 @@ const LeaveRequest = () => {
     <Container maxWidth="xl" sx={{ py: 4 }}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
         <Typography variant="h4" fontWeight={700} color="primary.main">
-          Leave Requests
+          Overtime Requests
         </Typography>
         <Button
           variant="outlined"
           startIcon={<Refresh />}
-          onClick={fetchLeaveRequests}
+          onClick={fetchOvertimeRequests}
           disabled={loading}
           sx={{ borderRadius: '20px', fontWeight: 600 }}
         >
@@ -227,9 +259,9 @@ const LeaveRequest = () => {
               sx={{ borderRadius: 2 }}
             >
               <MenuItem value="All">All</MenuItem>
-              <MenuItem value="PENDING">PENDING</MenuItem>
-              <MenuItem value="APPROVED">APPROVED</MenuItem>
-              <MenuItem value="REJECTED">REJECTED</MenuItem>
+              <MenuItem value="Pending">Pending</MenuItem>
+              <MenuItem value="Approved">Approved</MenuItem>
+              <MenuItem value="Rejected">Rejected</MenuItem>
             </Select>
           </FormControl>
         </Grid>
@@ -257,7 +289,7 @@ const LeaveRequest = () => {
             <Table>
               <TableHead sx={{ backgroundColor: '#1976d2' }}>
                 <TableRow>
-                  {['Employee ID', 'Name', 'Type', 'From', 'To', 'Reason', 'Status', 'Actions'].map((head, idx) => (
+                  {['Employee ID', 'Name', 'Category', 'Start Time', 'End Time', 'Project', 'Status', 'Actions'].map((head, idx) => (
                     <TableCell key={idx} sx={{ color: 'white', fontWeight: 600 }}>
                       {head}
                     </TableCell>
@@ -269,14 +301,10 @@ const LeaveRequest = () => {
                   <TableRow key={request.id} hover>
                     <TableCell>{request.employeeId}</TableCell>
                     <TableCell>{request.employeeName}</TableCell>
-                    <TableCell>{request.leaveType}</TableCell>
-                    <TableCell>{formatDate(request.fromDate)}</TableCell>
-                    <TableCell>{formatDate(request.toDate)}</TableCell>
-                    <TableCell sx={{ maxWidth: 200 }}>
-                      <Box sx={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {request.reason}
-                      </Box>
-                    </TableCell>
+                    <TableCell>{request.category}</TableCell>
+                    <TableCell>{formatDateTime(request.startTime)}</TableCell>
+                    <TableCell>{formatDateTime(request.endTime)}</TableCell>
+                    <TableCell>{request.project}</TableCell>
                     <TableCell>
                       <Chip
                         label={request.status}
@@ -288,26 +316,42 @@ const LeaveRequest = () => {
                     </TableCell>
                     <TableCell>
                       <Box display="flex" gap={1}>
-                        <Tooltip title="View">
-                          <IconButton color="primary" onClick={() => handleViewRequest(request.id)}>
+                        <Tooltip title="View Details">
+                          <IconButton 
+                            color="primary" 
+                            onClick={() => handleViewRequest(request.id)}
+                            aria-label="view details"
+                          >
                             <Visibility />
                           </IconButton>
                         </Tooltip>
                         <Tooltip title="Edit">
-                          <IconButton color="info" onClick={() => handleEditRequest(request)}>
+                          <IconButton 
+                            color="info" 
+                            onClick={() => handleEditRequest(request)}
+                            aria-label="edit"
+                          >
                             <Edit />
                           </IconButton>
                         </Tooltip>
                         
                         {request.status.toLowerCase() === 'pending' && (
                           <>
-                            <Tooltip title="APPROVED">
-                              <IconButton color="success" onClick={() => handleStatusUpdate(request.id, 'APPROVED')}>
+                            <Tooltip title="Approve">
+                              <IconButton 
+                                color="success" 
+                                onClick={() => handleStatusUpdate(request.id, 'Approved')}
+                                aria-label="approve"
+                              >
                                 <Check />
                               </IconButton>
                             </Tooltip>
-                            <Tooltip title="REJECTED">
-                              <IconButton color="error" onClick={() => handleStatusUpdate(request.id, 'REJECTED')}>
+                            <Tooltip title="Reject">
+                              <IconButton 
+                                color="error" 
+                                onClick={() => handleStatusUpdate(request.id, 'Rejected')}
+                                aria-label="reject"
+                              >
                                 <Close />
                               </IconButton>
                             </Tooltip>
@@ -320,7 +364,7 @@ const LeaveRequest = () => {
                   <TableRow>
                     <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
                       <Typography variant="body1" color="textSecondary">
-                        💤 No leave requests found
+                        No overtime requests found
                       </Typography>
                     </TableCell>
                   </TableRow>
@@ -331,13 +375,21 @@ const LeaveRequest = () => {
 
           {filteredRequests.length > recordsPerPage && (
             <Box display="flex" justifyContent="center" alignItems="center" mt={3} gap={2}>
-              <IconButton onClick={handlePrevPage} disabled={currentPage === 0}>
+              <IconButton 
+                onClick={handlePrevPage} 
+                disabled={currentPage === 0}
+                aria-label="previous page"
+              >
                 <ChevronLeft />
               </IconButton>
               <Typography variant="body2" fontWeight={500}>
                 Page {currentPage + 1} of {totalPages}
               </Typography>
-              <IconButton onClick={handleNextPage} disabled={currentPage === totalPages - 1}>
+              <IconButton 
+                onClick={handleNextPage} 
+                disabled={currentPage === totalPages - 1}
+                aria-label="next page"
+              >
                 <ChevronRight />
               </IconButton>
             </Box>
@@ -346,9 +398,14 @@ const LeaveRequest = () => {
       )}
 
       {/* View Dialog */}
-      <Dialog open={viewDialogOpen} onClose={() => setViewDialogOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle>Leave Request Details</DialogTitle>
-        <DialogContent>
+      <Dialog 
+        open={viewDialogOpen} 
+        onClose={() => setViewDialogOpen(false)} 
+        maxWidth="md" 
+        fullWidth
+      >
+        <DialogTitle>Overtime Request Details</DialogTitle>
+        <DialogContent dividers>
           {selectedRequest && (
             <Grid container spacing={2} sx={{ mt: 1 }}>
               <Grid item xs={12} md={6}>
@@ -360,34 +417,43 @@ const LeaveRequest = () => {
                 <Typography>{selectedRequest.employeeName}</Typography>
               </Grid>
               <Grid item xs={12} md={6}>
-                <Typography variant="subtitle1" fontWeight={600}>Leave Type:</Typography>
-                <Typography>{selectedRequest.leaveType}</Typography>
+                <Typography variant="subtitle1" fontWeight={600}>Category:</Typography>
+                <Typography>{selectedRequest.category}</Typography>
               </Grid>
               <Grid item xs={12} md={6}>
                 <Typography variant="subtitle1" fontWeight={600}>Status:</Typography>
                 <Chip
                   label={selectedRequest.status}
                   color={getStatusColor(selectedRequest.status)}
-                  variant="soft"
-                  size="small"
                   sx={{ fontWeight: 600 }}
                 />
               </Grid>
               <Grid item xs={12} md={6}>
-                <Typography variant="subtitle1" fontWeight={600}>From Date:</Typography>
-                <Typography>{formatDate(selectedRequest.fromDate)}</Typography>
+                <Typography variant="subtitle1" fontWeight={600}>Start Time:</Typography>
+                <Typography>{formatDateTime(selectedRequest.startTime)}</Typography>
               </Grid>
               <Grid item xs={12} md={6}>
-                <Typography variant="subtitle1" fontWeight={600}>To Date:</Typography>
-                <Typography>{formatDate(selectedRequest.toDate)}</Typography>
+                <Typography variant="subtitle1" fontWeight={600}>End Time:</Typography>
+                <Typography>{formatDateTime(selectedRequest.endTime)}</Typography>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Typography variant="subtitle1" fontWeight={600}>Project:</Typography>
+                <Typography>{selectedRequest.project}</Typography>
               </Grid>
               <Grid item xs={12}>
-                <Typography variant="subtitle1" fontWeight={600}>Reason:</Typography>
+                <Typography variant="subtitle1" fontWeight={600}>Notes:</Typography>
                 <TextareaAutosize
                   minRows={3}
-                  value={selectedRequest.reason}
+                  value={selectedRequest.notes}
                   readOnly
-                  style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
+                  style={{ 
+                    width: '100%', 
+                    padding: '8px', 
+                    border: '1px solid #ccc', 
+                    borderRadius: '4px',
+                    fontFamily: 'inherit',
+                    fontSize: '0.875rem'
+                  }}
                 />
               </Grid>
               <Grid item xs={12}>
@@ -398,14 +464,25 @@ const LeaveRequest = () => {
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setViewDialogOpen(false)}>Close</Button>
+          <Button 
+            onClick={() => setViewDialogOpen(false)}
+            variant="contained"
+            color="primary"
+          >
+            Close
+          </Button>
         </DialogActions>
       </Dialog>
 
       {/* Edit Dialog */}
-      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Edit Leave Request Status</DialogTitle>
-        <DialogContent>
+      <Dialog 
+        open={editDialogOpen} 
+        onClose={() => setEditDialogOpen(false)} 
+        maxWidth="sm" 
+        fullWidth
+      >
+        <DialogTitle>Edit Overtime Request Status</DialogTitle>
+        <DialogContent dividers>
           {selectedRequest && (
             <Grid container spacing={2} sx={{ mt: 1 }}>
               <Grid item xs={12}>
@@ -413,13 +490,13 @@ const LeaveRequest = () => {
                 <Typography>{selectedRequest.employeeName} (ID: {selectedRequest.employeeId})</Typography>
               </Grid>
               <Grid item xs={12}>
-                <Typography variant="subtitle1" fontWeight={600}>Leave Type:</Typography>
-                <Typography>{selectedRequest.leaveType}</Typography>
+                <Typography variant="subtitle1" fontWeight={600}>Category:</Typography>
+                <Typography>{selectedRequest.category}</Typography>
               </Grid>
               <Grid item xs={12}>
-                <Typography variant="subtitle1" fontWeight={600}>Dates:</Typography>
+                <Typography variant="subtitle1" fontWeight={600}>Time Period:</Typography>
                 <Typography>
-                  {formatDate(selectedRequest.fromDate)} to {formatDate(selectedRequest.toDate)}
+                  {formatDateTime(selectedRequest.startTime)} to {formatDateTime(selectedRequest.endTime)}
                 </Typography>
               </Grid>
               <Grid item xs={12}>
@@ -430,9 +507,9 @@ const LeaveRequest = () => {
                     onChange={(e) => setEditFormData({...editFormData, status: e.target.value})}
                     label="Status"
                   >
-                    <MenuItem value="PENDING">PENDING</MenuItem>
-                    <MenuItem value="APPROVED">APPROVED</MenuItem>
-                    <MenuItem value="REJECTED">REJECTED</MenuItem>
+                    <MenuItem value="Pending">Pending</MenuItem>
+                    <MenuItem value="Approved">Approved</MenuItem>
+                    <MenuItem value="Rejected">Rejected</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
@@ -440,7 +517,12 @@ const LeaveRequest = () => {
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setEditDialogOpen(false)}>Cancel</Button>
+          <Button 
+            onClick={() => setEditDialogOpen(false)}
+            color="inherit"
+          >
+            Cancel
+          </Button>
           <Button 
             onClick={handleEditSubmit}
             color="primary"
@@ -454,4 +536,4 @@ const LeaveRequest = () => {
   );
 };
 
-export default LeaveRequest;
+export default OvertimeRequest;
