@@ -93,6 +93,10 @@ const EditEmployee = () => {
     },
     identification: {
       immigrationStatus: "",
+      panCardNumber: "",
+      addressProof: "",
+      addressDocumentName: "",
+      addressDocumentNumber: "",
       personalTaxId: "",
       socialInsurance: "",
       idProof: "",
@@ -680,25 +684,71 @@ const EditEmployee = () => {
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="Personal Tax ID"
-                  name="identification.personalTaxId"
-                  value={employee.identification?.personalTaxId || ""}
+                  label="Pan Card Number"
+                  name="identification.panCardNumber"
+                  value={employee.identification?.panCardNumber || ""}
                   onChange={handleChange}
                   variant="outlined"
                   sx={{ mb: 2 }}
                 />
               </Grid>
+
               <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Social Insurance"
-                  name="identification.socialInsurance"
-                  value={employee.identification?.socialInsurance || ""}
-                  onChange={handleChange}
-                  variant="outlined"
-                  sx={{ mb: 2 }}
-                />
+                <FormControl fullWidth sx={{ mb: 2 }}>
+                  <InputLabel>Address Proof</InputLabel>
+                  <Select
+                    name="identification.idProof"
+                    value={employee.identification?.addressProof || ""}
+                    onChange={handleChange}
+                    label="Address Proof"
+                    variant="outlined"
+                  >
+                    <MenuItem value="Driving Licence">Driving Licence</MenuItem>
+                    <MenuItem value="Passport">Passport</MenuItem>
+                    <MenuItem value="Other">Other</MenuItem>
+                  </Select>
+                </FormControl>
               </Grid>
+              {employee.identification?.addressProof && employee.identification?.addressProof !== "Other" && (
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Address Document Number"
+                    name="identification.addressDocumentNumber"
+                    value={employee.identification?.addressDocumentNumber || ""}
+                    onChange={handleChange}
+                    variant="outlined"
+                    sx={{ mb: 2 }}
+                  />
+                </Grid>
+              )}
+              {employee.identification?.addressProof === "Other" && (
+                <>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Address Document Name"
+                      name="identification.addressDocumentName"
+                      value={employee.identification?.addressDocumentName || ""}
+                      onChange={handleChange}
+                      variant="outlined"
+                      sx={{ mb: 2 }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Address Document Number"
+                      name="identification.addressDocumentNumber"
+                      value={employee.identification?.addressDocumentNumber || ""}
+                      onChange={handleChange}
+                      variant="outlined"
+                      sx={{ mb: 2 }}
+                    />
+                  </Grid>
+                </>
+              )}
+              
               <Grid item xs={12} md={6}>
                 <FormControl fullWidth sx={{ mb: 2 }}>
                   <InputLabel>ID Proof</InputLabel>

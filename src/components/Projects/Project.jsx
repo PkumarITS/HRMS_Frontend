@@ -10,13 +10,12 @@ import {
 import {
   Edit, Delete, Add, Search, DateRange, AttachMoney, PriorityHigh,
   Notifications, Description, Category, CheckCircle, HourglassEmpty,
-  People, Assignment, Visibility
+  People, Assignment, Visibility, Person
 } from "@mui/icons-material";
 import { styled } from "@mui/material/styles";
 import axios from "axios";
 import Cookies from "js-cookie";
 
-// Add axios interceptor for auth tokens
 axios.interceptors.request.use(config => {
   const token = Cookies.get("token");
   if (token) {
@@ -48,10 +47,12 @@ const StatusChip = styled(Chip)(({ status }) => ({
 }));
 
 const Project = () => {
-  // State declarations
   const [employees, setEmployees] = useState([]);
+  const [managers, setManagers] = useState([]);
   const [employeeSearch, setEmployeeSearch] = useState("");
+  const [managerSearch, setManagerSearch] = useState("");
   const [filteredEmployees, setFilteredEmployees] = useState([]);
+  const [filteredManagers, setFilteredManagers] = useState([]);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -66,7 +67,9 @@ const Project = () => {
     priority: "MEDIUM",
     budget: "",
     description: "",
-    status: "STARTED"
+    status: "STARTED",
+    managerId: "",
+    managerName: ""
   });
   const [openAssignmentModal, setOpenAssignmentModal] = useState(false);
   const [currentProjectId, setCurrentProjectId] = useState(null);
@@ -88,7 +91,36 @@ const Project = () => {
   const [openViewAssignments, setOpenViewAssignments] = useState(false);
   const [projectToEdit, setProjectToEdit] = useState(null);
 
-  // Event handlers
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [projectsRes, managersRes] = await Promise.all([
+          axios.get(`${API_BASE_URL}/admin/projects`),
+          axios.get(`${API_BASE_URL}/admin/managers`)
+        ]);
+        
+        setProjects(projectsRes.data || []);
+        
+        // Ensure managers is always an array
+        const managersData = Array.isArray(managersRes?.data) ? managersRes.data : [];
+        setManagers(managersData);
+        setFilteredManagers(managersData);
+        
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        setSnackbar({
+          open: true,
+          message: "Failed to fetch data",
+          severity: "error"
+        });
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
   const handleSearchChange = (e) => setSearchQuery(e.target.value);
   const handleTabChange = (e, newValue) => setTab(newValue);
   const handleOpenModal = () => setOpenModal(true);
@@ -105,7 +137,9 @@ const Project = () => {
       priority: project.priority,
       budget: project.budget,
       description: project.description,
-      status: project.status
+      status: project.status,
+      managerId: project.managerId || "",
+      managerName: project.managerName || ""
     });
     setOpenModal(true);
   };
@@ -125,33 +159,11 @@ const Project = () => {
 
   const handleCloseAssignmentModal = () => setOpenAssignmentModal(false);
 
-  // Fetch projects
-  useEffect(() => {
-    const fetchProjects = async () => {
-      try {
-        setLoading(true);
-        const response = await axios.get(`${API_BASE_URL}/admin/projects`);
-        setProjects(response.data);
-      } catch (error) {
-        console.error("Error fetching projects:", error);
-        setSnackbar({
-          open: true,
-          message: error.response?.data?.message || "Failed to fetch projects",
-          severity: "error"
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchProjects();
-  }, []);
-
-  // Fetch employees with search
   const fetchEmployees = async (searchQuery = "") => {
     try {
       const response = await axios.get(`${API_BASE_URL}/admin/employees/search?query=${searchQuery}`);
-      setEmployees(response.data.data);
-      setFilteredEmployees(response.data.data);
+      setEmployees(response.data?.data || []);
+      setFilteredEmployees(response.data?.data || []);
     } catch (error) {
       console.error("Error fetching employees:", error);
       setSnackbar({
@@ -162,7 +174,6 @@ const Project = () => {
     }
   };
 
-  // Handle employee search
   const handleEmployeeSearch = async (searchValue) => {
     setEmployeeSearch(searchValue);
     if (searchValue.length > 0) {
@@ -172,11 +183,23 @@ const Project = () => {
     }
   };
 
-  // Fetch assignments for a project
+  const handleManagerSearch = (searchValue) => {
+    setManagerSearch(searchValue);
+    if (searchValue.length > 0) {
+      const filtered = managers.filter(manager =>
+        (manager.name?.toLowerCase().includes(searchValue.toLowerCase()) ||
+        manager.empId?.toLowerCase().includes(searchValue.toLowerCase()))
+      );
+      setFilteredManagers(filtered);
+    } else {
+      setFilteredManagers(managers);
+    }
+  };
+
   const fetchAssignments = async (projectId) => {
     try {
       const response = await axios.get(`${API_BASE_URL}/admin/assignments/project/${projectId}`);
-      setAssignments(response.data);
+      setAssignments(response.data || []);
     } catch (error) {
       console.error("Error fetching assignments:", error);
       setSnackbar({
@@ -187,7 +210,6 @@ const Project = () => {
     }
   };
 
-  // Create project
   const handleCreateProject = async () => {
     if (!newProject.name || !newProject.category) {
       setSnackbar({
@@ -231,7 +253,6 @@ const Project = () => {
     }
   };
 
-  // Delete project
   const handleDeleteProject = async (id) => {
     if (window.confirm("Are you sure you want to delete this project?")) {
       try {
@@ -253,7 +274,6 @@ const Project = () => {
     }
   };
 
-  // Update project status
   const handleStatusChange = async (id, newStatus) => {
     try {
       const response = await axios.patch(
@@ -280,7 +300,6 @@ const Project = () => {
     }
   };
 
-  // Assignment handlers
   const handleAssignmentChange = (e) => {
     const { name, value } = e.target;
     setNewAssignment(prev => ({
@@ -397,14 +416,12 @@ const Project = () => {
     }
   };
 
-  // Filter projects based on tab and search query
   const filteredProjects = projects.filter(
     (project) =>
       (tab === "ALL" || project.status === tab) &&
-      project.name.toLowerCase().includes(searchQuery.toLowerCase())
+      project.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Helper functions
   const getStatusIcon = (status) => {
     switch (status) {
       case "COMPLETED":
@@ -475,7 +492,9 @@ const Project = () => {
               priority: "MEDIUM",
               budget: "",
               description: "",
-              status: "STARTED"
+              status: "STARTED",
+              managerId: "",
+              managerName: ""
             });
             handleOpenModal();
           }}
@@ -618,6 +637,16 @@ const Project = () => {
                 >
                   <Category fontSize="small" /> {project.category}
                 </Typography>
+
+                {project.managerId && (
+                  <Typography
+                    variant="body2"
+                    sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}
+                  >
+                    <Person fontSize="small" />
+                    Manager: {project.managerName} ({project.managerId})
+                  </Typography>
+                )}
 
                 <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
                   <Typography
@@ -763,6 +792,59 @@ const Project = () => {
               }
               sx={{ mb: 2 }}
             />
+            
+            {/* Manager Selection */}
+            <Autocomplete
+              freeSolo
+              options={filteredManagers || []}
+              getOptionLabel={(option) => 
+                option ? `${option.empId} - ${option.name}` : ""
+              }
+              inputValue={managerSearch}
+              onInputChange={(event, newInputValue) => {
+                handleManagerSearch(newInputValue);
+              }}
+              onChange={(event, newValue) => {
+                if (newValue) {
+                  setNewProject({ 
+                    ...newProject, 
+                    managerId: newValue.empId,
+                    managerName: newValue.name
+                  });
+                } else {
+                  setNewProject({
+                    ...newProject,
+                    managerId: "",
+                    managerName: ""
+                  });
+                }
+              }}
+              value={managers?.find(m => m.empId === newProject.managerId) || null}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Project Manager"
+                  variant="outlined"
+                  fullWidth
+                  sx={{ mb: 2 }}
+                  InputProps={{
+                    ...params.InputProps,
+                    startAdornment: <Person sx={{ mr: 1 }} />
+                  }}
+                />
+              )}
+              renderOption={(props, option) => (
+                <li {...props}>
+                  <Box sx={{ display: "flex", flexDirection: "column" }}>
+                    <Typography>{option.empId}</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {option.name}
+                    </Typography>
+                  </Box>
+                </li>
+              )}
+            />
+
             <FormControl fullWidth sx={{ mb: 2 }}>
               <InputLabel>Project Category</InputLabel>
               <Select
@@ -894,9 +976,9 @@ const Project = () => {
           <Box sx={{ mb: 3 }}>
             <Autocomplete
               freeSolo
-              options={filteredEmployees}
+              options={filteredEmployees || []}
               getOptionLabel={(option) => 
-                `${option.empId} - ${option.name}` || ""
+                option ? `${option.empId} - ${option.name}` : ""
               }
               inputValue={employeeSearch}
               onInputChange={(event, newInputValue) => {
