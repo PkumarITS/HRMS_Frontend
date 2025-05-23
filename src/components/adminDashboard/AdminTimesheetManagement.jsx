@@ -63,6 +63,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import autoTable from 'jspdf-autotable';
+import logo from '../images/logo.png';
 
 const API_BASE_URL = "http://localhost:1010";
 
