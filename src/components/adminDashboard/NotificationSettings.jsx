@@ -399,15 +399,11 @@ const NotificationSettings = () => {
     setSnackbar(prev => ({ ...prev, open: false }));
   };
  
-  // System-generated escalation email template
-  const escalationEmailTemplate = (employeeName) => `
-Dear ${employeeName},
-
  const escalationEmailTemplate = () => `
 Dear Team,
 
 This is an urgent notification regarding your overdue timesheet submission.
- 
+
 This matter has been escalated to the following management team members:
 ${settings.escalationSettings.recipients.map(email => `- ${email}`).join('\n')}
 
@@ -415,19 +411,11 @@ Required Actions:
 1. Submit your timesheet immediately through the employee portal
 2. Reply to this email to confirm submission
 3. Contact your supervisor if you encounter any issues
- 
+
 Consequences of non-compliance:
 - Immediate payroll processing delays
 - Formal disciplinary action
 - Further escalation to senior leadership
-
- 
-The deadline for resolution is ${settings.escalationSettings.day} at ${settings.escalationSettings.time}.
- 
-Sincerely,
-Timesheet Compliance Team
-`;
-
 
 The deadline for resolution is ${settings.escalationSettings.day} at ${settings.escalationSettings.time}.
 
