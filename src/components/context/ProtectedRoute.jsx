@@ -36,7 +36,8 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
             default:
                 redirectPath = '/';
         }
-        return <Navigate to={redirectPath} replace />;
+        // return <Navigate to={redirectPath} replace />;
+         return <Navigate to="/unauthorized" state={{ from: location }} replace />;
     }
 
     return children;

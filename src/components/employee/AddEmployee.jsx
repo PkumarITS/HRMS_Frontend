@@ -77,6 +77,10 @@ const Employee = () => {
     },
     identification: {
       immigrationStatus: "",
+      panCardNumber: "",
+      addressProof: "",
+      addressDocumentName: "",
+      addressDocumentNumber: "",
       personalTaxId: "",
       socialInsurance: "",
       idProof: "",
@@ -133,25 +137,43 @@ const Employee = () => {
   const token = Cookies.get("token");
 
   useEffect(() => {
-    const fetchExistingEmpIds = async () => {
+    const fetchInitialData = async () => {
       try {
-        const response = await fetch("http://localhost:1010/admin/employees/ids", {
+        // Fetch next employee ID
+        const idResponse = await fetch("http://localhost:1010/admin/employees/next-emp-id", {
           headers: {
             "Authorization": `Bearer ${token}`
           }
         });
-        if (response.ok) {
-          const responseData = await response.json();
-          // Access the data property from the response
-          const ids = responseData.data || [];
-          setExistingEmpIds(ids.map(id => id.toUpperCase()));
+
+        if (idResponse.ok) {
+          const idData = await idResponse.json();
+          setFormData(prev => ({
+            ...prev,
+            personal: {
+              ...prev.personal,
+              empId: idData.data
+            }
+          }));
+        }
+
+        // Fetch existing employee IDs
+        const idsResponse = await fetch("http://localhost:1010/admin/employees/ids", {
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+
+        if (idsResponse.ok) {
+          const idsData = await idsResponse.json();
+          setExistingEmpIds(idsData.data.map(id => id.toUpperCase()));
         }
       } catch (error) {
-        console.error("Failed to fetch existing employee IDs:", error);
+        console.error("Failed to fetch initial data:", error);
       }
     };
 
-    fetchExistingEmpIds();
+    fetchInitialData();
   }, [token]);
 
   const handleNext = () => {
@@ -251,7 +273,8 @@ const Employee = () => {
         'familyDoctorContactNumber', 'personalTaxId', 'socialInsurance',
         'documentName', 'permanentAddress', 'ethnicity', 'payGrade',
         'workstationId', 'terminationDate', 'shiftStartTime', 'shiftEndTime',
-        'indirectManager', 'firstLevelApprover', 'secondLevelApprover', 'thirdLevelApprover'
+        'indirectManager', 'firstLevelApprover', 'secondLevelApprover', 'thirdLevelApprover',
+        'addressDocumentName'
       ];
 
       if (!value && !optionalFields.includes(fieldName)) {
@@ -260,13 +283,13 @@ const Employee = () => {
       }
 
       switch (fieldName) {
-        case "empId":
-          if (!/^[A-Z0-9]+$/.test(value)) {
-            newErrors[field] = "Must contain only uppercase letters and numbers";
-          } else if (existingEmpIds.includes(value)) {
-            newErrors[field] = "Employee ID must be unique";
-          }
-          break;
+        // case "empId":
+        //   if (!/^[A-Z0-9]+$/.test(value)) {
+        //     newErrors[field] = "Must contain only uppercase letters and numbers";
+        //   } else if (existingEmpIds.includes(value)) {
+        //     newErrors[field] = "Employee ID must be unique";
+        //   }
+        //   break;
         case "mobileNumber":
         case "primaryEmergencyContactNumber":
           if (!/^\d{10,15}$/.test(value)) {
@@ -291,24 +314,26 @@ const Employee = () => {
           }
           break;
         case "documentNumber":
-          validateDocumentNumber(newErrors, field, value);
+          validateDocumentNumber(newErrors, field, value, formData.identification.idProof);
+          break;
+        case "addressDocumentNumber":
+          validateDocumentNumber(newErrors, field, value, formData.identification.addressProof);
           break;
         case "personalTaxId":
           if (value && !/^\d{10}$/.test(value)) {
             newErrors[field] = "Must be exactly 10 digits if provided";
           }
           break;
+
       }
     });
     return newErrors;
   };
 
-  const validateDocumentNumber = (errors, field, value) => {
-    const idProof = formData.identification.idProof;
+  const validateDocumentNumber = (errors, field, value, proofType) => {
+    if (!proofType) return;
 
-    if (!idProof) return;
-
-    switch (idProof) {
+    switch (proofType) {
       case "Aadhar Card":
         if (!/^\d{12}$/.test(value)) {
           errors[field] = "Aadhar must be 12 digits";
@@ -330,6 +355,7 @@ const Employee = () => {
         }
         break;
       case "Other":
+      case "Other Address Proof":
         if (!value) {
           errors[field] = "Document number required";
         }
@@ -341,7 +367,7 @@ const Employee = () => {
     switch (step) {
       case 0: // Personal
         return [
-          "personal.empId",
+          // "personal.empId",
           "personal.firstName",
           "personal.lastName",
           "personal.dateOfBirth",
@@ -352,6 +378,9 @@ const Employee = () => {
       case 1: // Identification
         return [
           "identification.immigrationStatus",
+          "identification.panCardNumber",
+          "identification.addressProof",
+          "identification.addressDocumentNumber",
           "identification.idProof",
           "identification.documentNumber"
         ];
@@ -508,14 +537,17 @@ const Employee = () => {
               margin="normal"
               label="Employee ID"
               name="personal.empId"
-              placeholder="EMP0000"
               value={formData.personal.empId}
               onChange={handleChange}
               required
               error={!!getError("personal.empId")}
-              helperText={getError("personal.empId") || "Must be unique and in uppercase"}
-              inputProps={{
-                style: { textTransform: 'uppercase' }
+              helperText={getError("personal.empId")}
+              InputProps={{
+                readOnly: true,
+                style: {
+                  textTransform: 'uppercase',
+                  backgroundColor: '#f5f5f5'
+                }
               }}
             />
             <TextField
@@ -668,6 +700,87 @@ const Employee = () => {
                 </Typography>
               }
             </FormControl>
+
+            <TextField
+              fullWidth
+              margin="normal"
+              label="PAN Card Number"
+              name="identification.panCardNumber"
+              value={formData.identification.panCardNumber || ''}
+              onChange={handleChange}
+              required
+              error={!!getError("identification.panCardNumber")}
+              helperText={getError("identification.panCardNumber") || "Must be in format AAAAA9999A"}
+              inputProps={{
+                maxLength: 10,
+                pattern: '[A-Z]{5}[0-9]{4}[A-Z]{1}'
+              }}
+            />
+
+            <FormControl
+              fullWidth
+              margin="normal"
+              error={!!getError("identification.addressProof")}
+            >
+              <InputLabel>Address Proof</InputLabel>
+              <Select
+                name="identification.addressProof"
+                value={formData.identification.addressProof}
+                onChange={handleChange}
+                label="Address Proof"
+                required
+              >
+                <MenuItem value="Driving Licence">Driving Licence</MenuItem>
+                <MenuItem value="Passport">Passport</MenuItem>
+                <MenuItem value="Other Address Proof">Other</MenuItem>
+              </Select>
+              {getError("identification.addressProof") &&
+                <Typography variant="caption" color="error">
+                  {getError("identification.addressProof")}
+                </Typography>
+              }
+            </FormControl>
+
+            {formData.identification.addressProof === "Other Address Proof" && (
+              <>
+                <TextField
+                  fullWidth
+                  margin="normal"
+                  label="Address Document Name"
+                  name="identification.addressDocumentName"
+                  value={formData.identification.addressDocumentName}
+                  onChange={handleChange}
+                  required
+                  error={!!getError("identification.addressDocumentName")}
+                  helperText={getError("identification.addressDocumentName")}
+                />
+              </>
+            )}
+
+            <TextField
+              fullWidth
+              margin="normal"
+              label={
+                formData.identification.addressProof === "Driving Licence" ? "Driving Licence Number" :
+                  formData.identification.addressProof === "Passport" ? "Passport Number" :
+                    formData.identification.addressProof === "Other Address Proof" ? "Address Document Number" :
+                      "Address Proof Number"
+              }
+              name="identification.addressDocumentNumber"
+              value={formData.identification.addressDocumentNumber}
+              onChange={handleChange}
+              required
+              error={!!getError("identification.addressDocumentNumber")}
+              helperText={getError("identification.addressDocumentNumber") ||
+                (formData.identification.addressProof === "Driving Licence" ? "Driving Licence Number must be 16 characters" :
+                  formData.identification.addressProof === "Passport" ? "Passport Number must be 8 characters" : "")
+              }
+              inputProps={{
+                maxLength:
+                  formData.identification.addressProof === "Driving Licence" ? 16 :
+                    formData.identification.addressProof === "Passport" ? 8 : 20,
+              }}
+            />
 
             {/* <TextField
               fullWidth

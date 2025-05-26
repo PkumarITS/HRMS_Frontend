@@ -63,8 +63,6 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import autoTable from 'jspdf-autotable';
-
-// Import the logo image
 import logo from '../images/logo.png';
 
 const API_BASE_URL = "http://localhost:1010";
@@ -89,24 +87,84 @@ const AdminTimesheetManagement = () => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notificationLoading, setNotificationLoading] = useState(false);
-  const [statusFilter, setStatusFilter] = useState("");
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [exportFilters, setExportFilters] = useState({
     status: "All Statuses",
     startDate: null,
     endDate: new Date(),
-    role: "All Roles",
-    project: "All Projects"
+    project: "All Projects",
+    manager: "All Managers"
   });
   const [appliedFilters, setAppliedFilters] = useState({
     status: "All Statuses",
     project: "All Projects",
     startDate: null,
-    endDate: new Date()
+    endDate: new Date(),
+    manager: "All Managers"
   });
   const [exportType, setExportType] = useState('excel');
   const [projects, setProjects] = useState([]);
+  const [projectManagers, setProjectManagers] = useState({});
+  const [managers, setManagers] = useState([]);
+  const [managerProjects, setManagerProjects] = useState([]);
+  const [filterManagerProjects, setFilterManagerProjects] = useState([]);
+
+  const fetchManagers = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/admin/managers`);
+      setManagers(response.data || []);
+    } catch (error) {
+      console.error("Error fetching managers:", error);
+      showSnackbar("Failed to load managers", "error");
+    }
+  };
+
+  const fetchProjectsForManager = async (managerId, isExport = false) => {
+    try {
+      if (managerId === "All Managers") {
+        if (isExport) {
+          setManagerProjects(projects);
+        } else {
+          setFilterManagerProjects(projects);
+        }
+        return;
+      }
+      
+      const response = await axios.get(`${API_BASE_URL}/admin/projects?managerId=${managerId}`);
+      if (isExport) {
+        setManagerProjects(response.data || []);
+      } else {
+        setFilterManagerProjects(response.data || []);
+      }
+    } catch (error) {
+      console.error("Error fetching projects for manager:", error);
+      showSnackbar("Failed to load manager's projects", "error");
+    }
+  };
+
+  const fetchProjects = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/admin/projects`);
+      if (response.data && Array.isArray(response.data)) {
+        setProjects(response.data);
+        setManagerProjects(response.data);
+        setFilterManagerProjects(response.data);
+        
+        const managersMap = {};
+        response.data.forEach(project => {
+          managersMap[project.id] = {
+            managerId: project.managerId || "N/A",
+            managerName: project.managerName || "No Manager"
+          };
+        });
+        setProjectManagers(managersMap);
+      }
+    } catch (error) {
+      console.error("Error fetching projects:", error);
+      showSnackbar("Failed to load projects", "error");
+    }
+  };
 
   const fetchTimesheets = async () => {
     try {
@@ -116,36 +174,66 @@ const AdminTimesheetManagement = () => {
         throw new Error("Invalid data format received from server");
       }
   
-      const data = response.data.map(ts => ({
-        id: ts.timesheetId || "N/A",
-        employeeId: ts.empId || "N/A",
-        employeeName: ts.empName || "Unknown Employee",
-        employeeEmail: `${ts.empName?.toLowerCase()?.replace(/\s+/g, '')}@company.com` || "unknown@company.com",
-        project: ts.projectName || "N/A",
-        task: ts.taskName || "N/A",
-        startDate: ts.weekStart || new Date().toISOString(),
-        endDate: ts.weekEnd || new Date().toISOString(),
-        status: ts.status === "SUBMITTED" ? "Pending" : ts.status || "Unknown",
-        hours: [
-          ts.mondayHours || 0,
-          ts.tuesdayHours || 0,
-          ts.wednesdayHours || 0,
-          ts.thursadyHours || 0,
-          ts.fridayHours || 0,
-          ts.saturdayHours || 0,
-          ts.sundayHours || 0
-        ],
-        totalHours: (ts.mondayHours || 0) + 
-                   (ts.tuesdayHours || 0) + 
-                   (ts.wednesdayHours || 0) + 
-                   (ts.thursadyHours || 0) + 
-                   (ts.fridayHours || 0) + 
-                   (ts.saturdayHours || 0) + 
-                   (ts.sundayHours || 0),
-        submittedAt: ts.submitted_at || null,
-        comments: ts.comments || "",
-        rejectionReason: ts.status === "REJECTED" ? (ts.rejectionReason || "Rejected by admin") : "",
-        role: ts.role || "Employee"
+      if (projects.length === 0) {
+        await fetchProjects();
+      }
+
+      const data = await Promise.all(response.data.map(async (ts) => {
+        let managerInfo = projectManagers[ts.projectId];
+        
+        if (!managerInfo) {
+          try {
+            const projectResponse = await axios.get(`${API_BASE_URL}/admin/projects/${ts.projectId}`);
+            managerInfo = {
+              managerId: projectResponse.data.managerId || "N/A",
+              managerName: projectResponse.data.managerName || "No Manager"
+            };
+            setProjectManagers(prev => ({
+              ...prev,
+              [ts.projectId]: managerInfo
+            }));
+          } catch (error) {
+            console.error(`Error fetching project ${ts.projectId}:`, error);
+            managerInfo = {
+              managerId: "N/A",
+              managerName: "No Manager"
+            };
+          }
+        }
+        
+        return {
+          id: ts.timesheetId || "N/A",
+          employeeId: ts.empId || "N/A",
+          employeeName: ts.empName || "Unknown Employee",
+          employeeEmail: `${ts.empName?.toLowerCase()?.replace(/\s+/g, '')}@company.com` || "unknown@company.com",
+          project: ts.projectName || "N/A",
+          projectId: ts.projectId || null,
+          task: ts.taskName || "N/A",
+          startDate: ts.weekStart || new Date().toISOString(),
+          endDate: ts.weekEnd || new Date().toISOString(),
+          status: ts.status === "SUBMITTED" ? "Pending" : ts.status || "Unknown",
+          hours: [
+            ts.mondayHours || 0,
+            ts.tuesdayHours || 0,
+            ts.wednesdayHours || 0,
+            ts.thursadyHours || 0,
+            ts.fridayHours || 0,
+            ts.saturdayHours || 0,
+            ts.sundayHours || 0
+          ],
+          totalHours: (ts.mondayHours || 0) + 
+                     (ts.tuesdayHours || 0) + 
+                     (ts.wednesdayHours || 0) + 
+                     (ts.thursadyHours || 0) + 
+                     (ts.fridayHours || 0) + 
+                     (ts.saturdayHours || 0) + 
+                     (ts.sundayHours || 0),
+          submittedAt: ts.submitted_at || null,
+          comments: ts.comments || "",
+          rejectionReason: ts.status === "REJECTED" ? (ts.rejectionReason || "Rejected by admin") : "",
+          managerId: managerInfo.managerId,
+          managerName: managerInfo.managerName
+        };
       }));
   
       setTimesheets(data);
@@ -160,16 +248,91 @@ const AdminTimesheetManagement = () => {
     }
   };
 
-  const fetchProjects = async () => {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/admin/projects`);
-      if (response.data && Array.isArray(response.data)) {
-        setProjects(response.data);
-      }
-    } catch (error) {
-      console.error("Error fetching projects:", error);
-      showSnackbar("Failed to load projects", "error");
+  const applySearch = (term, data) => {
+    if (!term) return data;
+    
+    const lowercasedTerm = term.toLowerCase();
+    
+    return data.filter(timesheet => {
+      const searchFields = [
+        timesheet.id,
+        timesheet.employeeId,
+        timesheet.employeeName,
+        timesheet.managerId,
+        timesheet.managerName,
+        timesheet.project,
+        timesheet.task,
+        timesheet.status,
+        timesheet.comments,
+        timesheet.rejectionReason,
+        format(parseISO(timesheet.startDate), "MMM dd, yyyy"),
+        format(parseISO(timesheet.endDate), "MMM dd, yyyy"),
+        timesheet.submittedAt ? format(parseISO(timesheet.submittedAt), "MMM dd, yyyy h:mm a") : "",
+        timesheet.totalHours.toString()
+      ];
+      
+      return searchFields.some(
+        field => field && field.toString().toLowerCase().includes(lowercasedTerm)
+      );
+    });
+  };
+
+  const applyFilters = () => {
+    let filtered = timesheets;
+    
+    filtered = applySearch(searchTerm, filtered);
+    
+    if (appliedFilters.status && appliedFilters.status !== "All Statuses") {
+      filtered = filtered.filter(ts => 
+        appliedFilters.status === "SUBMITTED" 
+          ? ts.status === "Pending" 
+          : ts.status.toUpperCase().includes(appliedFilters.status.toUpperCase())
+      );
     }
+    
+    if (appliedFilters.project && appliedFilters.project !== "All Projects") {
+      filtered = filtered.filter(ts => 
+        ts.project === appliedFilters.project
+      );
+    }
+    
+    if (appliedFilters.manager && appliedFilters.manager !== "All Managers") {
+      filtered = filtered.filter(ts => 
+        ts.managerId === appliedFilters.manager
+      );
+    }
+    
+    if (appliedFilters.startDate && appliedFilters.endDate) {
+      const startDate = new Date(appliedFilters.startDate);
+      const endDate = new Date(appliedFilters.endDate);
+      
+      filtered = filtered.filter(ts => {
+        const tsDate = new Date(ts.startDate);
+        return tsDate >= startDate && tsDate <= endDate;
+      });
+    }
+    
+    setFilteredTimesheets(filtered);
+    setPage(0);
+    setFilterModalOpen(false);
+  };
+
+  const handleSearchChange = (e) => {
+    const term = e.target.value;
+    setSearchTerm(term);
+    
+    if (term === "") {
+      applyFilters();
+    } else {
+      const searched = applySearch(term, timesheets);
+      setFilteredTimesheets(searched);
+      setPage(0);
+    }
+  };
+
+  const resetSearch = () => {
+    setSearchTerm("");
+    applyFilters();
   };
 
   const fetchNotifications = async () => {
@@ -211,77 +374,6 @@ const AdminTimesheetManagement = () => {
 
   const handleNotificationClose = () => {
     setNotificationAnchorEl(null);
-  };
-
-  useEffect(() => {
-    fetchTimesheets();
-    fetchProjects();
-    fetchNotifications();
-    
-    const interval = setInterval(() => {
-      fetchNotifications();
-    }, 30000);
-    
-    return () => clearInterval(interval);
-  }, []);
-
-  const applyFilters = () => {
-    let filtered = timesheets;
-    
-    if (searchTerm) {
-      filtered = filtered.filter(ts => 
-        Object.values(ts).some(
-          value => value && value.toString().toLowerCase().includes(searchTerm.toLowerCase())
-        )
-      );
-    }
-    
-    if (appliedFilters.status && appliedFilters.status !== "All Statuses") {
-      filtered = filtered.filter(ts => 
-        appliedFilters.status === "SUBMITTED" 
-          ? ts.status === "Pending" 
-          : ts.status.toUpperCase().includes(appliedFilters.status.toUpperCase())
-      );
-    }
-    
-    if (appliedFilters.project && appliedFilters.project !== "All Projects") {
-      filtered = filtered.filter(ts => 
-        ts.project === appliedFilters.project
-      );
-    }
-    
-    if (appliedFilters.startDate && appliedFilters.endDate) {
-      const startDate = new Date(appliedFilters.startDate);
-      const endDate = new Date(appliedFilters.endDate);
-      
-      filtered = filtered.filter(ts => {
-        const tsDate = new Date(ts.startDate);
-        return tsDate >= startDate && tsDate <= endDate;
-      });
-    }
-    
-    setFilteredTimesheets(filtered);
-    setPage(0);
-    setFilterModalOpen(false);
-  };
-
-  const resetFilters = () => {
-    setAppliedFilters({
-      status: "All Statuses",
-      project: "All Projects",
-      startDate: null,
-      endDate: new Date()
-    });
-    setFilteredTimesheets(timesheets);
-    setPage(0);
-    setFilterModalOpen(false);
-  };
-
-  const handleFilterChange = (field, value) => {
-    setAppliedFilters(prev => ({
-      ...prev,
-      [field]: value
-    }));
   };
 
   const handleMenuOpen = (event, timesheet) => {
@@ -496,9 +588,10 @@ const AdminTimesheetManagement = () => {
       status: "All Statuses",
       startDate: null,
       endDate: new Date(),
-      role: "All Roles",
-      project: "All Projects"
+      project: "All Projects",
+      manager: "All Managers"
     });
+    setManagerProjects(projects);
   };
 
   const handleFilterModalOpen = () => {
@@ -509,11 +602,21 @@ const AdminTimesheetManagement = () => {
     setFilterModalOpen(false);
   };
 
-  const handleExportFilterChange = (field, value) => {
-    setExportFilters(prev => ({
-      ...prev,
-      [field]: value
-    }));
+  const handleExportFilterChange = async (field, value) => {
+    if (field === 'manager') {
+      setExportFilters(prev => ({
+        ...prev,
+        [field]: value,
+        project: "All Projects"
+      }));
+      
+      await fetchProjectsForManager(value, true);
+    } else {
+      setExportFilters(prev => ({
+        ...prev,
+        [field]: value
+      }));
+    }
   };
 
   const handleExportTypeChange = (event, newValue) => {
@@ -541,11 +644,11 @@ const AdminTimesheetManagement = () => {
         }
       }
       
-      if (exportFilters.role && exportFilters.role !== "All Roles" && ts.role !== exportFilters.role) {
+      if (exportFilters.project && exportFilters.project !== "All Projects" && ts.project !== exportFilters.project) {
         return false;
       }
       
-      if (exportFilters.project && exportFilters.project !== "All Projects" && ts.project !== exportFilters.project) {
+      if (exportFilters.manager && exportFilters.manager !== "All Managers" && ts.managerId !== exportFilters.manager) {
         return false;
       }
       
@@ -554,23 +657,20 @@ const AdminTimesheetManagement = () => {
   };
 
   const exportToExcel = (filteredData) => {
-    // Create a new workbook
     const wb = XLSX.utils.book_new();
     
-    // Create a worksheet with header and logo
     const ws = XLSX.utils.aoa_to_sheet([
-      // ["Company Name"], // Replace with your company name
       ["Timesheet Report"],
       ["Generated on: " + format(new Date(), "yyyy-MM-dd HH:mm")],
-      [""], // Empty row for spacing
+      [""],
     ]);
 
-    // Add the data
     const exportData = filteredData.map(ts => ({
       "Timesheet ID": ts.id,
       "Employee ID": ts.employeeId,
       "Employee Name": ts.employeeName,
-      "Role": ts.role,
+      "Manager ID": ts.managerId,
+      "Manager Name": ts.managerName,
       "Project": ts.project,
       "Task": ts.task,
       "Week Start": format(parseISO(ts.startDate), "yyyy-MM-dd"),
@@ -589,19 +689,19 @@ const AdminTimesheetManagement = () => {
       "Rejection Reason": ts.rejectionReason || "N/A"
     }));
 
-    // Add headers and data to worksheet
     XLSX.utils.sheet_add_json(ws, exportData, { origin: "A5", skipHeader: true });
     const headers = Object.keys(exportData[0]);
     XLSX.utils.sheet_add_aoa(ws, [headers], { origin: "A4" });
 
-    // Add worksheet to workbook
     XLSX.utils.book_append_sheet(wb, ws, "Timesheets");
 
-    // Generate file name
     let fileNameParts = [`Timesheets_${format(new Date(), "yyyy-MM-dd")}`];
     if (exportFilters.status && exportFilters.status !== "All Statuses") fileNameParts.push(exportFilters.status);
-    if (exportFilters.role && exportFilters.role !== "All Roles") fileNameParts.push(exportFilters.role);
     if (exportFilters.project && exportFilters.project !== "All Projects") fileNameParts.push(exportFilters.project.replace(/\s+/g, '_'));
+    if (exportFilters.manager && exportFilters.manager !== "All Managers") {
+      const manager = managers.find(m => m.empId === exportFilters.manager);
+      fileNameParts.push(`Manager_${manager ? manager.name : exportFilters.manager}`);
+    }
     if (exportFilters.startDate && exportFilters.endDate) {
       fileNameParts.push(
         `${format(new Date(exportFilters.startDate), "yyyy-MM-dd")}-${format(new Date(exportFilters.endDate), "yyyy-MM-dd")}`
@@ -616,38 +716,34 @@ const AdminTimesheetManagement = () => {
   const exportToPDF = (filteredData) => {
     const doc = new jsPDF();
     
-    // Add logo to PDF
     doc.addImage(logo, 'PNG', 15, 10, 40, 15);
     
-    // Add title and company name
     doc.setFontSize(16);
     doc.text('Timesheet Report', 70, 20);
     doc.setFontSize(12);
-    // doc.text('Company Name', 70, 27); // Replace with your company name
     
-    // Add filters information
-    doc.setFontSize(10);
     let filtersText = `Generated on: ${format(new Date(), "yyyy-MM-dd HH:mm")}`;
     if (exportFilters.status && exportFilters.status !== "All Statuses") filtersText += ` | Status: ${exportFilters.status}`;
-    if (exportFilters.role && exportFilters.role !== "All Roles") filtersText += ` | Role: ${exportFilters.role}`;
     if (exportFilters.project && exportFilters.project !== "All Projects") filtersText += ` | Project: ${exportFilters.project}`;
+    if (exportFilters.manager && exportFilters.manager !== "All Managers") {
+      const manager = managers.find(m => m.empId === exportFilters.manager);
+      filtersText += ` | Manager: ${manager ? manager.name : exportFilters.manager}`;
+    }
     if (exportFilters.startDate && exportFilters.endDate) {
       filtersText += ` | Date Range: ${format(new Date(exportFilters.startDate), "yyyy-MM-dd")} to ${format(new Date(exportFilters.endDate), "yyyy-MM-dd")}`;
     }
     
-    // Split long text into multiple lines
     const splitText = doc.splitTextToSize(filtersText, 180);
     doc.text(splitText, 15, 35);
     
-    // Add table
     autoTable(doc, {
       head: [
-        ['ID', 'Employee', 'Role', 'Project', 'Task', 'Week', 'Status', 'Hours', 'Submitted At']
+        ['ID', 'Employee', 'Manager', 'Project', 'Task', 'Week', 'Status', 'Hours', 'Submitted At']
       ],
       body: filteredData.map(ts => [
         ts.id,
         ts.employeeName,
-        ts.role,
+        ts.managerName,
         ts.project,
         ts.task,
         `${format(parseISO(ts.startDate), "MMM dd")} - ${format(parseISO(ts.endDate), "MMM dd")}`,
@@ -655,7 +751,7 @@ const AdminTimesheetManagement = () => {
         ts.totalHours,
         ts.submittedAt ? format(parseISO(ts.submittedAt), "MMM dd, HH:mm") : "N/A"
       ]),
-      startY: 45, // Start table below logo and header
+      startY: 45,
       styles: {
         fontSize: 8,
         cellPadding: 2,
@@ -669,7 +765,7 @@ const AdminTimesheetManagement = () => {
       columnStyles: {
         0: { cellWidth: 15 },
         1: { cellWidth: 25 },
-        2: { cellWidth: 20 },
+        2: { cellWidth: 25 },
         3: { cellWidth: 25 },
         4: { cellWidth: 25 },
         5: { cellWidth: 25 },
@@ -679,7 +775,6 @@ const AdminTimesheetManagement = () => {
       }
     });
   
-    // Add footer with logo and page numbers
     const pageCount = doc.internal.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
@@ -689,11 +784,13 @@ const AdminTimesheetManagement = () => {
       doc.addImage(logo, 'PNG', 15, doc.internal.pageSize.height - 15, 30, 10);
     }
   
-    // Generate file name
     let fileNameParts = [`Timesheets_${format(new Date(), "yyyy-MM-dd")}`];
     if (exportFilters.status && exportFilters.status !== "All Statuses") fileNameParts.push(exportFilters.status);
-    if (exportFilters.role && exportFilters.role !== "All Roles") fileNameParts.push(exportFilters.role);
     if (exportFilters.project && exportFilters.project !== "All Projects") fileNameParts.push(exportFilters.project.replace(/\s+/g, '_'));
+    if (exportFilters.manager && exportFilters.manager !== "All Managers") {
+      const manager = managers.find(m => m.empId === exportFilters.manager);
+      fileNameParts.push(`Manager_${manager ? manager.name : exportFilters.manager}`);
+    }
     if (exportFilters.startDate && exportFilters.endDate) {
       fileNameParts.push(
         `${format(new Date(exportFilters.startDate), "yyyy-MM-dd")}-${format(new Date(exportFilters.endDate), "yyyy-MM-dd")}`
@@ -755,6 +852,53 @@ const AdminTimesheetManagement = () => {
     }
   };
 
+  const handleFilterChange = async (field, value) => {
+    if (field === 'manager') {
+      setAppliedFilters(prev => ({
+        ...prev,
+        [field]: value,
+        project: "All Projects"
+      }));
+      
+      await fetchProjectsForManager(value, false);
+    } else {
+      setAppliedFilters(prev => ({
+        ...prev,
+        [field]: value
+      }));
+    }
+  };
+
+  const resetFilters = () => {
+    setAppliedFilters({
+      status: "All Statuses",
+      project: "All Projects",
+      startDate: null,
+      endDate: new Date(),
+      manager: "All Managers"
+    });
+    setFilteredTimesheets(timesheets);
+    setPage(0);
+    setFilterModalOpen(false);
+  };
+
+  useEffect(() => {
+    const fetchData = async () => {
+      await fetchProjects();
+      await fetchManagers();
+      await fetchTimesheets();
+      await fetchNotifications();
+    };
+    
+    fetchData();
+    
+    const interval = setInterval(() => {
+      fetchNotifications();
+    }, 30000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
@@ -810,7 +954,7 @@ const AdminTimesheetManagement = () => {
             size="small"
             placeholder="Search timesheets..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={handleSearchChange}
             sx={{ minWidth: 300 }}
             InputProps={{
               startAdornment: (
@@ -818,6 +962,17 @@ const AdminTimesheetManagement = () => {
                   <Search />
                 </InputAdornment>
               ),
+              endAdornment: searchTerm && (
+                <InputAdornment position="end">
+                  <IconButton
+                    size="small"
+                    onClick={resetSearch}
+                    edge="end"
+                  >
+                    <Cancel fontSize="small" />
+                  </IconButton>
+                </InputAdornment>
+              )
             }}
           />
           <Button
@@ -835,17 +990,18 @@ const AdminTimesheetManagement = () => {
           <DialogContent>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 2 }}>
               <FormControl fullWidth size="small">
-                <InputLabel>Status</InputLabel>
+                <InputLabel>Manager</InputLabel>
                 <Select
-                  value={appliedFilters.status}
-                  label="Status"
-                  onChange={(e) => handleFilterChange('status', e.target.value)}
+                  value={appliedFilters.manager}
+                  label="Manager"
+                  onChange={(e) => handleFilterChange('manager', e.target.value)}
                 >
-                  <MenuItem value="All Statuses">All Statuses</MenuItem>
-                  <MenuItem value="DRAFT">Draft</MenuItem>
-                  <MenuItem value="SUBMITTED">Pending</MenuItem>
-                  <MenuItem value="APPROVED">Approved</MenuItem>
-                  <MenuItem value="REJECTED">Rejected</MenuItem>
+                  <MenuItem value="All Managers">All Managers</MenuItem>
+                  {managers.map((manager) => (
+                    <MenuItem key={manager.empId} value={manager.empId}>
+                      {manager.empId} - {manager.name}
+                    </MenuItem>
+                  ))}
                 </Select>
               </FormControl>
 
@@ -857,11 +1013,26 @@ const AdminTimesheetManagement = () => {
                   onChange={(e) => handleFilterChange('project', e.target.value)}
                 >
                   <MenuItem value="All Projects">All Projects</MenuItem>
-                  {projects.map((project) => (
+                  {filterManagerProjects.map((project) => (
                     <MenuItem key={project.id} value={project.name}>
                       {project.name}
                     </MenuItem>
                   ))}
+                </Select>
+              </FormControl>
+
+              <FormControl fullWidth size="small">
+                <InputLabel>Status</InputLabel>
+                <Select
+                  value={appliedFilters.status}
+                  label="Status"
+                  onChange={(e) => handleFilterChange('status', e.target.value)}
+                >
+                  <MenuItem value="All Statuses">All Statuses</MenuItem>
+                  <MenuItem value="DRAFT">Draft</MenuItem>
+                  <MenuItem value="SUBMITTED">Pending</MenuItem>
+                  <MenuItem value="APPROVED">Approved</MenuItem>
+                  <MenuItem value="REJECTED">Rejected</MenuItem>
                 </Select>
               </FormControl>
 
@@ -926,32 +1097,21 @@ const AdminTimesheetManagement = () => {
             
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
               <FormControl fullWidth size="small">
-                <InputLabel>Status</InputLabel>
+                <InputLabel>Manager</InputLabel>
                 <Select
-                  value={exportFilters.status}
-                  label="Status"
-                  onChange={(e) => handleExportFilterChange('status', e.target.value)}
+                  value={exportFilters.manager}
+                  label="Manager"
+                  onChange={(e) => handleExportFilterChange('manager', e.target.value)}
                 >
-                  <MenuItem value="All Statuses">All Statuses</MenuItem>
-                  <MenuItem value="DRAFT">Draft</MenuItem>
-                  <MenuItem value="SUBMITTED">Pending</MenuItem>
-                  <MenuItem value="APPROVED">Approved</MenuItem>
-                  <MenuItem value="REJECTED">Rejected</MenuItem>
-                </Select>
-              </FormControl>
-
-              <FormControl fullWidth size="small">
-                <InputLabel>Role</InputLabel>
-                <Select
-                  value={exportFilters.role}
-                  label="Role"
-                  onChange={(e) => handleExportFilterChange('role', e.target.value)}
-                >
-                  <MenuItem value="All Roles">All Roles</MenuItem>
-                  <MenuItem value="Employee">Employee</MenuItem>
-                  <MenuItem value="Manager">Manager</MenuItem>
-                  <MenuItem value="Admin">Admin</MenuItem>
-                  <MenuItem value="Contractor">Contractor</MenuItem>
+                  <MenuItem value="All Managers">All Managers</MenuItem>
+                  {managers.map((manager) => (
+                    <MenuItem 
+                      key={manager.empId} 
+                      value={manager.empId}
+                    >
+                      {manager.empId} - {manager.name}
+                    </MenuItem>
+                  ))}
                 </Select>
               </FormControl>
 
@@ -963,11 +1123,26 @@ const AdminTimesheetManagement = () => {
                   onChange={(e) => handleExportFilterChange('project', e.target.value)}
                 >
                   <MenuItem value="All Projects">All Projects</MenuItem>
-                  {projects.map((project) => (
+                  {managerProjects.map((project) => (
                     <MenuItem key={project.id} value={project.name}>
                       {project.name}
                     </MenuItem>
                   ))}
+                </Select>
+              </FormControl>
+
+              <FormControl fullWidth size="small">
+                <InputLabel>Status</InputLabel>
+                <Select
+                  value={exportFilters.status}
+                  label="Status"
+                  onChange={(e) => handleExportFilterChange('status', e.target.value)}
+                >
+                  <MenuItem value="All Statuses">All Statuses</MenuItem>
+                  <MenuItem value="DRAFT">Draft</MenuItem>
+                  <MenuItem value="SUBMITTED">Pending</MenuItem>
+                  <MenuItem value="APPROVED">Approved</MenuItem>
+                  <MenuItem value="REJECTED">Rejected</MenuItem>
                 </Select>
               </FormControl>
 
@@ -1082,6 +1257,7 @@ const AdminTimesheetManagement = () => {
               <TableRow>
                 <TableCell>Timesheet ID</TableCell>
                 <TableCell>Employee</TableCell>
+                <TableCell>Manager</TableCell>
                 <TableCell>Project</TableCell>
                 <TableCell>Task</TableCell>
                 <TableCell>Week</TableCell>
@@ -1102,6 +1278,12 @@ const AdminTimesheetManagement = () => {
                         <Typography fontWeight="bold">{timesheet.employeeName}</Typography>
                         <Typography variant="caption" color="text.secondary">
                           {timesheet.employeeId}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography fontWeight="bold">{timesheet.managerName}</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {timesheet.managerId}
                         </Typography>
                       </TableCell>
                       <TableCell>{timesheet.project}</TableCell>
@@ -1129,7 +1311,7 @@ const AdminTimesheetManagement = () => {
                   ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={9} align="center">
+                  <TableCell colSpan={10} align="center">
                     No timesheets found
                   </TableCell>
                 </TableRow>

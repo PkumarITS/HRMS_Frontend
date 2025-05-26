@@ -11,6 +11,7 @@ import ListActions from './components/userManagement/ListActions';
 import ListRoles from './components/userManagement/ListRoles';
 import RoleActionMapping from './components/userManagement/RoleActionMapping';
 import Dashboard from './components/adminDashboard/Dashboard';
+import Sidebar from './components/Sidebar/Sidebar';
 import EmployeeDashboard from './components/EmployeeDashboard/EmployeeDashboard';
 import Employee from './components/employee/Employee';
 import Profile from './components/Profile';
@@ -33,6 +34,7 @@ import NotificationSettings from './components/adminDashboard/NotificationSettin
 import TimesheetViewPage from './components/EmployeeDashboard/TimesheetViewPage';
 import LeaveRequest from './components/adminDashboard/LeaveRequest';
 import AdminLeaveBalance from './components/adminDashboard/AdminLeaveBalance';
+import OvertimeRequest from './components/adminDashboard/OvertimeRequest';
 import HolidayAdmin from './components/adminDashboard/HolidayAdmin';
 import HolidayUser from './components/Leaves/HolidayUser';
 import UserAttendance from './components/EmployeeDashboard/UserAttendence';
@@ -47,6 +49,9 @@ import UserMapping from './components/userManagement/UserMapping';
 import EditRolePage from './components/userManagement/EditRolePage';
 import EditActionPage from './components/userManagement/EditActionPage';
 
+import UnauthorisedPage from './components/UnauthorisedPage';
+import OverTimeForm from './components/Leaves/OverTimeForm';
+
 function App() {
   return (
     <ContextProvider>
@@ -56,6 +61,7 @@ function App() {
           <Route path="/" element={<LoginPage />} />
           <Route path="/forgot-password" element={<ForgetPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/unauthorized" element={<UnauthorisedPage />} />
 
           
 
@@ -63,13 +69,14 @@ function App() {
           <Route 
             path="/admin/*" 
             element={
-              <ProtectedRoute allowedRoles={['admin']}>
+            //  <ProtectedRoute allowedRoles={['admin']}>
                 <Dashboard />
-              </ProtectedRoute>
+            //  </ProtectedRoute>
             }
           >
             
             <Route path="employees" element={<Employee />} />
+            <Route path="sidebar" element={<Sidebar />} />
             <Route path="add-employee" element={<AddEmployee />} />
             <Route path="edit-employee/:id" element={<EditEmployee />} />
             <Route path="employee-details/:id" element={<EmployeeDetails />} />
@@ -95,10 +102,13 @@ function App() {
             <Route path="timesheets/notifications" element={<NotificationSettings />} />
             <Route path="holiday" element={<HolidayAdmin />} />
             <Route path="leaves" element={<LeaveRequest />} />
+            <Route path="overtime-request" element={<OvertimeRequest />} />
             <Route path="leaves-type" element={<LeaveType />} />
-            <Route path="leave-balance" element={<AdminLeaveBalance />} />
+            <Route path="leave-balance" element={<AdminLeaveBalance />} />
             <Route path="attendance" element={<AdminAttendance />} />
             <Route path="profile" element={<Profile isRole={"admin"} />} />
+
+
           </Route>
 
           {/* HR Routes */}
@@ -112,6 +122,28 @@ function App() {
           >
             <Route path="profile" element={<Profile isAdmin={true} />} />
           </Route>
+
+          {/* HR Routes */}
+          {/* <Route
+            path="/hr/*"
+            element={
+              <ProtectedRoute allowedRoles={['hr']}>
+                <HrDashboard />
+              </ProtectedRoute>
+            }
+          >
+            <Route path="dashboard" element={<div>HR Dashboard Content</div>} />
+            <Route path="employees" element={<Employee />} />
+            <Route path="user-management" element={<UserManagement />} />
+            <Route path="timesheets" element={<AdminTimesheetManagement />} />
+            <Route path="timesheets/:id" element={<TimesheetDetailView />} />
+            <Route path="leaves" element={<LeaveRequest />} />
+            <Route path="leaves-type" element={<LeaveType />} />
+            <Route path="leave-balance" element={<AdminLeaveBalance />} />
+            <Route path="holiday" element={<HolidayAdmin />} />
+            <Route path="attendance" element={<AdminAttendance />} />
+            <Route path="profile" element={<Profile isRole={"hr"} />} />
+          </Route> */}
 
           {/* Manager Routes */}
           <Route 
@@ -156,12 +188,14 @@ function App() {
             <Route path="employee-dashboard/attendence" element={<UserAttendance />} />
             <Route path="leaves" element={<Leave />} />
             <Route path="leave-balance" element={<LeaveBalance />} />
+            
             <Route path="holiday" element={<HolidayUser />} />
             <Route path="projects" element={<Project />} />
             <Route path="projects/tasks" element={<Task />} />
             <Route path="profile" element={<Profile isAdmin={false} />} />
             <Route path="myproject" element={<MyProject />} />
             <Route path="mytask" element={<MyTask />} />
+            <Route path="overtime-form" element={<OverTimeForm />} />
 
           </Route>
 

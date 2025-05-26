@@ -25,8 +25,17 @@ import {
   Chip,
   FormHelperText,
   CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  List,
+  ListItem,
+  ListItemText,
+  Tooltip
 } from "@mui/material";
 import { ChevronLeft, ChevronRight } from "@mui/icons-material";
+import { format, parseISO, differenceInDays } from 'date-fns';
 
 const Leave = () => {
   const [leaveData, setLeaveData] = useState({
@@ -48,18 +57,18 @@ const Leave = () => {
   const [currentPage, setCurrentPage] = useState(0);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [employeeData, setEmployeeData] = useState(null);
-  const recordsPerPage = 5;
   const [profileData, setProfileData] = useState(null);
+  const recordsPerPage = 5;
   const [leaveTypes, setLeaveTypes] = useState([]);
   const [loadingLeaveTypes, setLoadingLeaveTypes] = useState(false);
+  const [selectedLeave, setSelectedLeave] = useState(null);
+  const [openDialog, setOpenDialog] = useState(false);
+  const [today, setToday] = useState(new Date());
 
-  // Configure axios instance
   const api = axios.create({
     baseURL: "http://localhost:1010",
   });
 
-  // Add auth token to requests
   api.interceptors.request.use((config) => {
     const token = Cookies.get("token");
     if (token) {
@@ -69,20 +78,32 @@ const Leave = () => {
   });
 
   useEffect(() => {
+    const updateDate = () => {
+      const now = new Date();
+      const millisecondsUntilMidnight = 
+        (24 * 60 * 60 * 1000) - 
+        (now.getHours() * 60 * 60 * 1000 + 
+         now.getMinutes() * 60 * 1000 + 
+         now.getSeconds() * 1000);
+      
+      setTimeout(() => {
+        setToday(new Date());
+        const intervalId = setInterval(() => {
+          setToday(new Date());
+        }, 24 * 60 * 60 * 1000);
+        return () => clearInterval(intervalId);
+      }, millisecondsUntilMidnight);
+    };
+
+    updateDate();
+  }, []);
+
+  useEffect(() => {
     const fetchProfile = async () => {
       try {
         const token = Cookies.get("token");
-        if (!token) {
-          throw new Error("No authentication token found");
-        }
-
         const response = await UserService.getCompleteProfile(token);
-        
-        if (response.employeeData) {
-          setProfileData(response.employeeData);
-        } else {
-          throw new Error("No employee data found in response");
-        }
+        setProfileData(response.employeeData);
       } catch (error) {
         console.error("Failed to fetch profile:", error);
         setSnackbar({
@@ -90,63 +111,94 @@ const Leave = () => {
           message: error.message || "Failed to load profile data",
           severity: "error",
         });
-      } finally {
-        setLoading(false);
       }
     };
     
     fetchProfile();
-  }, []);  
-
-  // Fetch leave types from backend
-  useEffect(() => {
-    const fetchLeaveTypes = async () => {
-      setLoadingLeaveTypes(true);
-      try {
-        const response = await api.get("/leave-types");
-     //   const response =  await axios.get(`${baseURL}/admin/leave-types`);
-        setLeaveTypes(response.data);
-      } catch (error) {
-        console.error("Error fetching leave types:", error);
-        setSnackbar({
-          open: true,
-          message: "Failed to load leave types. Using default options.",
-          severity: "warning",
-        });
-        // Fallback to default leave types if API fails
-        setLeaveTypes([
-          { name: "Casual" },
-          { name: "Sick" },
-          { name: "Paid" },
-          { name: "Maternity" },
-          { name: "Paternity" }
-        ]);
-      } finally {
-        setLoadingLeaveTypes(false);
-      }
-    };
-
     fetchLeaveTypes();
+    fetchLeaveHistory();
   }, []);
 
-  // Fetch employee data on component mount
-  useEffect(() => {
-    const fetchEmployeeData = async () => {
-      try {
-        setEmployeeData(response.data);
-        setLeaveData(prev => ({
-          ...prev,
-          employeeId: response.data.employeeId,
-          employeeName: response.data.name
-        }));
-      } catch (error) {
-        console.error("Error fetching employee data:", error);
-      }
+  const fetchLeaveTypes = async () => {
+    setLoadingLeaveTypes(true);
+    try {
+      const response = await api.get("/my-leave-types");
+      setLeaveTypes(response.data);
+    } catch (error) {
+      console.error("Error fetching leave types:", error);
+      setSnackbar({
+        open: true,
+        message: "Failed to load leave types",
+        severity: "error",
+      });
+    } finally {
+      setLoadingLeaveTypes(false);
+    }
+  };
+
+  const isLeaveTypeValid = (type) => {
+    if (!type) return false;
+    const endDate = type.endDate ? new Date(type.endDate) : null;
+    return (
+      type.remainingDays > 0 &&
+      (!endDate || endDate >= today)
+    );
+  };
+
+  const getExpirationStatus = (type) => {
+    if (!type.endDate) return null;
+    const endDate = new Date(type.endDate);
+    const daysRemaining = differenceInDays(endDate, today);
+    if (daysRemaining < 0) return "expired";
+    if (daysRemaining === 0) return "expires-today";
+    if (daysRemaining <= 3) return "expires-soon";
+    return "active";
+  };
+
+  const renderExpirationChip = (type) => {
+    const status = getExpirationStatus(type);
+    if (!status) return null;
+    
+    const endDate = new Date(type.endDate);
+    const daysRemaining = differenceInDays(endDate, today);
+    
+    const chipProps = {
+      size: "small",
+      sx: { ml: 1 }
     };
 
-    fetchEmployeeData();
-    fetchLeaveHistory();
-  }, []);  
+    switch (status) {
+      case "expired":
+        return (
+          <Tooltip title={`Expired on ${format(endDate, 'PP')}`}>
+            <Chip label="Expired" color="error" {...chipProps} />
+          </Tooltip>
+        );
+      case "expires-today":
+        return (
+          <Tooltip title="Expires today">
+            <Chip label="Today" color="warning" {...chipProps} />
+          </Tooltip>
+        );
+      case "expires-soon":
+        return (
+          <Tooltip title={`Expires in ${daysRemaining} days`}>
+            <Chip label={`${daysRemaining}d`} color="warning" {...chipProps} />
+          </Tooltip>
+        );
+      default:
+        return (
+          <Tooltip title={`Expires on ${format(endDate, 'MMM d')}`}>
+            <Chip 
+              label={format(endDate, 'MMM d')} 
+              color="default" 
+              variant="outlined" 
+              {...chipProps} 
+            />
+          </Tooltip>
+        );
+    }
+  };
 
   const handleChange = (e) => {
     setLeaveData({ ...leaveData, [e.target.name]: e.target.value });
@@ -157,8 +209,8 @@ const Leave = () => {
     setSubmitting(true);
 
     // Validate dates
-    const today = new Date().toISOString().split('T')[0];
-    if (leaveData.fromDate < today) {
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (leaveData.fromDate < todayStr) {
       setSnackbar({
         open: true,
         message: "From date cannot be in the past",
@@ -178,11 +230,34 @@ const Leave = () => {
       return;
     }
 
+    const selectedType = leaveTypes.find(type => type.name === leaveData.leaveType);
+    if (!selectedType || !isLeaveTypeValid(selectedType)) {
+      setSnackbar({
+        open: true,
+        message: "Selected leave type is no longer available",
+        severity: "error",
+      });
+      setSubmitting(false);
+      return;
+    }
+
+    const requestedDays = calculateDays(leaveData.fromDate, leaveData.toDate);
+    if (requestedDays > selectedType.remainingDays) {
+      setSnackbar({
+        open: true,
+        message: `Request exceeds available days (${selectedType.remainingDays} remaining)`,
+        severity: "error",
+      });
+      setSubmitting(false);
+      return;
+    }
+
     try {
       await api.post("/user/leaves/add", {
         employeeId: profileData?.personal?.empId,
         employeeName: profileData?.personal?.firstName,
         leaveType: leaveData.leaveType,
+        leaveTypeId: selectedType.id,
         fromDate: leaveData.fromDate,
         toDate: leaveData.toDate,
         reason: leaveData.reason,
@@ -195,7 +270,6 @@ const Leave = () => {
         severity: "success",
       });
 
-      // Reset form (keep employee details)
       setLeaveData(prev => ({
         ...prev,
         leaveType: "",
@@ -204,13 +278,13 @@ const Leave = () => {
         reason: "",
       }));
 
-      fetchLeaveHistory();
+      await Promise.all([fetchLeaveHistory(), fetchLeaveTypes()]);
     } catch (error) {
       console.error("Error submitting leave:", error);
       setSnackbar({
         open: true,
         message: error.response?.data?.message || 
-                "Failed to submit leave request. Please try again.",
+               "Failed to submit leave request",
         severity: "error",
       });
     } finally {
@@ -230,13 +304,22 @@ const Leave = () => {
       console.error("Error fetching leave history:", error);
       setSnackbar({
         open: true,
-        message: error.response?.data?.message || 
-                "Failed to load leave history. Please refresh the page.",
+        message: "Failed to load leave history",
         severity: "error",
       });
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleViewLeave = (leave) => {
+    setSelectedLeave(leave);
+    setOpenDialog(true);
+  };
+
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+    setSelectedLeave(null);
   };
 
   const filteredLeaves = leaveHistory.filter((leave) => {
@@ -250,13 +333,9 @@ const Leave = () => {
     (currentPage + 1) * recordsPerPage
   );
 
-  const handlePrevPage = () => {
-    if (currentPage > 0) setCurrentPage(currentPage - 1);
-  };
-
-  const handleNextPage = () => {
-    if (currentPage < totalPages - 1) setCurrentPage(currentPage + 1);
-  };
+  const handlePrevPage = () => currentPage > 0 && setCurrentPage(currentPage - 1);
+  const handleNextPage = () => 
+    currentPage < totalPages - 1 && setCurrentPage(currentPage + 1);
 
   const handleCloseSnackbar = () => {
     setSnackbar({ ...snackbar, open: false });
@@ -270,12 +349,11 @@ const Leave = () => {
 
   const formatDisplayDate = (dateString) => {
     if (!dateString) return "N/A";
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
+    return format(parseISO(dateString), 'MMM d, yyyy');
+  };
+
+  const calculateDays = (fromDate, toDate) => {
+    return differenceInDays(new Date(toDate), new Date(fromDate)) + 1;
   };
 
   return (
@@ -293,17 +371,17 @@ const Leave = () => {
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                name="employeeId"
-                value={profileData?.personal?.empId}
-                readonly
+                label="Employee ID"
+                value={profileData?.personal?.empId || ""}
+                InputProps={{ readOnly: true }}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                name="employeeName"
-                value={profileData?.personal?.firstName}
-                readonly
+                label="Employee Name"
+                value={profileData?.personal?.firstName || ""}
+                InputProps={{ readOnly: true }}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -317,9 +395,14 @@ const Leave = () => {
                   disabled={loadingLeaveTypes}
                 >
                   <MenuItem value=""><em>Select</em></MenuItem>
-                  {leaveTypes.map((type) => (
-                    <MenuItem key={type.description} value={type.description}>
-                      {type.description}
+                  {leaveTypes.filter(isLeaveTypeValid).map((type) => (
+                    <MenuItem key={type.id} value={type.name}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                        <Box sx={{ flexGrow: 1 }}>
+                          {type.name} ({type.remainingDays} Remaining days)
+                        </Box>
+                        {renderExpirationChip(type)}
+                      </Box>
                     </MenuItem>
                   ))}
                 </Select>
@@ -327,6 +410,11 @@ const Leave = () => {
                   <FormHelperText>
                     <CircularProgress size={14} sx={{ mr: 1 }} />
                     Loading leave types...
+                  </FormHelperText>
+                )}
+                {leaveTypes.filter(isLeaveTypeValid).length === 0 && (
+                  <FormHelperText error>
+                    No available leave types
                   </FormHelperText>
                 )}
               </FormControl>
@@ -371,8 +459,6 @@ const Leave = () => {
                 value={leaveData.reason}
                 onChange={handleChange}
                 required
-                InputLabelProps={{ shrink: true }}
-                placeholder="Please provide details for your leave request"
               />
             </Grid>
           </Grid>
@@ -380,9 +466,8 @@ const Leave = () => {
             <Button 
               type="submit" 
               variant="contained" 
-              size="large" 
-              sx={{ px: 4, py: 1.5 }}
-              disabled={submitting}
+              size="large"
+              disabled={submitting || leaveTypes.filter(isLeaveTypeValid).length === 0}
             >
               {submitting ? (
                 <>
@@ -425,122 +510,78 @@ const Leave = () => {
             onClick={fetchLeaveHistory}
             disabled={loading}
           >
-            {loading ? "Refreshing..." : "Refresh Data"}
+            {loading ? "Refreshing..." : "Refresh"}
           </Button>
         </Box>
 
         {loading ? (
-          <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
+          <Box display="flex" justifyContent="center" my={4}>
             <CircularProgress />
           </Box>
         ) : paginatedLeaves.length > 0 ? (
           <>
-            <Paper elevation={3} sx={{ overflowX: "auto", mb: 2, borderRadius: 2 }}>
+            <Paper elevation={3} sx={{ mb: 2 }}>
               <Table>
-                <TableHead sx={{ backgroundColor: "primary.main" }}>
+                <TableHead sx={{ bgcolor: 'primary.main' }}>
                   <TableRow>
-                    {[
-                      "Request ID",
-                      "Leave Type",
-                      "Period",
-                      "Days",
-                      "Reason",
-                      "Status",
-                      "Submitted On",
-                      "Actions"
-                    ].map((head) => (
-                      <TableCell 
-                        key={head} 
-                        sx={{ color: "white", fontWeight: 600 }}
-                      >
+                    {["Request ID", "Leave Type", "Period", "Days", "Status", "Submitted On", "Actions"].map((head) => (
+                      <TableCell key={head} sx={{ color: 'white', fontWeight: 600 }}>
                         {head}
                       </TableCell>
                     ))}
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {paginatedLeaves.map((leave) => {
-                    const fromDate = new Date(leave.fromDate);
-                    const toDate = new Date(leave.toDate);
-                    const days = Math.ceil((toDate - fromDate) / (1000 * 60 * 60 * 24)) + 1;
-                    
-                    return (
-                      <TableRow key={leave.id} hover>
-                        <TableCell>#{leave.id}</TableCell>
-                        <TableCell>{leave.leaveType}</TableCell>
-                        <TableCell>
-                          {formatDisplayDate(leave.fromDate)} - {formatDisplayDate(leave.toDate)}
-                        </TableCell>
-                        <TableCell>{days} day{days !== 1 ? 's' : ''}</TableCell>
-                        <TableCell sx={{ maxWidth: 200 }}>
-                          <Box sx={{ 
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis'
-                          }}>
-                            {leave.reason}
-                          </Box>
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={leave.status}
-                            color={statusColor[leave.status]}
-                            sx={{ fontWeight: 600, minWidth: 100 }}
-                          />
-                        </TableCell>
-                        <TableCell>{formatDisplayDate(leave.createdAt)}</TableCell>
-                        <TableCell>
-                          <Button 
-                            size="small" 
-                            color="info"
-                            onClick={() => {
-                              // Add view/edit functionality here
-                            }}
-                          >
-                            View
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
+                  {paginatedLeaves.map((leave) => (
+                    <TableRow key={leave.id} hover>
+                      <TableCell>#{leave.id}</TableCell>
+                      <TableCell>{leave.leaveType}</TableCell>
+                      <TableCell>
+                        {formatDisplayDate(leave.fromDate)} - {formatDisplayDate(leave.toDate)}
+                      </TableCell>
+                      <TableCell>{calculateDays(leave.fromDate, leave.toDate)}</TableCell>
+                      <TableCell>
+                        <Chip
+                          label={leave.status}
+                          color={statusColor[leave.status]}
+                          sx={{ fontWeight: 600 }}
+                        />
+                      </TableCell>
+                      <TableCell>{formatDisplayDate(leave.createdAt)}</TableCell>
+                      <TableCell>
+                        <Button 
+                          size="small" 
+                          onClick={() => handleViewLeave(leave)}
+                        >
+                          View
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </Paper>
 
-            <Box sx={{ 
-              display: "flex", 
-              justifyContent: "center", 
-              alignItems: "center", 
-              gap: 2,
-              mt: 3
-            }}>
+            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mt: 3 }}>
               <IconButton 
                 onClick={handlePrevPage} 
                 disabled={currentPage === 0}
                 sx={{ 
-                  backgroundColor: currentPage === 0 ? 'action.disabledBackground' : 'primary.main',
+                  bgcolor: currentPage === 0 ? 'action.disabledBackground' : 'primary.main',
                   color: currentPage === 0 ? 'text.disabled' : 'primary.contrastText',
-                  '&:hover': {
-                    backgroundColor: currentPage === 0 ? null : 'primary.dark'
-                  }
                 }}
               >
                 <ChevronLeft />
               </IconButton>
-              
               <Typography variant="body1">
                 Page {currentPage + 1} of {totalPages}
               </Typography>
-              
               <IconButton 
                 onClick={handleNextPage} 
                 disabled={currentPage === totalPages - 1}
                 sx={{ 
-                  backgroundColor: currentPage === totalPages - 1 ? 'action.disabledBackground' : 'primary.main',
+                  bgcolor: currentPage === totalPages - 1 ? 'action.disabledBackground' : 'primary.main',
                   color: currentPage === totalPages - 1 ? 'text.disabled' : 'primary.contrastText',
-                  '&:hover': {
-                    backgroundColor: currentPage === totalPages - 1 ? null : 'primary.dark'
-                  }
                 }}
               >
                 <ChevronRight />
@@ -549,22 +590,87 @@ const Leave = () => {
           </>
         ) : (
           <Alert severity="info" sx={{ mt: 2 }}>
-            No leave records found matching your criteria.
+            No leave records found
           </Alert>
         )}
       </Box>
+
+      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>Leave Details</DialogTitle>
+        <DialogContent>
+          {selectedLeave && (
+            <List>
+              <ListItem>
+                <ListItemText primary="Request ID" secondary={`#${selectedLeave.id}`} />
+              </ListItem>
+              <ListItem>
+                <ListItemText primary="Employee" secondary={selectedLeave.employeeName} />
+              </ListItem>
+              <ListItem>
+                <ListItemText primary="Leave Type" secondary={selectedLeave.leaveType} />
+              </ListItem>
+              <ListItem>
+                <ListItemText 
+                  primary="Period" 
+                  secondary={`${formatDisplayDate(selectedLeave.fromDate)} to ${formatDisplayDate(selectedLeave.toDate)}`} 
+                />
+              </ListItem>
+              <ListItem>
+                <ListItemText 
+                  primary="Duration" 
+                  secondary={`${calculateDays(selectedLeave.fromDate, selectedLeave.toDate)} days`} 
+                />
+              </ListItem>
+              <ListItem>
+                <ListItemText 
+                  primary="Status" 
+                  secondary={
+                    <Chip 
+                      label={selectedLeave.status} 
+                      color={statusColor[selectedLeave.status]} 
+                      sx={{ fontWeight: 600 }}
+                    />
+                  } 
+                />
+              </ListItem>
+              <ListItem>
+                <ListItemText 
+                  primary="Submitted On" 
+                  secondary={formatDisplayDate(selectedLeave.createdAt)} 
+                />
+              </ListItem>
+              <ListItem>
+                <ListItemText 
+                  primary="Reason" 
+                  secondary={selectedLeave.reason} 
+                  sx={{ whiteSpace: 'pre-wrap' }}
+                />
+              </ListItem>
+              {selectedLeave.managerComment && (
+                <ListItem>
+                  <ListItemText 
+                    primary="Manager's Comment" 
+                    secondary={selectedLeave.managerComment} 
+                  />
+                </ListItem>
+              )}
+            </List>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog}>Close</Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar 
         open={snackbar.open} 
         autoHideDuration={6000} 
         onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
         <Alert 
           onClose={handleCloseSnackbar} 
-          severity={snackbar.severity} 
-          sx={{ width: "100%" }}
-          variant="filled"
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
         >
           {snackbar.message}
         </Alert>

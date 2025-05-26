@@ -39,19 +39,20 @@ import Cookies from "js-cookie";
 import UserService from "../service/UserService";
 import { useContext } from "react";
 import { userContext } from "../context/ContextProvider";
-
-
+ 
+ 
 const Dashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [systemOpen, setSystemOpen] = useState(false);
   const [projectOpen, setProjectOpen] = useState(false);
+  const [timeOpen, setTimeOpen] = useState(false);
   const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const { actions } = useContext(userContext);
-
+ 
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -59,9 +60,9 @@ const Dashboard = () => {
         if (!token) {
           throw new Error("No authentication token found");
         }
-
+ 
         const response = await UserService.getCompleteProfile(token);
-
+ 
         if (response.employeeData) {
           setProfileData(response.employeeData);
         } else {
@@ -76,78 +77,197 @@ const Dashboard = () => {
         setLoading(false);
       }
     };
-
+ 
     fetchProfile();
   }, []);
-
+ 
   const handleCloseSnackbar = (event, reason) => {
     if (reason === 'clickaway') {
       return;
     }
     setSnackbarOpen(false);
   };
-
+ 
   const handleLogout = () => {
     Cookies.remove("token", { path: "/" });
     Cookies.remove("role", { path: "/" });
     window.location.href = "/";
   };
-
-  const menuItems = [
-    // Dashboard
-    actions.includes("VIEW_ADMIN_DASHBOARD") && { text: "Dashboard", icon: <DashboardIcon />, link: "/admin/dashboard" },
-    // Employees
-    actions.includes("MANAGE_EMPLOYEE") && { text: "Employees", icon: <PeopleIcon />, link: "/admin/employees" },
-    // System
-    (actions.includes("VIEW_USER_MANAGEMENT") || 
-     actions.includes("CREATE_ACTIONS") || 
-     actions.includes("CREATE_ROLE") ||
-     actions.includes("VIEW_LIST_ACTIONS") || 
-     actions.includes("VIEW_LIST_ROLES")) && {
-      text: "System",
-      icon: <SettingsIcon />,
-      action: () => setSystemOpen(!systemOpen),
-      subItems: [
-        actions.includes("VIEW_USER_MANAGEMENT") && { text: "User Management", link: "/admin/user-management" },
-        actions.includes("CREATE_ACTIONS") && { text: "Actions", link: "/admin/create-action" },
-        actions.includes("CREATE_ROLE") && { text: "Roles", link: "/admin/create-role" },
-        actions.includes("VIEW_LIST_ACTIONS") && { text: "List Actions", link: "/admin/list-actions" },
-        actions.includes("VIEW_LIST_ROLES") && { text: "List Roles", link: "/admin/list-roles" },
-      ].filter(Boolean),
-    },
-    // Projects
-    (actions.includes("MANAGE_PROJECT") || actions.includes("MANAGE_TASK")) && {
-      text: "Projects",
-      icon: <WorkIcon />,
-      action: () => setProjectOpen(!projectOpen),
-      subItems: [
-        actions.includes("MANAGE_PROJECT") && { text: " Projects", link: "/admin/projects" },
-        actions.includes("MANAGE_TASK") && { text: "Tasks", link: "/admin/projects/tasks" },
-      ].filter(Boolean),
-    },
-    // Timesheets
-    actions.includes("MANAGE_TIMESHEET") && { text: "Timesheets", icon: <AccessTimeIcon />, link: "/admin/dashboard/timesheets" },
-    // Leave Management
-    (actions.includes("MANAGE_LEAVE") || 
-     actions.includes("MANAGE_LEAVE_TYPE") || 
-     actions.includes("MANAGE_LEAVE_BALANCE") || 
-     actions.includes("MANAGE_HOLIDAY")) && {
-      text: "Leave Management",
-      icon: <CalendarTodayIcon />,
-      action: () => setLeaveOpen(!leaveOpen),
-      subItems: [
-        actions.includes("MANAGE_LEAVE") && { text: "Leaves", link: "/admin/leaves" },
-        actions.includes("MANAGE_LEAVE_TYPE") && { text: "Leave Type", link: "/admin/leaves-type" },
-        actions.includes("MANAGE_LEAVE_BALANCE") && { text: "Leave Balance", link: "/admin/leave-balance" },
-        actions.includes("MANAGE_HOLIDAY") && { text: "Holiday", link: "/admin/holiday" },
-      ].filter(Boolean),
-    },
-    // Attendance
-    actions.includes("MANAGE_ATTENDANCE") && { text: "Attendance", icon: <CheckCircleIcon />, link: "/admin/attendance" },
-    // Profile
-    actions.includes("VIEW_PROFILE") && { text: "Profile", icon: <PersonIcon />, link: "/admin/profile" }, 
-  ].filter(Boolean);
-
+ 
+   const menuItems = [
+  // Admin Dashboard
+  actions.includes("VIEW_ADMIN_DASHBOARD") && {
+    text: "Dashboard",
+    icon: <DashboardIcon />,
+    link: "/admin/dashboard",
+  },
+ 
+  // Employees
+  actions.includes("MANAGE_EMPLOYEE") && {
+    text: "Employees",
+    icon: <PeopleIcon />,
+    link: "/admin/employees",
+  },
+ 
+  // System
+  (actions.includes("VIEW_USER_MANAGEMENT") ||
+    actions.includes("CREATE_ACTIONS") ||
+    actions.includes("CREATE_ROLE") ||
+    actions.includes("VIEW_LIST_ACTIONS") ||
+    actions.includes("VIEW_LIST_ROLES")) && {
+    text: "System",
+    icon: <SettingsIcon />,
+    action: () => setSystemOpen(!systemOpen),
+    subItems: [
+      actions.includes("VIEW_USER_MANAGEMENT") && {
+        text: "User Management",
+        link: "/admin/user-management",
+      },
+      actions.includes("CREATE_ACTIONS") && {
+        text: "Actions",
+        link: "/admin/create-action",
+      },
+      actions.includes("CREATE_ROLE") && {
+        text: "Roles",
+        link: "/admin/create-role",
+      },
+      actions.includes("VIEW_LIST_ACTIONS") && {
+        text: "List Actions",
+        link: "/admin/list-actions",
+      },
+      actions.includes("VIEW_LIST_ROLES") && {
+        text: "List Roles",
+        link: "/admin/list-roles",
+      },
+    ].filter(Boolean),
+  },
+ 
+  // Projects (Admin)
+  (actions.includes("MANAGE_PROJECT") || actions.includes("MANAGE_TASK")) && {
+    text: "Projects",
+    icon: <WorkIcon />,
+    action: () => setProjectOpen(!projectOpen),
+    subItems: [
+      actions.includes("MANAGE_PROJECT") && {
+        text: "Projects",
+        link: "/admin/projects",
+      },
+      actions.includes("MANAGE_TASK") && {
+        text: "Tasks",
+        link: "/admin/projects/tasks",
+      },
+    ].filter(Boolean),
+  },
+ 
+  // Timesheets (Admin)
+  actions.includes("MANAGE_TIMESHEET") && {
+    text: "Timesheets",
+    icon: <AccessTimeIcon />,
+    link: "/admin/dashboard/timesheets",
+  },
+ 
+  // Leave Management (Admin)
+  (actions.includes("MANAGE_LEAVE") ||
+    actions.includes("MANAGE_LEAVE_TYPE") ||
+    actions.includes("MANAGE_LEAVE_BALANCE") ||
+    actions.includes("MANAGE_OVERTIME_REQUEST") ||
+    actions.includes("MANAGE_HOLIDAY")) && {
+    text: "Leave Management",
+    icon: <CalendarTodayIcon />,
+    action: () => setLeaveOpen(!leaveOpen),
+    subItems: [
+      actions.includes("MANAGE_LEAVE") && {
+        text: "Leaves",
+        link: "/admin/leaves",
+      },
+      actions.includes("MANAGE_LEAVE_TYPE") && {
+        text: "Leave Type",
+        link: "/admin/leaves-type",
+      },
+      actions.includes("MANAGE_LEAVE_BALANCE") && {
+        text: "Leave Balance",
+        link: "/admin/leave-balance",
+      },
+      actions.includes("MANAGE_OVERTIME_REQUEST") && {
+        text: "Overtime",
+        link: "/admin/overtime-request",
+      },
+      actions.includes("MANAGE_HOLIDAY") && {
+        text: "Holiday",
+        link: "/admin/holiday",
+      },
+    ].filter(Boolean),
+  },
+ 
+  // Attendance (Admin)
+  actions.includes("MANAGE_ATTENDANCE") && {
+    text: "Attendance",
+    icon: <CheckCircleIcon />,
+    link: "/admin/attendance",
+  },
+ 
+  // Profile (Both)
+  actions.includes("VIEW_PROFILE") && {
+    text: "Profile",
+    icon: <PersonIcon />,
+    link: "/admin/profile",
+  },
+ 
+  
+ 
+  // Time & Management (User)
+  (actions.includes("VIEW_TIMESHEET") || actions.includes("VIEW_ATTENDANCE")) && {
+    text: "Time & Management",
+    icon: <AccessTimeIcon />,
+    action: () => setTimeOpen(!timeOpen),
+    open: timeOpen,
+    subItems: [
+      actions.includes("VIEW_TIMESHEET") && {
+        text: "Timesheet",
+        link: "/user/employee-dashboard/timesheet-detail",
+      },
+      actions.includes("VIEW_ATTENDANCE") && {
+        text: "Attendance",
+        link: "/user/employee-dashboard/attendence",
+      },
+    ].filter(Boolean),
+  },
+ 
+  // Leave Management (User)
+  (actions.includes("VIEW_LEAVE") ||
+    actions.includes("VIEW_LEAVE_BALANCE") ||
+    actions.includes("VIEW_HOLIDAY")) && {
+    text: "Leave Management",
+    icon: <CalendarTodayIcon />,
+    action: () => setLeaveOpen(!leaveOpen),
+    open: leaveOpen,
+    subItems: [
+      actions.includes("VIEW_LEAVE") && {
+        text: "Leave Request",
+        link: "/user/leaves",
+      },
+      actions.includes("VIEW_LEAVE_BALANCE") && {
+        text: "Leave Balance",
+        link: "/user/leave-balance",
+      },
+      actions.includes("VIEW_HOLIDAY") && {
+        text: "Holiday Calendar",
+        link: "/user/holiday",
+      },
+    ].filter(Boolean),
+  },
+ 
+  // My Profile (User)
+  actions.includes("VIEW_PROFILE") && {
+    text: "My Profile",
+    icon: <PersonIcon />,
+    link: "/user/profile",
+  },
+].filter(Boolean);
+ 
+ 
+ 
+ 
   if (loading) {
     return (
       <Box sx={{
@@ -160,11 +280,11 @@ const Dashboard = () => {
       </Box>
     );
   }
-
+ 
   const genderIcon = profileData?.personal?.gender?.toLowerCase() === 'male'
     ? <MaleIcon fontSize="small" color="primary" />
     : <FemaleIcon fontSize="small" color="secondary" />;
-
+ 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100vh" }}>
       {/* Error Snackbar */}
@@ -182,7 +302,7 @@ const Dashboard = () => {
           {error}
         </Alert>
       </Snackbar>
-
+ 
       {/* App Bar */}
       <AppBar position="static" color="primary">
         <Toolbar sx={{ justifyContent: "space-between" }}>
@@ -209,7 +329,7 @@ const Dashboard = () => {
               </Box>
             </Box>
           </Box>
-
+ 
           <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
             <TextField
               variant="outlined"
@@ -252,7 +372,7 @@ const Dashboard = () => {
           </Box>
         </Toolbar>
       </AppBar>
-
+ 
       {/* Sidebar & Main Content */}
       <Box sx={{ display: "flex", flexGrow: 1 }}>
         {/* Sidebar */}
@@ -292,7 +412,7 @@ const Dashboard = () => {
                     )}
                   </ListItemButton>
                 </ListItem>
-
+ 
                 {/* Submenu items */}
                 {item.subItems && (
                   <Collapse
@@ -331,7 +451,7 @@ const Dashboard = () => {
             ))}
           </List>
         </Box>
-
+ 
         {/* Main Content */}
         <Box
           component="main"
@@ -348,5 +468,6 @@ const Dashboard = () => {
     </Box>
   );
 };
-
+ 
 export default Dashboard;
+ 
