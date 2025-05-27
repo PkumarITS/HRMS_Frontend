@@ -311,6 +311,14 @@ const Profile = ({ isRole }) => {
             <Table>
               <TableBody>
                 <TableRow>
+                  <TableCell sx={{ fontWeight: "bold", width: '40%' }}>Employment Status</TableCell>
+                  <TableCell>
+                    <Chip 
+                      label={personal?.employmentStatus || "-"} 
+                    />
+                  </TableCell>
+                </TableRow>
+                <TableRow>
                   <TableCell sx={{ fontWeight: "bold", width: '40%' }}>Employee ID</TableCell>
                   <TableCell>
                     <Chip label={personal?.empId || "-"} variant="outlined" />
@@ -393,15 +401,6 @@ const Profile = ({ isRole }) => {
             <Divider sx={{ mb: 2 }} />
             <Table>
               <TableBody>
-                <TableRow>
-                  <TableCell sx={{ fontWeight: "bold", width: '40%' }}>Status</TableCell>
-                  <TableCell>
-                    <Chip 
-                      label={work?.employmentStatus || "-"} 
-                      color={work?.employmentStatus === 'Active' ? 'success' : 'error'} 
-                    />
-                  </TableCell>
-                </TableRow>
                 <TableRow>
                   <TableCell sx={{ fontWeight: "bold" }}>Department</TableCell>
                   <TableCell>

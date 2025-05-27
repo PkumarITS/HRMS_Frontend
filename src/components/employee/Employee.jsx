@@ -165,6 +165,7 @@ const Employee = () => {
           personal.firstName?.toLowerCase().includes(term) ||
           personal.lastName?.toLowerCase().includes(term) ||
           personal.empId?.toLowerCase().includes(term) ||
+          personal.employmentStatus?.toLowerCase().includes(term) ||
           work.department?.toLowerCase().includes(term) ||
           work.jobTitle?.toLowerCase().includes(term) ||
           emp.id.toString().includes(term)
@@ -189,6 +190,7 @@ const Employee = () => {
         "Marital Status",
         "Nationality",
         "Ethnicity",
+        "Employment Status",
         
         // Identification Information
         "Immigration Status",
@@ -199,7 +201,6 @@ const Employee = () => {
         "Document Number",
         
         // Work Information
-        "Employment Status",
         "Department",
         "Job Title",
         "Pay Grade",
@@ -257,6 +258,7 @@ const Employee = () => {
           personal.maritalStatus || "",
           personal.nationality || "",
           personal.ethnicity || "",
+          personal.employmentStatus || "",
           
           // Identification Information
           identification.immigrationStatus || "",
@@ -267,7 +269,6 @@ const Employee = () => {
           identification.documentNumber || "",
           
           // Work Information
-          work.employmentStatus || "",
           work.department || "",
           work.jobTitle || "",
           work.payGrade || "",
@@ -445,6 +446,7 @@ const Employee = () => {
               <TableCell sx={{ fontWeight: "bold", color: "common.white" }}>Employee ID</TableCell>
               <TableCell sx={{ fontWeight: "bold", color: "common.white" }}>First Name</TableCell>
               <TableCell sx={{ fontWeight: "bold", color: "common.white" }}>Last Name</TableCell>
+              <TableCell sx={{ fontWeight: "bold", color: "common.white" }}>Employement Status</TableCell>
               <TableCell sx={{ fontWeight: "bold", color: "common.white" }}>Department</TableCell>
               <TableCell sx={{ fontWeight: "bold", color: "common.white" }}>Job Title</TableCell>
               <TableCell sx={{ fontWeight: "bold", color: "common.white" }}>Actions</TableCell>
@@ -460,6 +462,7 @@ const Employee = () => {
                     <TableCell>{emp.personal?.empId || "-"}</TableCell>
                     <TableCell>{emp.personal?.firstName || "-"}</TableCell>
                     <TableCell>{emp.personal?.lastName || "-"}</TableCell>
+                    <TableCell>{emp.personal?.employmentStatus || "-"}</TableCell>
                     <TableCell>{emp.work?.department || "-"}</TableCell>
                     <TableCell>{emp.work?.jobTitle || "-"}</TableCell>
                     <TableCell>

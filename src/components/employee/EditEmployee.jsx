@@ -60,6 +60,9 @@ const EditEmployee = () => {
     severity: "success"
   });
   const [activeTab, setActiveTab] = useState(0);
+  const [existingEmpIds, setExistingEmpIds] = useState([]);
+  const [errors, setErrors] = useState({});
+  const [originalEmpId, setOriginalEmpId] = useState(""); // Store original employee ID
 
   const timeZones = [
     "UTC - Coordinated Universal Time",
@@ -89,7 +92,8 @@ const EditEmployee = () => {
       gender: "",
       maritalStatus: "",
       nationality: "",
-      ethnicity: ""
+      ethnicity: "",
+      employmentStatus: "",
     },
     identification: {
       immigrationStatus: "",
@@ -104,7 +108,6 @@ const EditEmployee = () => {
       documentNumber: ""
     },
     work: {
-      employmentStatus: "",
       department: "",
       jobTitle: "",
       payGrade: "",
@@ -155,10 +158,22 @@ const EditEmployee = () => {
   const [filteredNationalities, setFilteredNationalities] = useState(countryOptions);
 
   useEffect(() => {
-    const fetchEmployee = async () => {
+    const fetchInitialData = async () => {
       try {
-        setLoading(true);
         const token = Cookies.get("token");
+        
+        // Fetch existing employee IDs
+        const idsResponse = await axios.get("http://localhost:1010/admin/employees/ids", {
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+
+        if (idsResponse.data && idsResponse.data.data) {
+          setExistingEmpIds(idsResponse.data.data.map(id => id.toUpperCase()));
+        }
+
+        // Fetch employee data
         const response = await axios.get(
           `http://localhost:1010/admin/employees/${id}`,
           {
@@ -170,6 +185,7 @@ const EditEmployee = () => {
         
         if (response.data && response.data.data) {
           setEmployee(response.data.data);
+          setOriginalEmpId(response.data.data.personal?.empId || ""); // Store original employee ID
           setFilteredCountries(countryOptions);
           setFilteredNationalities(countryOptions);
         } else {
@@ -186,7 +202,7 @@ const EditEmployee = () => {
       }
     };
 
-    fetchEmployee();
+    fetchInitialData();
   }, [id, navigate, countryOptions]);
 
   const handleCountrySearch = (event) => {
@@ -211,16 +227,52 @@ const EditEmployee = () => {
     const { name, value } = event.target;
     const [section, field] = name.includes('.') ? name.split('.') : ['personal', name];
     
+    // Auto-uppercase empId
+    const processedValue = (section === 'personal' && field === 'empId') ? value.toUpperCase() : value;
+
     setEmployee(prev => ({
       ...prev,
       [section]: {
         ...prev[section],
-        [field]: value
+        [field]: processedValue
       }
     }));
+
+    // Clear error for the field being edited
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: "" }));
+    }
+  };
+
+  const validateFields = () => {
+    const newErrors = {};
+    
+    // Validate employee ID
+    if (employee.personal.empId) {
+      if (!/^[A-Z0-9]+$/.test(employee.personal.empId)) {
+        newErrors["personal.empId"] = "Must contain only uppercase letters and numbers";
+      } else if (existingEmpIds.includes(employee.personal.empId.toUpperCase()) && 
+                 employee.personal.empId.toUpperCase() !== originalEmpId.toUpperCase()) {
+        newErrors["personal.empId"] = "Employee ID must be unique";
+      }
+    }
+
+    // Add more validations as needed for other fields
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSave = async () => {
+    if (!validateFields()) {
+      setSnackbar({
+        open: true,
+        message: "Please fix the errors before saving",
+        severity: "error"
+      });
+      return;
+    }
+
     try {
       const token = Cookies.get("token");
       const response = await axios.put(
@@ -258,6 +310,15 @@ const EditEmployee = () => {
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
+  };
+
+  const getError = (fieldName) => {
+    return errors[fieldName] ||
+      errors[`personal.${fieldName}`] ||
+      errors[`identification.${fieldName}`] ||
+      errors[`work.${fieldName}`] ||
+      errors[`contact.${fieldName}`] ||
+      errors[`report.${fieldName}`];
   };
 
   if (loading) {
@@ -510,29 +571,39 @@ const EditEmployee = () => {
           <CardContent>
             <Grid container spacing={3}>
               <Grid item xs={12} md={6}>
+                <FormControl fullWidth sx={{ mb: 2 }}>
+                  <InputLabel>Employment Status</InputLabel>
+                  <Select
+                    name="personal.employmentStatus"
+                    value={employee.personal?.employmentStatus || ""}
+                    onChange={handleChange}
+                    label="Employment Status"
+                    variant="outlined"
+                  >
+                    <MenuItem value="Full-Time Permanent">Full-Time Permanent</MenuItem>
+                    <MenuItem value="Contract">Contract</MenuItem>
+                    <MenuItem value="Part-Time">Part-Time</MenuItem>
+                    <MenuItem value="Internship">Internship</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="Employee Number"
+                  label="Employee ID"
                   name="personal.empId"
                   value={employee.personal?.empId || ""}
                   onChange={handleChange}
                   variant="outlined"
                   sx={{ mb: 2 }}
+                  error={!!getError("personal.empId")}
+                  helperText={getError("personal.empId")}
+                  inputProps={{
+                    style: { textTransform: 'uppercase' }
+                  }}
                 />
               </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Date of Birth"
-                  type="date"
-                  name="personal.dateOfBirth"
-                  value={employee.personal?.dateOfBirth?.split('T')[0] || ""}
-                  onChange={handleChange}
-                  InputLabelProps={{ shrink: true }}
-                  variant="outlined"
-                  sx={{ mb: 2 }}
-                />
-              </Grid>
+              
               <Grid item xs={12} md={4}>
                 <TextField
                   fullWidth
@@ -562,6 +633,19 @@ const EditEmployee = () => {
                   name="personal.lastName"
                   value={employee.personal?.lastName || ""}
                   onChange={handleChange}
+                  variant="outlined"
+                  sx={{ mb: 2 }}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Date of Birth"
+                  type="date"
+                  name="personal.dateOfBirth"
+                  value={employee.personal?.dateOfBirth?.split('T')[0] || ""}
+                  onChange={handleChange}
+                  InputLabelProps={{ shrink: true }}
                   variant="outlined"
                   sx={{ mb: 2 }}
                 />
@@ -684,6 +768,17 @@ const EditEmployee = () => {
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
+                  label="Aadhar Card Number"
+                  name="identification.aadharCardNumber"
+                  value={employee.identification?.aadharCardNumber || ""}
+                  onChange={handleChange}
+                  variant="outlined"
+                  sx={{ mb: 2 }}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
                   label="Pan Card Number"
                   name="identification.panCardNumber"
                   value={employee.identification?.panCardNumber || ""}
@@ -697,7 +792,7 @@ const EditEmployee = () => {
                 <FormControl fullWidth sx={{ mb: 2 }}>
                   <InputLabel>Address Proof</InputLabel>
                   <Select
-                    name="identification.idProof"
+                    name="identification.addressProof"
                     value={employee.identification?.addressProof || ""}
                     onChange={handleChange}
                     label="Address Proof"
@@ -710,7 +805,7 @@ const EditEmployee = () => {
                 </FormControl>
               </Grid>
               {employee.identification?.addressProof && employee.identification?.addressProof !== "Other" && (
-                <Grid item xs={12}>
+                <Grid item xs={12} md={6}>
                   <TextField
                     fullWidth
                     label="Address Document Number"
@@ -768,7 +863,7 @@ const EditEmployee = () => {
                 </FormControl>
               </Grid>
               {employee.identification?.idProof && employee.identification?.idProof !== "Other" && (
-                <Grid item xs={12}>
+                <Grid item xs={12} md={6}>
                   <TextField
                     fullWidth
                     label="Document Number"
@@ -824,25 +919,6 @@ const EditEmployee = () => {
           />
           <CardContent>
             <Grid container spacing={3}>
-              <Grid item xs={12} md={6}>
-                <FormControl fullWidth sx={{ mb: 2 }}>
-                  <InputLabel>Employment Status</InputLabel>
-                  <Select
-                    name="work.employmentStatus"
-                    value={employee.work?.employmentStatus || ""}
-                    onChange={handleChange}
-                    label="Employment Status"
-                    variant="outlined"
-                  >
-                    <MenuItem value="Full-Time Internship">Full-Time Internship</MenuItem>
-                    <MenuItem value="Full-Time Contract">Full-Time Contract</MenuItem>
-                    <MenuItem value="Full-Time Permanent">Full-Time Permanent</MenuItem>
-                    <MenuItem value="Part-Time Internship">Part-Time Internship</MenuItem>
-                    <MenuItem value="Part-Time Contract">Part-Time Contract</MenuItem>
-                    <MenuItem value="Part-Time Permanent">Part-Time Permanent</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth

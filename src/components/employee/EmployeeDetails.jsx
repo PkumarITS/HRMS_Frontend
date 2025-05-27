@@ -173,6 +173,7 @@ const EmployeeDetails = () => {
                 <Typography><strong>Middle Name:</strong> {employee.personal?.middleName || '-'}</Typography>
                 <Typography><strong>Last Name:</strong> {employee.personal?.lastName || '-'}</Typography>
                 <Typography><strong>Date of Birth:</strong> {employee.personal?.dateOfBirth || '-'}</Typography>
+                <Typography><strong>Employment Status:</strong> {employee.personal?.employmentStatus || '-'}</Typography>
               </Grid>
               <Grid item xs={6}>
                 <Typography><strong>Gender:</strong> {employee.personal?.gender || '-'}</Typography>
@@ -190,7 +191,6 @@ const EmployeeDetails = () => {
             </Typography>
             <Grid container spacing={2}>
               <Grid item xs={6}>
-                <Typography><strong>Employment Status:</strong> {employee.work?.employmentStatus || '-'}</Typography>
                 <Typography><strong>Department:</strong> {employee.work?.department || '-'}</Typography>
                 <Typography><strong>Job Title:</strong> {employee.work?.jobTitle || '-'}</Typography>
                 <Typography><strong>Pay Grade:</strong> {employee.work?.payGrade || '-'}</Typography>
@@ -320,7 +320,15 @@ const EmployeeDetails = () => {
             <Table>
               <TableBody>
                 <TableRow>
-                  <TableCell sx={{ fontWeight: "bold", width: '40%' }}>Employee Number</TableCell>
+                  <TableCell sx={{ fontWeight: "bold", width: '40%' }}>Employment Status</TableCell>
+                  <TableCell>
+                    <Chip 
+                      label={employee.personal?.employmentStatus || "-"} 
+                    />
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: "bold", width: '40%' }}>Employee ID</TableCell>
                   <TableCell>
                     <Chip label={employee.personal?.empId || "-"} variant="outlined" />
                   </TableCell>
@@ -413,6 +421,10 @@ const EmployeeDetails = () => {
                   </TableCell>
                 </TableRow>
                 <TableRow>
+                  <TableCell sx={{ fontWeight: "bold" }}>Aadhar Card</TableCell>
+                  <TableCell>{employee.identification?.aadharCardNumber || "-"}</TableCell>
+                </TableRow>
+                <TableRow>
                   <TableCell sx={{ fontWeight: "bold", width: '40%' }}>Address Proof</TableCell>
                   <TableCell>{employee.identification?.addressProof || "-"}</TableCell>
                 </TableRow>
@@ -465,15 +477,6 @@ const EmployeeDetails = () => {
             <Divider sx={{ mb: 2 }} />
             <Table>
               <TableBody>
-                <TableRow>
-                  <TableCell sx={{ fontWeight: "bold", width: '40%' }}>Status</TableCell>
-                  <TableCell>
-                    <Chip 
-                      label={employee.work?.employmentStatus || "-"} 
-                      color={employee.work?.employmentStatus === 'Active' ? 'success' : 'error'} 
-                    />
-                  </TableCell>
-                </TableRow>
                 <TableRow>
                   <TableCell sx={{ fontWeight: "bold" }}>Department</TableCell>
                   <TableCell>

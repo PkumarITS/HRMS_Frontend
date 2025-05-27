@@ -73,10 +73,12 @@ const Employee = () => {
       gender: "",
       maritalStatus: "",
       nationality: "",
-      ethnicity: ""
+      ethnicity: "",
+      employmentStatus: "",
     },
     identification: {
       immigrationStatus: "",
+      aadharCardNumber: "",
       panCardNumber: "",
       addressProof: "",
       addressDocumentName: "",
@@ -88,7 +90,6 @@ const Employee = () => {
       documentNumber: ""
     },
     work: {
-      employmentStatus: "",
       department: "",
       jobTitle: "",
       payGrade: "",
@@ -139,24 +140,7 @@ const Employee = () => {
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
-        // Fetch next employee ID
-        const idResponse = await fetch("http://localhost:1010/admin/employees/next-emp-id", {
-          headers: {
-            "Authorization": `Bearer ${token}`
-          }
-        });
-
-        if (idResponse.ok) {
-          const idData = await idResponse.json();
-          setFormData(prev => ({
-            ...prev,
-            personal: {
-              ...prev.personal,
-              empId: idData.data
-            }
-          }));
-        }
-
+        // No need to fetch initial ID here anymore - it will be fetched when employment status is selected
         // Fetch existing employee IDs
         const idsResponse = await fetch("http://localhost:1010/admin/employees/ids", {
           headers: {
@@ -324,6 +308,16 @@ const Employee = () => {
             newErrors[field] = "Must be exactly 10 digits if provided";
           }
           break;
+        case "aadharCardNumber":
+        if (!/^\d{12}$/.test(value)) {
+          newErrors[field] = "Aadhar must be exactly 12 digits";
+        }
+        break;
+        case "panCardNumber":
+        if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(value)) {
+          newErrors[field] = "Invalid PAN format (AAAAA9999A)";
+        }
+        break;
 
       }
     });
@@ -373,11 +367,13 @@ const Employee = () => {
           "personal.dateOfBirth",
           "personal.gender",
           "personal.maritalStatus",
-          "personal.nationality"
+          "personal.nationality",
+          "personal.employmentStatus",
         ];
       case 1: // Identification
         return [
           "identification.immigrationStatus",
+          "identification.aadharCardNumber",
           "identification.panCardNumber",
           "identification.addressProof",
           "identification.addressDocumentNumber",
@@ -386,7 +382,6 @@ const Employee = () => {
         ];
       case 2: // Work
         return [
-          "work.employmentStatus",
           "work.department",
           "work.jobTitle",
           "work.doj",
@@ -532,6 +527,52 @@ const Employee = () => {
       case 0: // Personal
         return (
           <>
+            <FormControl
+              fullWidth
+              margin="normal"
+              error={!!getError("personal.employmentStatus")}
+            >
+              <InputLabel>Employment Status</InputLabel>
+              <Select
+                name="personal.employmentStatus"
+                value={formData.personal.employmentStatus}
+                onChange={(e) => {
+                  handleChange(e);
+                  // Generate new empId when status changes
+                  if (e.target.value) {
+                    fetch(`http://localhost:1010/admin/employees/next-emp-id?employmentStatus=${e.target.value}`, {
+                      headers: {
+                        "Authorization": `Bearer ${token}`
+                      }
+                    })
+                      .then(response => response.json())
+                      .then(data => {
+                        if (data.status === "success") {
+                          setFormData(prev => ({
+                            ...prev,
+                            personal: {
+                              ...prev.personal,
+                              empId: data.data
+                            }
+                          }));
+                        }
+                      });
+                  }
+                }}
+                label="Employment Status"
+                required
+              >
+                <MenuItem value="Full-Time Permanent">Full-Time Permanent</MenuItem>
+                <MenuItem value="Contract">Contract</MenuItem>
+                <MenuItem value="Part-Time">Part-Time</MenuItem>
+                <MenuItem value="Internship">Internship</MenuItem>
+              </Select>
+              {getError("personal.employmentStatus") &&
+                <Typography variant="caption" color="error">
+                  {getError("personal.employmentStatus")}
+                </Typography>
+              }
+            </FormControl>
             <TextField
               fullWidth
               margin="normal"
@@ -704,6 +745,23 @@ const Employee = () => {
             <TextField
               fullWidth
               margin="normal"
+              label="Aadhar Card Number"
+              name="identification.aadharCardNumber"
+              value={formData.identification.aadharCardNumber || ''}
+              onChange={handleChange}
+              required
+              error={!!getError("identification.aadharCardNumber")}
+              helperText={getError("identification.aadharCardNumber") || "Must be 12 digits"}
+              inputProps={{
+                maxLength: 12,
+                inputMode: 'numeric',
+                pattern: '[0-9]*'
+              }}
+            />
+
+            <TextField
+              fullWidth
+              margin="normal"
               label="PAN Card Number"
               name="identification.panCardNumber"
               value={formData.identification.panCardNumber || ''}
@@ -730,6 +788,7 @@ const Employee = () => {
                 label="Address Proof"
                 required
               >
+                <MenuItem value="Aadhar Card">Aadhar Card</MenuItem>
                 <MenuItem value="Driving Licence">Driving Licence</MenuItem>
                 <MenuItem value="Passport">Passport</MenuItem>
                 <MenuItem value="Other Address Proof">Other</MenuItem>
@@ -761,10 +820,11 @@ const Employee = () => {
               fullWidth
               margin="normal"
               label={
-                formData.identification.addressProof === "Driving Licence" ? "Driving Licence Number" :
-                  formData.identification.addressProof === "Passport" ? "Passport Number" :
-                    formData.identification.addressProof === "Other Address Proof" ? "Address Document Number" :
-                      "Address Proof Number"
+                formData.identification.addressProof === "Aadhar Card" ? "Aadhar Number" :
+                  formData.identification.addressProof === "Driving Licence" ? "Driving Licence Number" :
+                    formData.identification.addressProof === "Passport" ? "Passport Number" :
+                      formData.identification.addressProof === "Other Address Proof" ? "Address Document Number" :
+                        "Address Proof Number"
               }
               name="identification.addressDocumentNumber"
               value={formData.identification.addressDocumentNumber}
@@ -772,13 +832,15 @@ const Employee = () => {
               required
               error={!!getError("identification.addressDocumentNumber")}
               helperText={getError("identification.addressDocumentNumber") ||
-                (formData.identification.addressProof === "Driving Licence" ? "Driving Licence Number must be 16 characters" :
-                  formData.identification.addressProof === "Passport" ? "Passport Number must be 8 characters" : "")
+                (formData.identification.addressProof === "Aadhar Card" ? "Aadhar Number must be 12 digits" :
+                  formData.identification.addressProof === "Driving Licence" ? "Driving Licence Number must be 16 characters" :
+                    formData.identification.addressProof === "Passport" ? "Passport Number must be 8 characters" : "")
               }
               inputProps={{
                 maxLength:
-                  formData.identification.addressProof === "Driving Licence" ? 16 :
-                    formData.identification.addressProof === "Passport" ? 8 : 20,
+                  formData.identification.addressProof === "Aadhar Card" ? 12 :
+                    formData.identification.addressProof === "Driving Licence" ? 16 :
+                      formData.identification.addressProof === "Passport" ? 8 : 20,
               }}
             />
 
@@ -883,26 +945,7 @@ const Employee = () => {
       case 2: // Work
         return (
           <>
-            <FormControl
-              fullWidth
-              margin="normal"
-              error={!!getError("work.employmentStatus")}
-            >
-              <InputLabel>Employment Status</InputLabel>
-              <Select
-                name="work.employmentStatus"
-                value={formData.work.employmentStatus}
-                onChange={handleChange}
-                label="Employment Status"
-                required
-              >
-                <MenuItem value="Full-Time Permanent">Full-Time Permanent</MenuItem>
-                <MenuItem value="Full-Time Contract">Contract</MenuItem>
-                <MenuItem value="Part-Time Contract">Part-Time</MenuItem>
-                <MenuItem value="Full-Time Internship">Internship</MenuItem>
-              </Select>
-              {getError("work.employmentStatus") && <Typography variant="caption" color="error">{getError("work.employmentStatus")}</Typography>}
-            </FormControl>
+
 
             <TextField
               fullWidth
