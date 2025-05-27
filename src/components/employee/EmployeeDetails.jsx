@@ -47,6 +47,7 @@ import {
   Print as PrintIcon,
   Close as CloseIcon
 } from "@mui/icons-material";
+import API_BASE_URL from "../config/apiConfig";
 
 const EmployeeDetails = () => {
   const { id } = useParams();
@@ -65,7 +66,7 @@ const EmployeeDetails = () => {
         setLoading(true);
         const token = Cookies.get("token");
         const response = await axios.get(
-          `http://localhost:1010/admin/employees/${id}`,
+          `${API_BASE_URL}/employees/${id}`,
           {
             headers: {
               Authorization: `Bearer ${token}`

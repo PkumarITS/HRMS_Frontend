@@ -2,6 +2,7 @@ import { createContext, useEffect, useState } from "react";
 import Cookies from "js-cookie";
 import UserService from "../service/UserService";
 import axios from "axios";
+import API_BASE_URL from "../config/apiConfig";
 
 export const userContext = createContext();
 
@@ -30,7 +31,7 @@ const ContextProvider = ({ children }) => {
 
             try {
                 // Verify token with backend
-                const response = await axios.get(`${UserService.BASE_URL}/common/get-profile`, {
+                const response = await axios.get(`${API_BASE_URL}/get-profile`, {
                     headers: { Authorization: `Bearer ${token}` },
                     withCredentials: true,
                 });

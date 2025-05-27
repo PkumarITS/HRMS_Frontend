@@ -30,6 +30,7 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import DeleteIcon from "@mui/icons-material/Delete";
 import SearchIcon from "@mui/icons-material/Search";
 import Cookies from "js-cookie";
+import API_BASE_URL from "../config/apiConfig";
 
 const Employee = () => {
   const [employees, setEmployees] = useState([]);
@@ -57,7 +58,7 @@ const Employee = () => {
       try {
         setLoading(true);
         
-        const response = await axios.get("http://localhost:1010/admin/employees/all", {
+        const response = await axios.get(`${API_BASE_URL}/employees/all`, {
           headers: {
             "Authorization": `Bearer ${token}`,
             "Content-Type": "application/json"
@@ -101,7 +102,7 @@ const Employee = () => {
   const handleDeleteConfirm = async () => {
     try {
       const response = await axios.delete(
-        `http://localhost:1010/admin/employees/${deleteDialog.employeeId}`,
+        `${API_BASE_URL}/employees/${deleteDialog.employeeId}`,
         {
           headers: {
             "Authorization": `Bearer ${token}`

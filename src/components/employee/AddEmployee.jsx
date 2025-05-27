@@ -28,6 +28,7 @@ import {
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
+import API_BASE_URL from "../config/apiConfig";
 
 const steps = ["Personal", "Identification", "Work", "Contact", "Report"];
 
@@ -142,7 +143,7 @@ const Employee = () => {
       try {
         // No need to fetch initial ID here anymore - it will be fetched when employment status is selected
         // Fetch existing employee IDs
-        const idsResponse = await fetch("http://localhost:1010/admin/employees/ids", {
+        const idsResponse = await fetch(`${API_BASE_URL}/employees/ids`, {
           headers: {
             "Authorization": `Bearer ${token}`
           }
@@ -267,13 +268,6 @@ const Employee = () => {
       }
 
       switch (fieldName) {
-        // case "empId":
-        //   if (!/^[A-Z0-9]+$/.test(value)) {
-        //     newErrors[field] = "Must contain only uppercase letters and numbers";
-        //   } else if (existingEmpIds.includes(value)) {
-        //     newErrors[field] = "Employee ID must be unique";
-        //   }
-        //   break;
         case "mobileNumber":
         case "primaryEmergencyContactNumber":
           if (!/^\d{10,15}$/.test(value)) {
@@ -484,7 +478,7 @@ const Employee = () => {
         }
       };
 
-      const response = await fetch("http://localhost:1010/admin/employees/add", {
+      const response = await fetch(`${API_BASE_URL}/employees/add`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -540,7 +534,7 @@ const Employee = () => {
                   handleChange(e);
                   // Generate new empId when status changes
                   if (e.target.value) {
-                    fetch(`http://localhost:1010/admin/employees/next-emp-id?employmentStatus=${e.target.value}`, {
+                    fetch(`${API_BASE_URL}/employees/next-emp-id?employmentStatus=${e.target.value}`, {
                       headers: {
                         "Authorization": `Bearer ${token}`
                       }
@@ -668,7 +662,7 @@ const Employee = () => {
               >
                 <MenuItem value="Unmarried">Unmarried</MenuItem>
                 <MenuItem value="Married">Married</MenuItem>
-                <MenuItem value="Married">Widow</MenuItem>
+                <MenuItem value="Widow">Widow</MenuItem>
               </Select>
               {getError("personal.maritalStatus") && <Typography variant="caption" color="error">{getError("personal.maritalStatus")}</Typography>}
             </FormControl>
@@ -1266,26 +1260,7 @@ const Employee = () => {
       case 4: // Report
         return (
           <Box sx={{ padding: 3 }}>
-            {/* <FormControl
-              fullWidth
-              margin="normal"
-              error={!!getError("report.manager")}
-            >
-              <InputLabel>Manager</InputLabel>
-              <Select
-                name="report.manager"
-                value={formData.report.manager}
-                onChange={handleChange}
-                label="Manager"
-                required
-              >
-                <MenuItem value="Manager 1">Manager 1</MenuItem>
-                <MenuItem value="Manager 2">Manager 2</MenuItem>
-                <MenuItem value="Manager 3">Manager 3</MenuItem>
-              </Select>
-              {getError("report.manager") && <Typography variant="caption" color="error">{getError("report.manager")}</Typography>}
-            </FormControl> */}
-
+            
             <TextField
               fullWidth
               margin="normal"

@@ -46,6 +46,7 @@ import ContactMailIcon from "@mui/icons-material/ContactMail";
 import FingerprintIcon from "@mui/icons-material/Fingerprint";
 import ReportIcon from "@mui/icons-material/Report";
 import PaletteIcon from "@mui/icons-material/Palette";
+import API_BASE_URL from "../config/apiConfig";
 
 const EditEmployee = () => {
   const { id } = useParams();
@@ -163,7 +164,7 @@ const EditEmployee = () => {
         const token = Cookies.get("token");
         
         // Fetch existing employee IDs
-        const idsResponse = await axios.get("http://localhost:1010/admin/employees/ids", {
+        const idsResponse = await axios.get(`${API_BASE_URL}/employees/ids`, {
           headers: {
             "Authorization": `Bearer ${token}`
           }
@@ -175,7 +176,7 @@ const EditEmployee = () => {
 
         // Fetch employee data
         const response = await axios.get(
-          `http://localhost:1010/admin/employees/${id}`,
+          `${API_BASE_URL}/employees/${id}`,
           {
             headers: {
               Authorization: `Bearer ${token}`
@@ -276,7 +277,7 @@ const EditEmployee = () => {
     try {
       const token = Cookies.get("token");
       const response = await axios.put(
-        `http://localhost:1010/admin/employees/${id}`,
+        `${API_BASE_URL}/employees/${id}`,
         employee,
         {
           headers: {

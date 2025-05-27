@@ -9,8 +9,7 @@ import { Visibility, VisibilityOff } from "@mui/icons-material";
 import UserService from '../service/UserService';
 import Cookies from "js-cookie";
 import axios from 'axios';
-
-const API_BASE_URL = "http://localhost:1010";
+import API_BASE_URL from '../config/apiConfig';
 
 function RegistrationPage() {
   const navigate = useNavigate();

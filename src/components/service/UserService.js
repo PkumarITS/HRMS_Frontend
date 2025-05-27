@@ -1,12 +1,12 @@
 import axios from "axios";
 import Cookies from "js-cookie";
+import API_BASE_URL from "../config/apiConfig";
 
 class UserService {
-    static BASE_URL = "http://localhost:1010";
 
     static async login(email, password) {
         try {
-            const response = await axios.post(`${UserService.BASE_URL}/auth/login`, {
+            const response = await axios.post(`${API_BASE_URL}/auth/login`, {
                 email,
                 password
             }, {
@@ -29,7 +29,7 @@ class UserService {
         try {
             // First verify employee exists
             const verifyResponse = await axios.get(
-                `${UserService.BASE_URL}/admin/employees/by-emp-id/${userData.empId}`,
+                `${API_BASE_URL}/employees/by-emp-id/${userData.empId}`,
                 {
                     headers: { Authorization: `Bearer ${token}` },
                     withCredentials: true,
@@ -42,7 +42,7 @@ class UserService {
 
             // Then register user
             const response = await axios.post(
-                `${UserService.BASE_URL}/admin/register`,
+                `${API_BASE_URL}/register`,
                 userData,
                 {
                     headers: { Authorization: `Bearer ${token}` },
@@ -59,7 +59,7 @@ class UserService {
 
     static async getCompleteProfile(token) {
         try {
-            const response = await axios.get(`${UserService.BASE_URL}/common/get-complete-profile`, {
+            const response = await axios.get(`${API_BASE_URL}/get-complete-profile`, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                     'Content-Type': 'application/json'
@@ -75,7 +75,7 @@ class UserService {
 
     static async getAllUsers(token) {
         try {
-            const response = await axios.get(`${UserService.BASE_URL}/admin/get-all-users`, {
+            const response = await axios.get(`${API_BASE_URL}/get-all-users`, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                     'Content-Type': 'application/json'
@@ -91,7 +91,7 @@ class UserService {
 
     static async getYourProfile(token) {
         try {
-            const response = await axios.get(`${UserService.BASE_URL}/common/get-profile`, {
+            const response = await axios.get(`${API_BASE_URL}/get-profile`, {
                 headers: { Authorization: `Bearer ${token}` },
                 withCredentials: true,
             });
@@ -103,7 +103,7 @@ class UserService {
 
     static async getUserById(userId, token) {
         try {
-            const response = await axios.get(`${UserService.BASE_URL}/admin/get-user/${userId}`, {
+            const response = await axios.get(`${API_BASE_URL}/get-user/${userId}`, {
                 headers: { Authorization: `Bearer ${token}` },
                 withCredentials: true,
             });
@@ -115,7 +115,7 @@ class UserService {
 
     static async deleteUser(userId, token) {
         try {
-            const response = await axios.delete(`${UserService.BASE_URL}/admin/deleteUser/${userId}`, {
+            const response = await axios.delete(`${API_BASE_URL}/deleteUser/${userId}`, {
                 headers: { Authorization: `Bearer ${token}` },
                 withCredentials: true,
             });
@@ -127,7 +127,7 @@ class UserService {
 
     static async updateUser(userId, userData, token) {
         try {
-            const response = await axios.put(`${UserService.BASE_URL}/admin/update/${userId}`, userData, {
+            const response = await axios.put(`${API_BASE_URL}/update/${userId}`, userData, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                     'Content-Type': 'application/json'
@@ -145,7 +145,7 @@ class UserService {
         try {
             const token = Cookies.get("token");
             if (token) {
-                await axios.post(`${UserService.BASE_URL}/auth/logout`, {}, {
+                await axios.post(`${API_BASE_URL}/auth/logout`, {}, {
                     headers: {
                         Authorization: `Bearer ${token}`,
                         'Content-Type': 'application/json'
