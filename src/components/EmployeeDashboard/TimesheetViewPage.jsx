@@ -13,8 +13,7 @@ import { format, parseISO } from "date-fns";
 import { useNavigate, useLocation } from "react-router-dom";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import axios from "axios";
-
-const API_BASE_URL = "http://localhost:1010";
+import API_BASE_URL from "../config/apiConfig"; 
 
 const TimesheetViewPage = () => {
   const navigate = useNavigate();
@@ -28,7 +27,7 @@ const TimesheetViewPage = () => {
     if (!entry && timesheetId) {
       setLoading(true);
       axios
-        .get(`${API_BASE_URL}/user/timesheet/${timesheetId}`)
+        .get(`${API_BASE_URL}/timesheet/${timesheetId}`)
         .then((res) => {
           const data = res.data;
           setEntry({

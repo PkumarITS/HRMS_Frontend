@@ -28,8 +28,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import axios from "axios";
-
-const API_BASE_URL = "http://localhost:1010";
+import API_BASE_URL from "../config/apiConfig";
 
 const TimesheetForm = () => {
   const navigate = useNavigate();
@@ -86,7 +85,7 @@ const TimesheetForm = () => {
     const fetchInitialData = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`${API_BASE_URL}/user/timesheet/get-initial-data`);
+        const response = await axios.get(`${API_BASE_URL}/timesheet/get-initial-data`);
         setInitialData({
           timesheetId: response.data.timesheetId,
           empId: response.data.empId,
@@ -124,7 +123,7 @@ const TimesheetForm = () => {
         try {
           setLoading(true);
           const response = await axios.get(
-            `${API_BASE_URL}/user/timesheet/get-tasks/${formData.projectId}`
+            `${API_BASE_URL}/timesheet/get-tasks/${formData.projectId}`
           );
           setProjectTasks(response.data);
 
@@ -205,8 +204,8 @@ const TimesheetForm = () => {
       };
 
       const response = isEditMode
-        ? await axios.put(`${API_BASE_URL}/user/timesheet/${existingEntry.timesheetId}`, payload)
-        : await axios.post(`${API_BASE_URL}/user/timesheet`, payload);
+        ? await axios.put(`${API_BASE_URL}/timesheet/${existingEntry.timesheetId}`, payload)
+        : await axios.post(`${API_BASE_URL}/timesheet`, payload);
 
       navigate("/user/employee-dashboard/timesheet-detail", {
         state: {

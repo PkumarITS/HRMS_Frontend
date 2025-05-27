@@ -64,8 +64,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import autoTable from 'jspdf-autotable';
 import logo from '../images/logo.png';
-
-const API_BASE_URL = "http://localhost:1010";
+import API_BASE_URL from "../config/apiConfig";
 
 const AdminTimesheetManagement = () => {
   const navigate = useNavigate();
@@ -112,7 +111,7 @@ const AdminTimesheetManagement = () => {
 
   const fetchManagers = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/admin/managers`);
+      const response = await axios.get(`${API_BASE_URL}/managers`);
       setManagers(response.data || []);
     } catch (error) {
       console.error("Error fetching managers:", error);
@@ -131,7 +130,7 @@ const AdminTimesheetManagement = () => {
         return;
       }
       
-      const response = await axios.get(`${API_BASE_URL}/admin/projects?managerId=${managerId}`);
+      const response = await axios.get(`${API_BASE_URL}/projects?managerId=${managerId}`);
       if (isExport) {
         setManagerProjects(response.data || []);
       } else {
@@ -145,7 +144,7 @@ const AdminTimesheetManagement = () => {
 
   const fetchProjects = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/admin/projects`);
+      const response = await axios.get(`${API_BASE_URL}/projects`);
       if (response.data && Array.isArray(response.data)) {
         setProjects(response.data);
         setManagerProjects(response.data);
@@ -168,7 +167,7 @@ const AdminTimesheetManagement = () => {
 
   const fetchTimesheets = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/admin/timesheets/non-draft`);
+      const response = await axios.get(`${API_BASE_URL}/timesheets/non-draft`);
       
       if (!response.data || !Array.isArray(response.data)) {
         throw new Error("Invalid data format received from server");
@@ -183,7 +182,7 @@ const AdminTimesheetManagement = () => {
         
         if (!managerInfo) {
           try {
-            const projectResponse = await axios.get(`${API_BASE_URL}/admin/projects/${ts.projectId}`);
+            const projectResponse = await axios.get(`${API_BASE_URL}/projects/${ts.projectId}`);
             managerInfo = {
               managerId: projectResponse.data.managerId || "N/A",
               managerName: projectResponse.data.managerName || "No Manager"

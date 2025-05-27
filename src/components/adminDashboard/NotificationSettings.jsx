@@ -27,6 +27,7 @@ import {
 import { ArrowBack, Send } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import API_BASE_URL from "../config/apiConfig";
  
 // API endpoints from backend
 const API = {
@@ -35,8 +36,7 @@ const API = {
   GET_SETTINGS: "/api/notification-settings",
   SAVE_SETTINGS: "/api/notification-settings"
 };
- 
-const API_BASE_URL = "http://localhost:1010";
+
  
 // Predefined roles with emails
 const ROLES = [

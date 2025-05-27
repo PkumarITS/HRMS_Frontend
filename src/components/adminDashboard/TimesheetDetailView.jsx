@@ -18,8 +18,7 @@ import { format, parseISO, eachDayOfInterval, isWeekend } from "date-fns";
 import { ArrowBack } from "@mui/icons-material";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import axios from "axios";
-
-const API_BASE_URL = "http://localhost:1010";
+import API_BASE_URL from "../config/apiConfig"; 
 
 const TimesheetDetailView = () => {
   const navigate = useNavigate();
@@ -32,7 +31,7 @@ const TimesheetDetailView = () => {
     if (!timesheet) {
       const fetchTimesheet = async () => {
         try {
-          const response = await axios.get(`${API_BASE_URL}/admin/timesheets/${id}`);
+          const response = await axios.get(`${API_BASE_URL}/timesheets/${id}`);
           setTimesheet(response.data);
           setLoading(false);
         } catch (error) {

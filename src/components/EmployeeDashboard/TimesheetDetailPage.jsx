@@ -58,8 +58,7 @@ import Cookies from "js-cookie";
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-
-const API_BASE_URL = "http://localhost:1010";
+import API_BASE_URL from "../config/apiConfig";
 
 const TimesheetDetailPage = () => {
   const navigate = useNavigate();
@@ -105,7 +104,7 @@ const TimesheetDetailPage = () => {
   const fetchTimesheetEntries = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_BASE_URL}/user/timesheet/employee/current-week`);
+      const response = await axios.get(`${API_BASE_URL}/timesheet/employee/current-week`);
 
       if (response.data && Array.isArray(response.data)) {
         const formattedEntries = response.data.map((entry) => ({
@@ -148,7 +147,7 @@ const TimesheetDetailPage = () => {
 
   const fetchProjects = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/user/projects/by-emp`);
+      const response = await axios.get(`${API_BASE_URL}/projects/by-emp`);
       if (response.data && Array.isArray(response.data)) {
         setProjects(response.data);
       }
@@ -226,7 +225,7 @@ const TimesheetDetailPage = () => {
   const handleDelete = async () => {
     try {
       setLoading(true);
-      await axios.delete(`${API_BASE_URL}/user/timesheet/${selectedEntry.id}`);
+      await axios.delete(`${API_BASE_URL}/timesheet/${selectedEntry.id}`);
       setRefreshTrigger(prev => prev + 1);
       setSnackbar({
         open: true,
@@ -252,7 +251,7 @@ const TimesheetDetailPage = () => {
     try {
       setLoading(true);
       const response = await axios.put(
-        `${API_BASE_URL}/user/timesheet/${selectedEntry.id}/submit`
+        `${API_BASE_URL}/timesheet/${selectedEntry.id}/submit`
       );
 
       setRefreshTrigger(prev => prev + 1);
@@ -286,7 +285,7 @@ const TimesheetDetailPage = () => {
     try {
       setLoading(true);
       const response = await axios.put(
-        `${API_BASE_URL}/user/timesheet/submit-all`,
+        `${API_BASE_URL}/timesheet/submit-all`,
         {},
         {
           headers: {
