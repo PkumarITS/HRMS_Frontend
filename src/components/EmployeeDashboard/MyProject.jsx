@@ -31,6 +31,7 @@ import { styled } from "@mui/material/styles";
 import axios from "axios";
 import Cookies from "js-cookie";
 import { useNavigate } from "react-router-dom";
+import API_BASE_URL from "../config/apiConfig";
 
 // Configure axios
 axios.interceptors.request.use(config => {
@@ -40,8 +41,6 @@ axios.interceptors.request.use(config => {
   }
   return config;
 });
-
-const API_BASE_URL = "http://localhost:1010";
 
 const StyledCard = styled(Card)({
   borderRadius: "12px",
@@ -104,7 +103,7 @@ const MyProject = () => {
         setLoading(true);
 
         // Get projects assigned to this employee
-        const projectsResponse = await axios.get(`${API_BASE_URL}/user/projects/by-emp`);
+        const projectsResponse = await axios.get(`${API_BASE_URL}/projects/by-emp`);
 
         // Transform the data to match our frontend structure
         const transformedProjects = projectsResponse.data.map(project => ({

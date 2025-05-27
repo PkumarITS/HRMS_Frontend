@@ -14,6 +14,7 @@ import {
 import { styled } from "@mui/material/styles";
 import axios from "axios";
 import Cookies from "js-cookie";
+import API_BASE_URL from "../config/apiConfig";
  
 // Add axios interceptor for auth tokens
 axios.interceptors.request.use(config => {
@@ -24,7 +25,6 @@ axios.interceptors.request.use(config => {
   return config;
 });
  
-const API_BASE_URL = "http://localhost:1010";
  
 const StyledCard = styled(Card)(({ theme }) => ({
   borderRadius: "12px",
@@ -83,8 +83,8 @@ const Task = () => {
     const fetchData = async () => {
       try {
         const [tasksRes, projectsRes] = await Promise.all([
-          axios.get(`${API_BASE_URL}/admin/tasks`),
-          axios.get(`${API_BASE_URL}/admin/projects`)
+          axios.get(`${API_BASE_URL}/alltasks`),
+          axios.get(`${API_BASE_URL}/projects`)
         ]);
         setTasks(tasksRes.data);
         setProjects(projectsRes.data);
@@ -126,10 +126,10 @@ const Task = () => {
     try {
       let response;
       if (editingTaskId) {
-        response = await axios.put(`${API_BASE_URL}/admin/tasks/${editingTaskId}`, newTask);
+        response = await axios.put(`${API_BASE_URL}/tasks/${editingTaskId}`, newTask);
         setTasks(tasks.map((t) => (t.id === editingTaskId ? response.data : t)));
       } else {
-        response = await axios.post(`${API_BASE_URL}/admin/tasks/add`, newTask);
+        response = await axios.post(`${API_BASE_URL}/tasks/add`, newTask);
         setTasks([...tasks, response.data]);
       }
   
@@ -165,7 +165,7 @@ const Task = () => {
   const handleDeleteTask = async (id) => {
     if (window.confirm("Are you sure you want to delete this task?")) {
       try {
-        await axios.delete(`${API_BASE_URL}/admin/tasks/${id}`);
+        await axios.delete(`${API_BASE_URL}/tasks/${id}`);
         setTasks(tasks.filter((task) => task.id !== id));
         setSnackbar({
           open: true,
@@ -186,7 +186,7 @@ const Task = () => {
   const handleStatusChange = async (id, newStatus) => {
     try {
       const response = await axios.patch(
-        `${API_BASE_URL}/adminuser/tasks/${id}/status`,
+        `${API_BASE_URL}/tasks/${id}/status`,
         newStatus,
         { headers: { 'Content-Type': 'text/plain' } }
       );

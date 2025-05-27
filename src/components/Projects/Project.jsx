@@ -15,6 +15,7 @@ import {
 import { styled } from "@mui/material/styles";
 import axios from "axios";
 import Cookies from "js-cookie";
+import API_BASE_URL from "../config/apiConfig";
 
 axios.interceptors.request.use(config => {
   const token = Cookies.get("token");
@@ -23,8 +24,6 @@ axios.interceptors.request.use(config => {
   }
   return config;
 });
-
-const API_BASE_URL = "http://localhost:1010";
 
 const StyledCard = styled(Card)(({ theme }) => ({
   borderRadius: "12px",
@@ -96,8 +95,8 @@ const Project = () => {
       try {
         setLoading(true);
         const [projectsRes, managersRes] = await Promise.all([
-          axios.get(`${API_BASE_URL}/admin/projects`),
-          axios.get(`${API_BASE_URL}/admin/managers`)
+          axios.get(`${API_BASE_URL}/projects`),
+          axios.get(`${API_BASE_URL}/managers`)
         ]);
         
         setProjects(projectsRes.data || []);
@@ -161,7 +160,7 @@ const Project = () => {
 
   const fetchEmployees = async (searchQuery = "") => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/admin/employees/search?query=${searchQuery}`);
+      const response = await axios.get(`${API_BASE_URL}/employees/search?query=${searchQuery}`);
       setEmployees(response.data?.data || []);
       setFilteredEmployees(response.data?.data || []);
     } catch (error) {
@@ -198,7 +197,7 @@ const Project = () => {
 
   const fetchAssignments = async (projectId) => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/admin/assignments/project/${projectId}`);
+      const response = await axios.get(`${API_BASE_URL}/assignments/project/${projectId}`);
       setAssignments(response.data || []);
     } catch (error) {
       console.error("Error fetching assignments:", error);
@@ -229,10 +228,10 @@ const Project = () => {
 
       let response;
       if (projectToEdit) {
-        response = await axios.put(`${API_BASE_URL}/admin/projects/${projectToEdit.id}`, projectToCreate);
+        response = await axios.put(`${API_BASE_URL}/projects/${projectToEdit.id}`, projectToCreate);
         setProjects(projects.map(p => p.id === projectToEdit.id ? response.data : p));
       } else {
-        response = await axios.post(`${API_BASE_URL}/admin/projects/add`, projectToCreate);
+        response = await axios.post(`${API_BASE_URL}/projects/add`, projectToCreate);
         setProjects([...projects, response.data]);
       }
       
@@ -256,7 +255,7 @@ const Project = () => {
   const handleDeleteProject = async (id) => {
     if (window.confirm("Are you sure you want to delete this project?")) {
       try {
-        await axios.delete(`${API_BASE_URL}/admin/projects/${id}`);
+        await axios.delete(`${API_BASE_URL}/projects/${id}`);
         setProjects(projects.filter((project) => project.id !== id));
         setSnackbar({
           open: true,
@@ -277,7 +276,7 @@ const Project = () => {
   const handleStatusChange = async (id, newStatus) => {
     try {
       const response = await axios.patch(
-        `${API_BASE_URL}/admin/projects/${id}/status`,
+        `${API_BASE_URL}/projects/${id}/status`,
         newStatus,
         { headers: { 'Content-Type': 'text/plain' } }
       );
@@ -319,7 +318,7 @@ const Project = () => {
     }
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/admin/assignments`, newAssignment);
+      const response = await axios.post(`${API_BASE_URL}/assignments`, newAssignment);
         setAssignments([...assignments, response.data]);
         setSnackbar({
             open: true,
@@ -354,7 +353,7 @@ const Project = () => {
 
   const handleDeleteAssignment = async () => {
     try {
-      await axios.delete(`${API_BASE_URL}/admin/assignments/${assignmentToDelete.id}`);
+      await axios.delete(`${API_BASE_URL}/assignments/${assignmentToDelete.id}`);
       setAssignments(assignments.filter(a => a.id !== assignmentToDelete.id));
       setSnackbar({
         open: true,
@@ -394,7 +393,7 @@ const Project = () => {
 
     try {
       const response = await axios.put(
-        `${API_BASE_URL}/admin/assignments/${currentAssignment.id}`,
+        `${API_BASE_URL}/assignments/${currentAssignment.id}`,
         currentAssignment
       );
       setAssignments(assignments.map(a =>

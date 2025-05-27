@@ -13,6 +13,7 @@ import { styled } from "@mui/material/styles";
 import axios from "axios";
 import Cookies from "js-cookie";
 import { useNavigate } from "react-router-dom";
+import API_BASE_URL from "../config/apiConfig";
 
 // Add axios interceptor for auth tokens
 axios.interceptors.request.use(config => {
@@ -22,8 +23,6 @@ axios.interceptors.request.use(config => {
   }
   return config;
 });
-
-const API_BASE_URL = "http://localhost:1010";
 
 const StyledCard = styled(Card)(({ theme }) => ({
   borderRadius: "12px",
@@ -62,7 +61,7 @@ const MyTask = () => {
   useEffect(() => {
     const fetchMyTasks = async () => {
       try {
-        const response = await axios.get(`${API_BASE_URL}/users/tasks`);
+        const response = await axios.get(`${API_BASE_URL}/tasks`);
         setTasks(response.data);
       } catch (error) {
         console.error("Error fetching user tasks:", error);
