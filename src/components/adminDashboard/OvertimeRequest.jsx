@@ -39,8 +39,7 @@ import {
   Edit,
   Visibility
 } from '@mui/icons-material';
-
-const API_URL = "http://localhost:1010";
+import API_BASE_URL from '../config/apiConfig';
 
 const OvertimeRequest = () => {
   const [overtimeRequests, setOvertimeRequests] = useState([]);
@@ -66,7 +65,7 @@ const OvertimeRequest = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get(`${API_URL}/admin/overtime/all`);
+      const response = await axios.get(`${API_BASE_URL}/overtime/all`);
       const processedData = response.data.map(request => ({
         id: request.id,
         employeeId: request.employeeId || 'N/A',
@@ -91,7 +90,7 @@ const OvertimeRequest = () => {
 
   const handleViewRequest = async (id) => {
     try {
-      const response = await axios.get(`${API_URL}/admin/overtime/${id}`);
+      const response = await axios.get(`${API_BASE_URL}/overtime/${id}`);
       const requestData = response.data;
       
       const formattedRequest = {
@@ -114,7 +113,7 @@ const OvertimeRequest = () => {
 
   const handleStatusUpdate = async (id, newStatus) => {
     try {
-      await axios.put(`${API_URL}/admin/overtime/${id}/status`, null, {
+      await axios.put(`${API_BASE_URL}/overtime/${id}/status`, null, {
         params: { status: newStatus }
       });
       setSuccess(`Status updated to ${newStatus} successfully!`);
@@ -135,7 +134,7 @@ const OvertimeRequest = () => {
 
   const handleEditSubmit = async () => {
     try {
-      await axios.put(`${API_URL}/admin/overtime/${selectedRequest.id}`, {
+      await axios.put(`${API_BASE_URL}/overtime/${selectedRequest.id}`, {
         ...selectedRequest,
         status: editFormData.status
       });

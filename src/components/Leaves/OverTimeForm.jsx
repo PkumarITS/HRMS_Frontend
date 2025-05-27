@@ -32,6 +32,7 @@ import {
   TextareaAutosize,
 } from "@mui/material";
 import { ChevronLeft, ChevronRight, Visibility } from "@mui/icons-material";
+import API_BASE_URL from "../config/apiConfig";
 
 const OverTimeForm = () => {
   const [formData, setFormData] = useState({
@@ -62,7 +63,7 @@ const OverTimeForm = () => {
 
   // Configure axios instance
   const api = axios.create({
-    baseURL: "http://localhost:1010",
+    baseURL: API_BASE_URL,
   });
 
   // Add auth token to requests
@@ -97,11 +98,11 @@ const OverTimeForm = () => {
         }
 
         // Fetch projects assigned to this user
-        const projectsResponse = await api.get("/user/projects/by-emp");
+        const projectsResponse = await api.get("/projects/by-emp");
         setUserProjects(projectsResponse.data);
 
         // Fetch overtime history
-        const overtimeResponse = await api.get("/user/overtime");
+        const overtimeResponse = await api.get("/overtime");
         const sortedData = overtimeResponse.data.sort(
           (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
         );
@@ -142,7 +143,7 @@ const OverTimeForm = () => {
     }
 
     try {
-      await api.post("/user/overtime/add", {
+      await api.post("/overtime/add", {
         ...formData,
         status: "Pending",
         employeeId: profileData?.personal?.empId,
@@ -166,7 +167,7 @@ const OverTimeForm = () => {
       }));
 
       // Refresh overtime history
-      const response = await api.get("/user/overtime");
+      const response = await api.get("/overtime");
       const sortedData = response.data.sort(
         (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
       );

@@ -30,6 +30,7 @@ import {
   Print as PrintIcon,
   Close as CloseIcon
 } from '@mui/icons-material';
+import API_BASE_URL from './config/apiConfig';
 
 const Profile = ({ isRole }) => {
   const [profileData, setProfileData] = useState(null);
@@ -49,7 +50,7 @@ const Profile = ({ isRole }) => {
         
         const token = Cookies.get('token');
         const response = await axios.get(
-          `${UserService.BASE_URL}/common/get-complete-profile`, 
+          `${API_BASE_URL}/get-complete-profile`, 
           {
             headers: { Authorization: `Bearer ${token}` },
             withCredentials: true,

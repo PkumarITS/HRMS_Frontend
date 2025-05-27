@@ -18,12 +18,12 @@ import {
 import axios from 'axios';
 import Cookies from 'js-cookie';
 import { differenceInDays, parseISO, format } from 'date-fns';
+import API_BASE_URL from '../config/apiConfig';
 
 const api = axios.create({
-  baseURL: "http://localhost:1010",
+  baseURL: API_BASE_URL,
 });
 
-const API_BASE_URL = "http://localhost:1010";
 
 api.interceptors.request.use((config) => {
   const token = Cookies.get("token");

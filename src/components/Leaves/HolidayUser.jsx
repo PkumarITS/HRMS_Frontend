@@ -17,9 +17,7 @@ import {
 import { Search, Event } from "@mui/icons-material";
 import axios from "axios";
 import { format, parseISO, isAfter, isThisYear } from "date-fns";
-
-// const API_URL = "http://localhost:1010/api/holidays";
-const API_URL = "http://localhost:1010";
+import API_BASE_URL from "../config/apiConfig";
 
 const HolidayUser = () => {
   const [holidays, setHolidays] = useState([]);
@@ -35,8 +33,8 @@ const HolidayUser = () => {
   const fetchHolidays = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_URL}/user/holidays/upcoming`);
-      const allHolidays = await axios.get(`${API_URL}/adminuser/holidays`);
+      const response = await axios.get(`${API_BASE_URL}/holidays/upcoming`);
+      const allHolidays = await axios.get(`${API_BASE_URL}/holidays`);
       
       setHolidays(allHolidays.data);
       setUpcomingHolidays(response.data);

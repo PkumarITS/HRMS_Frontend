@@ -24,9 +24,7 @@ import {
 import { Search, Edit, Delete, Add, Close } from "@mui/icons-material";
 import axios from "axios";
 import { format, parseISO, getDay, addDays } from "date-fns";
-
-// const API_URL = "http://localhost:1010/api/holidays";
-const API_URL = "http://localhost:1010";
+import API_BASE_URL from "../config/apiConfig";
 
 const daysOfWeek = [
   "Sunday",
@@ -64,7 +62,7 @@ const HolidayAdmin = () => {
   const fetchHolidays = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_URL}/adminuser/holidays`);
+      const response = await axios.get(`${API_BASE_URL}/holidays`);
       setHolidays(response.data);
       setLoading(false);
     } catch (err) {
@@ -77,7 +75,7 @@ const HolidayAdmin = () => {
   const searchHolidays = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_URL}/adminuser/holidays/search?query=${searchQuery}`);
+      const response = await axios.get(`${API_BASE_URL}/holidays/search?query=${searchQuery}`);
       setHolidays(response.data);
       setLoading(false);
     } catch (err) {
@@ -142,13 +140,13 @@ const HolidayAdmin = () => {
 
     try {
       if (editMode) {
-        await axios.put(`${API_URL}/admin/holidays/${currentHoliday.id}`, {
+        await axios.put(`${API_BASE_URL}/holidays/${currentHoliday.id}`, {
           name: currentHoliday.name,
           date: currentHoliday.date,
         });
         showSnackbar("Holiday updated successfully", "success");
       } else {
-        await axios.post(`${API_URL}/admin/holidays/add`, {
+        await axios.post(`${API_BASE_URL}/holidays/add`, {
           name: currentHoliday.name,
           date: currentHoliday.date,
         });
@@ -166,7 +164,7 @@ const HolidayAdmin = () => {
 
   const handleDeleteHoliday = async (id) => {
     try {
-      await axios.delete(`${API_URL}/admin/holidays/${id}`);
+      await axios.delete(`${API_BASE_URL}/holidays/${id}`);
       showSnackbar("Holiday deleted successfully", "success");
       fetchHolidays();
     } catch (err) {

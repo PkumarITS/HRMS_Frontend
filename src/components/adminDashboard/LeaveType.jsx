@@ -36,9 +36,10 @@ import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { Visibility, Delete, Search } from "@mui/icons-material";
 import axios from "axios";
 import Cookies from "js-cookie";
+import API_BASE_URL from "../config/apiConfig";
 
 const api = axios.create({
-  baseURL: "http://localhost:1010",
+  baseURL: API_BASE_URL,
 });
 
 api.interceptors.request.use((config) => {
@@ -86,10 +87,10 @@ const LeaveType = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const projectsResponse = await api.get("/admin/projects");
+        const projectsResponse = await api.get("/projects");
         setProjects(projectsResponse.data);
 
-        const employeesResponse = await api.get("/admin/employees/search?query=");
+        const employeesResponse = await api.get("/employees/search?query=");
         setEmployees(employeesResponse.data.data);
       } catch (err) {
         console.error("Error fetching data:", err);
@@ -229,7 +230,7 @@ const LeaveType = () => {
     setError(null);
 
     try {
-      await api.post("/admin/leave-types", {
+      await api.post("/leave-types", {
         ...formData,
         leaveCarriedForward: formData.leaveCarriedForward === "yes",
         employeeIds: formData.applyToAllEmployees

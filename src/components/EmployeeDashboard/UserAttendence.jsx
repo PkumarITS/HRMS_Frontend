@@ -18,6 +18,7 @@ import {
   Chip
 } from '@mui/material';
 import { Login, Logout, Refresh } from '@mui/icons-material';
+import API_BASE_URL from '../config/apiConfig'; 
 
 const UserAttendance = () => {
   const [attendance, setAttendance] = useState([]);
@@ -27,14 +28,14 @@ const UserAttendance = () => {
   const [currentAttendance, setCurrentAttendance] = useState(null);
 
   const api = axios.create({
-    baseURL: 'http://localhost:1010',
+    baseURL: API_BASE_URL,
     headers: { Authorization: `Bearer ${Cookies.get('token')}` }
   });
 
   const fetchMyAttendance = async () => {
     setLoading(true);
     try {
-      const response = await api.get('/user/attendance/my-attendance');
+      const response = await api.get('/attendance/my-attendance');
       setAttendance(response.data);
       
       // Check if there's an open attendance (no out_time)
@@ -50,7 +51,7 @@ const UserAttendance = () => {
 
   const handleClockIn = async () => {
     try {
-      await api.post('/user/attendance/clock-in');
+      await api.post('/attendance/clock-in');
       fetchMyAttendance();
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to clock in');
@@ -59,7 +60,7 @@ const UserAttendance = () => {
 
   const handleClockOut = async () => {
     try {
-      await api.put('/user/attendance/clock-out');
+      await api.put('/attendance/clock-out');
       fetchMyAttendance();
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to clock out');

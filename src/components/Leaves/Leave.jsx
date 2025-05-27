@@ -36,6 +36,7 @@ import {
 } from "@mui/material";
 import { ChevronLeft, ChevronRight } from "@mui/icons-material";
 import { format, parseISO, differenceInDays } from 'date-fns';
+import API_BASE_URL from "../config/apiConfig";
 
 const Leave = () => {
   const [leaveData, setLeaveData] = useState({
@@ -66,7 +67,7 @@ const Leave = () => {
   const [today, setToday] = useState(new Date());
 
   const api = axios.create({
-    baseURL: "http://localhost:1010",
+    baseURL: API_BASE_URL,
   });
 
   api.interceptors.request.use((config) => {
@@ -253,7 +254,7 @@ const Leave = () => {
     }
 
     try {
-      await api.post("/user/leaves/add", {
+      await api.post("/leaves/add", {
         employeeId: profileData?.personal?.empId,
         employeeName: profileData?.personal?.firstName,
         leaveType: leaveData.leaveType,
@@ -295,7 +296,7 @@ const Leave = () => {
   const fetchLeaveHistory = async () => {
     setLoading(true);
     try {
-      const response = await api.get("/user/leaves");
+      const response = await api.get("/leaves");
       const sortedData = response.data.sort(
         (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
       );

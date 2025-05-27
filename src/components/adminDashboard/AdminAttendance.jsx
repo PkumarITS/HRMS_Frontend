@@ -20,6 +20,7 @@ import {
   IconButton
 } from '@mui/material';
 import { Search, Refresh, ChevronLeft, ChevronRight } from '@mui/icons-material';
+import API_BASE_URL from '../config/apiConfig';
 
 const AdminAttendance = () => {
   const [attendance, setAttendance] = useState([]);
@@ -33,8 +34,7 @@ const AdminAttendance = () => {
   const fetchAttendance = async () => {
     setLoading(true);
     try {
-      // let url = 'http://localhost:1010/adminuser/attendance';
-      let url = 'http://localhost:1010/admin/attendance';
+      let url = `${API_BASE_URL}/attendance`;
       const params = new URLSearchParams();
       
       if (searchId) params.append('employeeId', searchId);

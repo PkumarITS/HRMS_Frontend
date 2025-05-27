@@ -41,8 +41,7 @@ import {
   Edit,
   Visibility
 } from '@mui/icons-material';
-
-const API_URL = "http://localhost:1010";
+import API_BASE_URL from '../config/apiConfig';
 
 const LeaveRequest = () => {
   const [leaveRequests, setLeaveRequests] = useState([]);
@@ -68,7 +67,7 @@ const LeaveRequest = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get(`${API_URL}/admin/leaves/all`);
+      const response = await axios.get(`${API_BASE_URL}/leaves/all`);
       const processedData = response.data.map(request => ({
         id: request.id,
         employeeId: request.employeeId || 'N/A',
@@ -92,7 +91,7 @@ const LeaveRequest = () => {
 
   const handleStatusUpdate = async (id, newStatus) => {
     try {
-      await axios.put(`${API_URL}/admin/leaves/${id}/status`, null, {
+      await axios.put(`${API_BASE_URL}/leaves/${id}/status`, null, {
         params: { status: newStatus }
       });
       setSuccess(`Status updated to ${newStatus} successfully!`);
@@ -105,7 +104,7 @@ const LeaveRequest = () => {
 
   const handleViewRequest = async (id) => {
     try {
-      const response = await axios.get(`${API_URL}/admin/leaves/${id}`);
+      const response = await axios.get(`${API_BASE_URL}/leaves/${id}`);
       setSelectedRequest(response.data);
       setViewDialogOpen(true);
     } catch (error) {
@@ -124,7 +123,7 @@ const LeaveRequest = () => {
 
   const handleEditSubmit = async () => {
     try {
-      await axios.put(`${API_URL}/admin/leaves/${selectedRequest.id}/status`, null, {
+      await axios.put(`${API_BASE_URL}/leaves/${selectedRequest.id}/status`, null, {
         params: { status: editFormData.status }
       });
       setSuccess('Leave request status updated successfully!');

@@ -38,9 +38,10 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import axios from 'axios';
 import Cookies from 'js-cookie';
 import { format } from 'date-fns';
+import API_BASE_URL from '../config/apiConfig';
 
 const api = axios.create({
-  baseURL: "http://localhost:1010",
+  baseURL: API_BASE_URL,
 });
 
 api.interceptors.request.use((config) => {
@@ -93,7 +94,7 @@ const AdminLeaveBalance = () => {
   const fetchLeaveTypes = async () => {
     setLoading(true);
     try {
-      const response = await api.get('/admin/leave-types');
+      const response = await api.get('/leave-types');
       setLeaveTypes(response.data);
     } catch (err) {
       console.error('Error fetching leave types:', err);
@@ -106,7 +107,7 @@ const AdminLeaveBalance = () => {
   const fetchEmployees = async () => {
     setEmployeesLoading(true);
     try {
-      const response = await api.get("/admin/employees/search?query=");
+      const response = await api.get("/employees/search?query=");
       setEmployees(response.data.data);
     } catch (err) {
       console.error('Error fetching employees:', err);
@@ -118,7 +119,7 @@ const AdminLeaveBalance = () => {
 
   const fetchProjects = async () => {
     try {
-      const response = await api.get('/admin/projects');
+      const response = await api.get('/projects');
       setProjects(response.data);
     } catch (err) {
       console.error('Error fetching projects:', err);
@@ -176,7 +177,7 @@ const AdminLeaveBalance = () => {
 
     if (window.confirm('Are you sure you want to delete this leave type?')) {
       try {
-        await api.delete(`/admin/leave-types/${id}`);
+        await api.delete(`/leave-types/${id}`);
         setSuccess('Leave type deleted successfully');
         fetchLeaveTypes();
       } catch (err) {
@@ -250,7 +251,7 @@ const AdminLeaveBalance = () => {
         projectId: formData.projectId || null
       };
       
-      await api.put(`/admin/leave-types/${currentLeaveType.id}`, payload);
+      await api.put(`/leave-types/${currentLeaveType.id}`, payload);
       setSuccess('Leave type updated successfully');
       setEditDialogOpen(false);
       fetchLeaveTypes();
